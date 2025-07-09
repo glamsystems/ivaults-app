@@ -18,10 +18,10 @@ const MainTabsScreen: React.FC = () => {
   };
   
   return (
-    <PageWrapper>
+    <>
       <MainHeader title="iVaults" onRightPress={handleActivityPress} />
       <TabNavigator />
-    </PageWrapper>
+    </>
   );
 };
 

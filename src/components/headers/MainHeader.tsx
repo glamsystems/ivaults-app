@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useTheme } from '../../theme';
 import { Text } from '../common';
@@ -20,7 +21,10 @@ export const MainHeader: React.FC<MainHeaderProps> = ({
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top + 12.5 }]}>
+    <LinearGradient
+      colors={[colors.background.primary, colors.background.primary]}
+      style={[styles.container, { paddingTop: insets.top + 12.5 }]}
+    >
       <View style={styles.content}>
         <Text 
           mono
@@ -42,7 +46,7 @@ export const MainHeader: React.FC<MainHeaderProps> = ({
           style={styles.icon}
         />
       </View>
-    </View>
+    </LinearGradient>
   );
 };
 

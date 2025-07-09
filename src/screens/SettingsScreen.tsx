@@ -1,15 +1,17 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useTheme } from '../theme';
-import { Text } from '../components/common';
+import { Text, PageWrapper } from '../components/common';
 
 export const SettingsScreen: React.FC = () => {
   const { colors } = useTheme();
 
   return (
-    <View style={styles.container}>
+    <PageWrapper>
+      <View style={styles.container}>
       <Text variant="semiBold" style={[styles.text, { color: colors.text.primary }]}>Settings Screen</Text>
-    </View>
+      </View>
+    </PageWrapper>
   );
 };
 

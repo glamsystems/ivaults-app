@@ -4,7 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import { BottomSheetModal, BottomSheetTextInput } from '@gorhom/bottom-sheet';
 import { useTheme } from '../theme';
 import { CustomBottomSheet, BasicBottomSheet } from '../components/sheets';
-import { Text } from '../components/common';
+import { Text, PageWrapper } from '../components/common';
 export const DebugScreen: React.FC = () => {
   const { colors } = useTheme();
   const navigation = useNavigation<any>();
@@ -37,7 +37,8 @@ export const DebugScreen: React.FC = () => {
   const [inputValue, setInputValue] = useState('');
 
   return (
-    <View style={styles.container}>
+    <PageWrapper>
+      <View style={styles.container}>
       <Text variant="bold" style={[styles.title, { color: colors.text.primary }]}>Debug Screen</Text>
 
       <Button 
@@ -115,7 +116,8 @@ export const DebugScreen: React.FC = () => {
           Basic v5 Bottom Sheet 🎉
         </Text>
       </BasicBottomSheet>
-    </View>
+      </View>
+    </PageWrapper>
   );
 };
 

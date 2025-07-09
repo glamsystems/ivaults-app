@@ -1,5 +1,5 @@
 import React from 'react';
-import { TouchableOpacity } from 'react-native';
+import { Platform, TouchableOpacity } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { DEBUG } from '@env';
@@ -32,41 +32,14 @@ export const TabNavigator: React.FC = () => {
           position: 'absolute',
           paddingHorizontal: 40, // Add horizontal padding to center the icons
         },
-        tabBarButton: (props) => {
-          const {
-            delayLongPress,
-            disabled,
-            onBlur,
-            onFocus,
-            onPressIn,
-            onPressOut,
-            onPress,
-            onLongPress,
-            ...restProps
-          } = props;
-          const sanitizedDelayLongPress = typeof delayLongPress === 'number' ? delayLongPress : undefined;
-          const sanitizedDisabled = typeof disabled === 'boolean' ? disabled : undefined;
-          const sanitizedOnBlur = typeof onBlur === 'function' ? onBlur : undefined;
-          const sanitizedOnFocus = typeof onFocus === 'function' ? onFocus : undefined;
-          const sanitizedOnPressIn = typeof onPressIn === 'function' ? onPressIn : undefined;
-          const sanitizedOnPressOut = typeof onPressOut === 'function' ? onPressOut : undefined;
-          const sanitizedOnPress = typeof onPress === 'function' ? onPress : undefined;
-          const sanitizedOnLongPress = typeof onLongPress === 'function' ? onLongPress : undefined;
-          return (
+        ...(Platform.OS === 'android' && {
+          tabBarButton: (props) => (
             <TouchableOpacity
-              {...restProps}
-              delayLongPress={sanitizedDelayLongPress}
-              disabled={sanitizedDisabled}
-              onBlur={sanitizedOnBlur}
-              onFocus={sanitizedOnFocus}
-              onPressIn={sanitizedOnPressIn}
-              onPressOut={sanitizedOnPressOut}
-              onPress={sanitizedOnPress}
-              onLongPress={sanitizedOnLongPress}
+              {...props}
               activeOpacity={0.6}
             />
-          );
-        },
+          ),
+        }),
         tabBarIcon: ({ focused }) => {
           let iconName: string;
 
