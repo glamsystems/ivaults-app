@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { TabNavigator } from './TabNavigator';
-import { FullScreenPage, ActivityScreen } from '../../screens';
+import { FullScreenPage, ActivityScreen, VaultDetailScreen } from '../../screens';
 import { MainHeader } from '../headers';
 import { useNavigation } from '@react-navigation/native';
 import { PageWrapper } from '../common/PageWrapper';
@@ -50,6 +50,7 @@ export const RootNavigator: React.FC = () => {
         <Stack.Screen name="MainTabs" component={MainTabsScreen} />
         <Stack.Screen name="FullScreen" component={FullScreenPage} />
         <Stack.Screen name="Activity" component={ActivityScreen} />
+        <Stack.Screen name="VaultDetail" component={VaultDetailScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

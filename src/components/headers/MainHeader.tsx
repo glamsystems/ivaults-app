@@ -65,6 +65,9 @@ const styles = StyleSheet.create({
     fontWeight: 'normal', // Let the font file handle the weight
   },
   icon: {
-    padding: 8, // Reduced from 10 to 8 to match SecondaryHeader
+    paddingTop: 8,
+    paddingBottom: 8,
+    paddingLeft: 8,
+    // No right padding to respect the container's 38px padding
   },
 });

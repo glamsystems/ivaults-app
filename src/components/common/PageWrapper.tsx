@@ -24,5 +24,6 @@ export const PageWrapper: React.FC<PageWrapperProps> = ({ children, style }) => 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingHorizontal: 38, // Same as MainHeader padding
   },
 });

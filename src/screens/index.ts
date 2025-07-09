@@ -4,3 +4,4 @@ export * from './ActivityScreen';
 export * from './SettingsScreen';
 export * from './DebugScreen';
 export * from './FullScreenPage';
+export * from './VaultDetailScreen';

@@ -47,3 +47,65 @@ The main issues appear to be:
 2. PageWrapper with 30px borderRadius causing unexpected rounded corners
 3. Bottom sheet might be too transparent or blur effect not working properly
 4. MainHeader lacks background color definition
+
+---
+
+# Screener Screen Implementation
+
+## Todo Items
+
+- [x] Set up Zustand store for global vault data management
+- [x] Create VaultCard component with gradient icon placeholder
+- [x] Create SearchBar component with expand/collapse animation
+- [x] Create FilterTabs component with underline indicator
+- [x] Implement main ScreenerScreen with vault list and filtering
+- [x] Add mock vault data for testing
+- [x] Review implementation and document changes
+
+## Review
+
+### Summary of Changes
+
+Successfully implemented the Screener screen with all requested features:
+
+1. **Global State Management**
+   - Created `vaultStore.ts` using Zustand for managing vault data globally
+   - Implemented filtering logic for search and category filters
+
+2. **VaultCard Component**
+   - Gradient icon placeholder with 44x44px size and 8px radius (matching icon buttons)
+   - Proper color scheme: name (#010101), symbol (#A8A8A8), category (#717171), NAV (#010101)
+   - Performance indicators with green (#0CC578) for positive and red (#FA155A) for negative values
+   - Text size of 18px matching button text
+
+3. **SearchBar Component**
+   - Animated expansion from search icon to full input field
+   - Smooth transition with proper keyboard handling
+   - Connected to global state for real-time filtering
+
+4. **FilterTabs Component**
+   - Three filter options: All, SuperVaults, xStocks
+   - Animated underline indicator for selected tab
+   - Filters update the vault list in real-time
+
+5. **Main ScreenerScreen**
+   - Integrated all components with proper layout
+   - FlatList for efficient rendering of vault items
+   - Mock data with different vault types for testing
+
+### File Structure
+```
+src/
+├── store/
+│   └── vaultStore.ts
+├── components/
+│   └── screener/
+│       ├── VaultCard.tsx
+│       ├── SearchBar.tsx
+│       ├── FilterTabs.tsx
+│       └── index.ts
+└── screens/
+    └── ScreenerScreen.tsx
+```
+
+All components follow the app's existing patterns and are ready for integration with real data.

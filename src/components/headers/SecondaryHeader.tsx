@@ -34,7 +34,7 @@ export const SecondaryHeader: React.FC<SecondaryHeaderProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 38, // 50 * 0.75 = 37.5, rounded to 38
+    paddingHorizontal: 5, // 50 * 0.75 = 37.5, rounded to 38
     paddingBottom: 30,
   },
   content: {
@@ -43,8 +43,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   icon: {
-    padding: 8, // Reduced from 10 to 8 (20% reduction)
-    marginLeft: -8, // Adjusted to match padding
+    paddingTop: 8,
+    paddingBottom: 8,
+    paddingRight: 8,
+    marginLeft: -12, // Move icon left to align with text
   },
   rightSpace: {
     width: 44, // Adjusted for 28px icon + padding
