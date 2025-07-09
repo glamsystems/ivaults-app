@@ -1,7 +1,7 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Icon from 'react-native-vector-icons/Ionicons';
+import { Ionicons as Icon } from '@expo/vector-icons';
 import { useTheme } from '../../theme';
 
 interface SecondaryHeaderProps {
@@ -19,13 +19,17 @@ export const SecondaryHeader: React.FC<SecondaryHeaderProps> = ({
   return (
     <View style={[styles.container, { paddingTop: insets.top + 12.5 }]}>
       <View style={styles.content}>
-        <Icon
-          name={leftIcon}
-          size={25}
-          color={colors.icon.primary}
+        <TouchableOpacity
           onPress={onLeftPress}
+          activeOpacity={0.6}
           style={styles.icon}
-        />
+        >
+          <Icon
+            name={leftIcon}
+            size={25}
+            color={colors.icon.primary}
+          />
+        </TouchableOpacity>
         <View style={styles.rightSpace} />
       </View>
     </View>

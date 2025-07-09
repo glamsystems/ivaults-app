@@ -27,6 +27,7 @@ export const ScreenerScreen: React.FC = () => {
         nav: 1234.56,
         performance24h: 9.87,
         gradientColors: ['#FF6B6B', '#4ECDC4'],
+        glam_state: '7EFk3VrWeb29SWJPQs5XEQagPhdRoaKhNhTqUgWPK5Ar',
       },
       {
         id: '2',
@@ -36,6 +37,7 @@ export const ScreenerScreen: React.FC = () => {
         nav: 1012.19,
         performance24h: -7.30,
         gradientColors: ['#667EEA', '#764BA2'],
+        glam_state: '9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM',
       },
       {
         id: '3',
@@ -45,6 +47,7 @@ export const ScreenerScreen: React.FC = () => {
         nav: 456.78,
         performance24h: 42.69,
         gradientColors: ['#F093FB', '#F5576C'],
+        glam_state: 'Ax9ujW5B9oqcv59N8m6f1BpTBq2rGeGaBcpKjC5UYsXU',
       },
       {
         id: '4',
@@ -54,6 +57,7 @@ export const ScreenerScreen: React.FC = () => {
         nav: 87.65,
         performance24h: -1.23,
         gradientColors: ['#FA709A', '#FEE140'],
+        glam_state: '3Jd2MgumN7Ex7HzNiPpGRpYKdyBGHgPt5SJNjhVjKK6Z',
       },
       {
         id: '5',
@@ -63,6 +67,7 @@ export const ScreenerScreen: React.FC = () => {
         nav: 2341.78,
         performance24h: 15.42,
         gradientColors: ['#4FACFE', '#00F2FE'],
+        glam_state: 'HZ1JovNiVvGrGNiiYvEozEVgZ58xaU3RKwX8eACQBCt3',
       },
       {
         id: '6',
@@ -72,6 +77,7 @@ export const ScreenerScreen: React.FC = () => {
         nav: 3456.90,
         performance24h: -3.67,
         gradientColors: ['#43E97B', '#38F9D7'],
+        glam_state: '5omQJtDUHA3gMFdHEQg1zZSvcBUVzey5WaKWYRmqF1Vj',
       },
       {
         id: '7',

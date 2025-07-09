@@ -1,7 +1,7 @@
 import React from 'react';
-import { Platform, TouchableOpacity, View, StyleSheet } from 'react-native';
+import { Platform, TouchableOpacity, View, StyleSheet, Text } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import Icon from 'react-native-vector-icons/Ionicons';
+import { Ionicons as Icon } from '@expo/vector-icons';
 import { DEBUG } from '@env';
 import { useTheme } from '../../theme';
 import {
@@ -20,6 +20,9 @@ export const TabNavigator: React.FC = () => {
 
   return (
     <View style={styles.container}>
+      {/* Bottom gradient for consistent appearance - rendered first */}
+      <BottomGradient />
+      
       <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
@@ -33,7 +36,11 @@ export const TabNavigator: React.FC = () => {
           paddingTop: 0, // Reduced to raise icons higher
           position: 'absolute',
           paddingHorizontal: 40, // Add horizontal padding to center the icons
-          zIndex: 10, // Ensure tab bar is above gradient
+          zIndex: Platform.select({
+            ios: 10,
+            android: 10,
+            web: 100, // Higher z-index for web
+          }),
         },
         ...(Platform.OS === 'android' && {
           tabBarButton: (props) => (
@@ -63,6 +70,35 @@ export const TabNavigator: React.FC = () => {
               iconName = 'help-outline';
           }
 
+          // Platform-specific icon rendering
+          if (Platform.OS === 'web') {
+            // Web-specific unicode characters for Ionicons
+            const iconMap: Record<string, string> = {
+              'list': '\uF3C9',
+              'list-outline': '\uF3CA',
+              'bar-chart': '\uF2E3',
+              'bar-chart-outline': '\uF2E4',
+              'settings': '\uF4A7',
+              'settings-outline': '\uF4A8',
+              'bug': '\uF2BE',
+              'bug-outline': '\uF2BF',
+              'help-outline': '\uF444',
+            };
+            
+            return (
+              <Text
+                style={{
+                  fontFamily: 'Ionicons',
+                  fontSize: 28,
+                  color: focused ? colors.icon.primary : colors.icon.secondary,
+                }}
+              >
+                {iconMap[iconName] || '?'}
+              </Text>
+            );
+          }
+          
+          // iOS and Android use the Icon component
           return (
             <Icon
               name={iconName}
@@ -78,9 +114,6 @@ export const TabNavigator: React.FC = () => {
       <Tab.Screen name="Settings" component={SettingsScreen} />
       {showDebugTab && <Tab.Screen name="Debug" component={DebugScreen} />}
     </Tab.Navigator>
-    
-    {/* Bottom gradient for consistent appearance */}
-    <BottomGradient />
     </View>
   );
 };

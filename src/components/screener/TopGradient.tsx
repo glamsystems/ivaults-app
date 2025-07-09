@@ -2,7 +2,7 @@ import React from 'react';
 import { StyleSheet, useWindowDimensions, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
-interface BottomGradientProps {
+interface TopGradientProps {
   height?: number;
 }
 
@@ -15,14 +15,14 @@ const interpolateColor = (startY: number, screenHeight: number): string => {
   return `rgb(${r}, ${g}, ${b})`;
 };
 
-export const BottomGradient: React.FC<BottomGradientProps> = ({ height }) => {
+export const TopGradient: React.FC<TopGradientProps> = ({ height }) => {
   const { height: screenHeight } = useWindowDimensions();
   
   // Use provided height or default platform-specific height
   const gradientHeight = height || getDefaultGradientHeight();
   
   // Calculate color at the middle of the gradient
-  const middlePosition = screenHeight - (gradientHeight / 2);
+  const middlePosition = gradientHeight / 2;
   const middleColor = interpolateColor(middlePosition, screenHeight);
   
   // Parse RGB values for creating RGBA
@@ -31,11 +31,11 @@ export const BottomGradient: React.FC<BottomGradientProps> = ({ height }) => {
   const g = rgbMatch ? parseInt(rgbMatch[2]) : 254;
   const b = rgbMatch ? parseInt(rgbMatch[3]) : 254;
   
-  // Create gradient colors with proper opacity
+  // Create gradient colors with proper opacity (inverted from bottom)
   const colors = [
-    `rgba(${r}, ${g}, ${b}, 0)`,    // Top: transparent
+    '#FEFEFE',                       // Top: opaque #FEFEFE (start color)
     `rgba(${r}, ${g}, ${b}, 1)`,    // Middle: opaque calculated color
-    '#D9D9D9'                        // Bottom: opaque #D9D9D9
+    `rgba(${r}, ${g}, ${b}, 0)`     // Bottom: transparent
   ];
   
   return (
@@ -50,10 +50,10 @@ export const BottomGradient: React.FC<BottomGradientProps> = ({ height }) => {
 
 // Platform-specific gradient heights
 const getDefaultGradientHeight = () => Platform.select({
-  ios: 250,
-  android: 300, // Adjust as needed for Android
-  web: 300,     // Adjust as needed for Web
-  default: 300,
+  ios: 180,
+  android: 180,
+  web: 180,
+  default: 180,
 });
 
 const styles = StyleSheet.create({
@@ -61,7 +61,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    bottom: 0, // Start from very bottom of screen
-    zIndex: 1, // Below content but above background
+    top: 0, // Start from very top of screen
+    zIndex: 10, // Above content
   },
 });

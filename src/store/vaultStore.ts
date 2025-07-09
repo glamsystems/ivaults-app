@@ -11,6 +11,7 @@ export interface Vault {
   performance24h: number;
   totalValue?: number;
   gradientColors?: [string, string];
+  glam_state?: string;
 }
 
 interface VaultStore {

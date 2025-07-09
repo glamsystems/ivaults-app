@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import Icon from 'react-native-vector-icons/Ionicons';
+import { Ionicons as Icon } from '@expo/vector-icons';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
