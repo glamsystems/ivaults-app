@@ -7,7 +7,8 @@ interface ListCardProps {
   leftIcon: ReactNode;
   title: string;
   rightText: string;
-  leftBottomText: string;
+  leftBottomText?: string;
+  leftBottomContent?: ReactNode;
   rightBottomContent: ReactNode;
   onPress?: () => void;
 }
@@ -17,6 +18,7 @@ export const ListCard: React.FC<ListCardProps> = ({
   title,
   rightText,
   leftBottomText,
+  leftBottomContent,
   rightBottomContent,
   onPress,
 }) => {
@@ -35,7 +37,9 @@ export const ListCard: React.FC<ListCardProps> = ({
       
       {/* Row 2 */}
       <View style={[styles.row, styles.secondRow]}>
-        <Text variant="regular" style={styles.leftBottomText}>{leftBottomText}</Text>
+        {leftBottomContent || (leftBottomText && (
+          <Text variant="regular" style={styles.leftBottomText}>{leftBottomText}</Text>
+        ))}
         {rightBottomContent}
       </View>
     </>
