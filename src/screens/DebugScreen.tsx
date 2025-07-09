@@ -54,28 +54,29 @@ export const DebugScreen: React.FC = () => {
       />
       
       <TouchableOpacity 
-        style={[styles.button, { backgroundColor: colors.text.primary }]}
+        style={[styles.button]}
         onPress={handleFullScreenPress}
       >
-        <Text variant="semiBold" style={[styles.buttonText, { color: colors.background.primary }]}>
-          Go to Full Screen
+        <Text variant="regular" style={[styles.buttonText, { color: '#FEFEFE' }]}>
+          Connect
         </Text>
       </TouchableOpacity>
 
       <TouchableOpacity 
-        style={[styles.button, { backgroundColor: colors.text.primary }]}
+        style={[styles.buttonOutline]}
         onPress={handleSheetPress}
       >
-        <Text variant="semiBold" style={[styles.buttonText, { color: colors.background.primary }]}>
+        <Text variant="regular" style={[styles.buttonText, { color: '#717171' }]}>
           Show Bottom Sheet
         </Text>
       </TouchableOpacity>
 
       <TouchableOpacity 
-        style={[styles.button, { backgroundColor: colors.text.primary }]}
+        style={[styles.buttonDisabled]}
         onPress={handleKeyboardSheetPress}
+        disabled={true}
       >
-        <Text variant="semiBold" style={[styles.buttonText, { color: colors.background.primary }]}>
+        <Text variant="regular" style={[styles.buttonText, { color: '#A8A8A8' }]}>
           Show Keyboard Sheet
         </Text>
       </TouchableOpacity>
@@ -125,24 +126,50 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
+    alignItems: 'stretch',
+    paddingHorizontal: 38, // Match header padding
+    paddingVertical: 20,
     paddingBottom: 140, // Account for tab bar height + existing padding
   },
   title: {
     fontSize: 24,
     marginBottom: 40,
+    textAlign: 'center',
   },
   button: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingHorizontal: 19,
+    paddingVertical: 11,
     borderRadius: 8,
     marginVertical: 10,
-    minWidth: 200,
     alignItems: 'center',
+    backgroundColor: '#3A3A3A',
+    borderWidth: 1,
+    borderColor: '#3A3A3A',
+  },
+  buttonOutline: {
+    paddingHorizontal: 19, // Reduced by 1px to account for border
+    paddingVertical: 11, // Reduced by 1px to account for border
+    borderRadius: 8,
+    marginVertical: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#717171',
+    backgroundColor: 'rgba(217, 217, 217, 0.01)',
+  },
+  buttonDisabled: {
+    paddingHorizontal: 19, // Reduced by 1px to account for border
+    paddingVertical: 11, // Reduced by 1px to account for border
+    borderRadius: 8,
+    marginVertical: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#A8A8A8',
+    backgroundColor: 'rgba(217, 217, 217, 0.01)',
   },
   buttonText: {
-    fontSize: 16,
+    fontSize: 18,
+    textAlign: 'center',
+    lineHeight: 24, // normal line height for 18px font
   },
   sheetText: {
     fontSize: 18,
