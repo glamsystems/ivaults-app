@@ -1,5 +1,5 @@
 import React from 'react';
-import { Platform, TouchableOpacity } from 'react-native';
+import { Platform, TouchableOpacity, View, StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { DEBUG } from '@env';
@@ -10,6 +10,7 @@ import {
   SettingsScreen,
   DebugScreen,
 } from '../../screens';
+import { BottomGradient } from '../screener';
 
 const Tab = createBottomTabNavigator();
 
@@ -18,7 +19,8 @@ export const TabNavigator: React.FC = () => {
   const showDebugTab = DEBUG === 'true';
 
   return (
-    <Tab.Navigator
+    <View style={styles.container}>
+      <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarShowLabel: false,
@@ -31,6 +33,7 @@ export const TabNavigator: React.FC = () => {
           paddingTop: 0, // Reduced to raise icons higher
           position: 'absolute',
           paddingHorizontal: 40, // Add horizontal padding to center the icons
+          zIndex: 10, // Ensure tab bar is above gradient
         },
         ...(Platform.OS === 'android' && {
           tabBarButton: (props) => (
@@ -75,5 +78,15 @@ export const TabNavigator: React.FC = () => {
       <Tab.Screen name="Settings" component={SettingsScreen} />
       {showDebugTab && <Tab.Screen name="Debug" component={DebugScreen} />}
     </Tab.Navigator>
+    
+    {/* Bottom gradient for consistent appearance */}
+    <BottomGradient />
+    </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+});

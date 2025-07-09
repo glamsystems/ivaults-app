@@ -3,7 +3,7 @@ import { View, StyleSheet, FlatList, Platform, Animated } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../theme';
 import { PageWrapper } from '../components/common';
-import { VaultCard, SearchBar, FilterTabs } from '../components/screener';
+import { VaultCard, SearchBar, FilterTabs, FadeOverlay } from '../components/screener';
 import { useVaultStore } from '../store/vaultStore';
 
 export const ScreenerScreen: React.FC = () => {
@@ -205,19 +205,29 @@ export const ScreenerScreen: React.FC = () => {
           <FilterTabs scrollEnabled={!isSearchOpen} />
         </View>
         
-        <FlatList
-          data={filteredVaults}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <VaultCard
-              vault={item}
-              onPress={() => handleVaultPress(item.id)}
-            />
-          )}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
-        />
+        <View style={styles.listContainer}>
+          <FlatList
+            data={filteredVaults}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <VaultCard
+                vault={item}
+                onPress={() => handleVaultPress(item.id)}
+              />
+            )}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+            ItemSeparatorComponent={() => <View style={styles.separator} />}
+            // Performance optimizations
+            initialNumToRender={10}
+            maxToRenderPerBatch={5}
+            windowSize={10}
+            removeClippedSubviews={Platform.OS === 'android'}
+          />
+          
+          {/* Top fade overlay only - bottom is now in TabNavigator */}
+          <FadeOverlay position="top" height={30} startY={80} />
+        </View>
       </View>
     </PageWrapper>
   );
@@ -233,7 +243,12 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     marginBottom: 12,
   },
+  listContainer: {
+    flex: 1,
+    position: 'relative',
+  },
   listContent: {
+    paddingTop: 15, // Ensure first item is below fade
     paddingBottom: Platform.OS === 'ios' ? 120 : 140,
   },
   separator: {
