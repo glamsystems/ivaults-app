@@ -5,25 +5,24 @@ import {
   TouchableOpacity,
   ScrollView,
 } from 'react-native';
-import { Text } from '../common';
-import { useVaultStore, VaultCategory } from '../../store/vaultStore';
+import { Text } from './Text';
 import { FontSizes } from '../../constants/fonts';
 
-type FilterOption = 'All' | VaultCategory;
-
-const FILTER_OPTIONS: FilterOption[] = ['All', 'SuperVault', 'xStocks'];
-
-interface FilterTabsProps {
+interface GenericFilterTabsProps<T> {
+  options: T[];
+  selectedOption: T;
+  onSelectOption: (option: T) => void;
   scrollEnabled?: boolean;
+  getOptionLabel?: (option: T) => string;
 }
 
-export const FilterTabs: React.FC<FilterTabsProps> = ({ scrollEnabled = true }) => {
-  const { selectedFilter, setSelectedFilter } = useVaultStore();
-
-  const handleFilterPress = (filter: FilterOption) => {
-    setSelectedFilter(filter);
-  };
-
+export function GenericFilterTabs<T extends string>({
+  options,
+  selectedOption,
+  onSelectOption,
+  scrollEnabled = true,
+  getOptionLabel = (option) => option,
+}: GenericFilterTabsProps<T>) {
   return (
     <ScrollView
       horizontal
@@ -32,12 +31,12 @@ export const FilterTabs: React.FC<FilterTabsProps> = ({ scrollEnabled = true }) 
       contentContainerStyle={styles.contentContainer}
       scrollEnabled={scrollEnabled}
     >
-      {FILTER_OPTIONS.map((filter) => {
-        const isActive = selectedFilter === filter;
+      {options.map((option) => {
+        const isActive = selectedOption === option;
         return (
           <TouchableOpacity
-            key={filter}
-            onPress={() => handleFilterPress(filter)}
+            key={option}
+            onPress={() => onSelectOption(option)}
             style={styles.tab}
             activeOpacity={0.7}
           >
@@ -48,14 +47,14 @@ export const FilterTabs: React.FC<FilterTabsProps> = ({ scrollEnabled = true }) 
                 isActive && styles.activeTabText,
               ]}
             >
-              {filter === 'SuperVault' ? 'SuperVaults' : filter}
+              {getOptionLabel(option)}
             </Text>
           </TouchableOpacity>
         );
       })}
     </ScrollView>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {

@@ -36,7 +36,7 @@ export const BottomGradient: React.FC<BottomGradientProps> = ({ height }) => {
     `rgba(${r}, ${g}, ${b}, 0)`,    // Top: transparent
     `rgba(${r}, ${g}, ${b}, 1)`,    // Middle: opaque calculated color
     '#D9D9D9'                        // Bottom: opaque #D9D9D9
-  ];
+  ] as const;
   
   return (
     <LinearGradient

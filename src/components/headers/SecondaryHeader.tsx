@@ -37,8 +37,7 @@ export const SecondaryHeader: React.FC<SecondaryHeaderProps> = ({
 };
 
 const styles = StyleSheet.create({
-  container: {
-    paddingHorizontal: 5, // 50 * 0.75 = 37.5, rounded to 38
+  container: {  
     paddingBottom: 30,
   },
   content: {
@@ -50,7 +49,6 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 8,
     paddingRight: 8,
-    marginLeft: -12, // Move icon left to align with text
   },
   rightSpace: {
     width: 44, // Adjusted for 28px icon + padding

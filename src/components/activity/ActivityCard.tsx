@@ -10,7 +10,7 @@ interface ActivityCardProps {
   activity: Activity;
 }
 
-const getActivityIcon = (type: ActivityType): string => {
+const getActivityIcon = (type: ActivityType): keyof typeof Icon.glyphMap => {
   switch (type) {
     case 'deposit':
       return 'add-circle-outline';

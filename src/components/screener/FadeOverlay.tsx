@@ -47,12 +47,12 @@ export const FadeOverlay: React.FC<FadeOverlayProps> = ({
         `rgba(${r}, ${g}, ${b}, 1)`,      // 100% opacity
         `rgba(${r}, ${g}, ${b}, 0.5)`,    // 50% opacity
         `rgba(${r}, ${g}, ${b}, 0)`       // 0% opacity (transparent)
-      ]
+      ] as const
     : [
         `rgba(${r}, ${g}, ${b}, 0)`,      // 0% opacity (transparent)
         `rgba(${r}, ${g}, ${b}, 0.5)`,    // 50% opacity
         `rgb(${r}, ${g}, ${b})`           // 100% opacity (solid color for continuity)
-      ];
+      ] as const;
 
   return (
     <View style={[

@@ -9,21 +9,27 @@ import {
 } from 'react-native';
 import { Ionicons as Icon } from '@expo/vector-icons';
 import { useVaultStore } from '../../store/vaultStore';
+import { useActivityStore } from '../../store/activityStore';
 
 interface SearchBarProps {
   isExpanded: boolean;
   onToggle: () => void;
   width: Animated.Value;
   contentOpacity: Animated.Value;
+  type?: 'vault' | 'activity';
 }
 
 export const SearchBar: React.FC<SearchBarProps> = ({ 
   isExpanded, 
   onToggle, 
   width,
-  contentOpacity 
+  contentOpacity,
+  type = 'vault'
 }) => {
-  const { searchQuery, setSearchQuery } = useVaultStore();
+  const vaultStore = useVaultStore();
+  const activityStore = useActivityStore();
+  
+  const { searchQuery, setSearchQuery } = type === 'vault' ? vaultStore : activityStore;
   const inputRef = useRef<TextInput>(null);
 
   React.useEffect(() => {
@@ -56,7 +62,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
           <TextInput
             ref={inputRef}
             style={styles.input}
-            placeholder="Search vaults..."
+            placeholder={type === 'vault' ? "Search vaults..." : "Search activity..."}
             placeholderTextColor="#A8A8A8"
             value={searchQuery}
             onChangeText={setSearchQuery}

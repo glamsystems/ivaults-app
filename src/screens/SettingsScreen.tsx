@@ -65,7 +65,7 @@ export const SettingsScreen: React.FC = () => {
           </TouchableOpacity>
           
           <Text mono variant="regular" style={[styles.version, { color: '#A8A8A8' }]}>
-            v0.0.3
+            v0.0.4
           </Text>
         </View>
 
@@ -138,7 +138,6 @@ export const SettingsScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingHorizontal: 38,
     paddingBottom: Platform.OS === 'ios' ? 80 : 100,
   },
   topSection: {

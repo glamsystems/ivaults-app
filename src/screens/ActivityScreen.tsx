@@ -1,17 +1,16 @@
 import React, { useEffect } from 'react';
-import { View, StyleSheet, FlatList, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../theme';
 import { SecondaryHeader } from '../components/headers';
-import { PageWrapper } from '../components/common/PageWrapper';
-import { ActivityCard } from '../components/activity';
-import { TopGradient, BottomGradient } from '../components/screener';
+import { ScreenLayout } from '../components/layout';
+import { ActivityCard, ActivityFilterTabs } from '../components/activity';
 import { useActivityStore } from '../store/activityStore';
 
 export const ActivityScreen: React.FC = () => {
   const { colors } = useTheme();
   const navigation = useNavigation();
-  const { activities, setActivities } = useActivityStore();
+  const { getFilteredActivities, setActivities } = useActivityStore();
+  const filteredActivities = getFilteredActivities();
   
   useEffect(() => {
     // Initialize with mock activity data
@@ -144,78 +143,17 @@ export const ActivityScreen: React.FC = () => {
   };
 
   return (
-    <PageWrapper>
-      {/* Top gradient - positioned to start from screen top */}
-      <View style={styles.topGradientWrapper}>
-        <TopGradient />
-      </View>
-      
-      {/* Header wrapper with higher z-index to stay above gradient */}
-      <View style={styles.headerWrapper}>
-        <SecondaryHeader onLeftPress={handleGoBack} />
-      </View>
-      <View style={styles.container}>
-        <View style={styles.listContainer}>
-          <FlatList
-            data={activities}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <ActivityCard activity={item} />
-            )}
-            contentContainerStyle={styles.listContent}
-            showsVerticalScrollIndicator={false}
-            ItemSeparatorComponent={() => <View style={styles.separator} />}
-            // Performance optimizations
-            initialNumToRender={10}
-            maxToRenderPerBatch={5}
-            windowSize={10}
-            removeClippedSubviews={Platform.OS === 'android'}
-          />
-        </View>
-        
-        {/* Bottom gradient - with negative margins for full width */}
-        <View style={styles.bottomGradientWrapper}>
-          <BottomGradient height={200} />
-        </View>
-      </View>
-    </PageWrapper>
+    <ScreenLayout
+      type="activity"
+      data={filteredActivities}
+      keyExtractor={(item) => item.id}
+      renderItem={({ item }) => (
+        <ActivityCard activity={item} />
+      )}
+      FilterComponent={ActivityFilterTabs}
+      bottomGradientHeight={160}
+    >
+      <SecondaryHeader onLeftPress={handleGoBack} />
+    </ScreenLayout>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  headerWrapper: {
-    position: 'relative',
-    zIndex: 20, // Above gradient
-  },
-  listContainer: {
-    flex: 1,
-    position: 'relative',
-  },
-  listContent: {
-    marginTop: -12,
-    paddingBottom: Platform.OS === 'ios' ? 300 : 320, // Extra space for bottom gradient
-  },
-  separator: {
-    height: 0, // Remove separator
-  },
-  topGradientWrapper: {
-    position: 'absolute',
-    top: 0,
-    left: -38, // Negative margin to counteract PageWrapper padding
-    right: -38, // Negative margin to counteract PageWrapper padding
-    height: 100, // Increased to cover header area
-    overflow: 'visible',
-    zIndex: 10, // Above other content
-  },
-  bottomGradientWrapper: {
-    position: 'absolute',
-    bottom: 0,
-    left: -38, // Negative margin to counteract PageWrapper padding
-    right: -38, // Negative margin to counteract PageWrapper padding
-    height: 200,
-    overflow: 'visible',
-  },
-});

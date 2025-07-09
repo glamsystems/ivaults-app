@@ -1,9 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { View, StyleSheet, FlatList, Platform, Animated } from 'react-native';
+import React, { useEffect } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../theme';
-import { PageWrapper } from '../components/common';
-import { VaultCard, SearchBar, FilterTabs, FadeOverlay } from '../components/screener';
+import { ScreenLayout } from '../components/layout';
+import { VaultCard, FilterTabs } from '../components/screener';
 import { useVaultStore } from '../store/vaultStore';
 
 export const ScreenerScreen: React.FC = () => {
@@ -11,10 +10,6 @@ export const ScreenerScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const { getFilteredVaults, setVaults, vaults } = useVaultStore();
   const filteredVaults = getFilteredVaults();
-  
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const searchWidth = useRef(new Animated.Value(40)).current;
-  const searchContentOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     // Initialize with mock data (will be replaced with real data later)
@@ -161,103 +156,21 @@ export const ScreenerScreen: React.FC = () => {
     }
   };
 
-  const handleSearchToggle = () => {
-    if (isSearchOpen) {
-      // Close search
-      Animated.parallel([
-        Animated.timing(searchWidth, {
-          toValue: 40,
-          duration: 250,
-          useNativeDriver: false,
-        }),
-        Animated.timing(searchContentOpacity, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        setIsSearchOpen(false);
-      });
-    } else {
-      // Open search
-      setIsSearchOpen(true);
-      Animated.parallel([
-        Animated.timing(searchWidth, {
-          toValue: 180,
-          duration: 250,
-          useNativeDriver: false,
-        }),
-        Animated.timing(searchContentOpacity, {
-          toValue: 1,
-          duration: 200,
-          delay: 100,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    }
-  };
-
   return (
-    <PageWrapper>
-      <View style={styles.container}>
-        <View style={styles.filterContainer}>
-          <SearchBar 
-            isExpanded={isSearchOpen}
-            onToggle={handleSearchToggle}
-            width={searchWidth}
-            contentOpacity={searchContentOpacity}
-          />
-          
-          <FilterTabs scrollEnabled={!isSearchOpen} />
-        </View>
-        
-        <View style={styles.listContainer}>
-          <FlatList
-            data={filteredVaults}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <VaultCard
-                vault={item}
-                onPress={() => handleVaultPress(item.id)}
-              />
-            )}
-            contentContainerStyle={styles.listContent}
-            showsVerticalScrollIndicator={false}
-            ItemSeparatorComponent={() => <View style={styles.separator} />}
-            // Performance optimizations
-            initialNumToRender={10}
-            maxToRenderPerBatch={5}
-            windowSize={10}
-            removeClippedSubviews={Platform.OS === 'android'}
-          />
-          
-          {/* Top fade overlay only - bottom is now in TabNavigator */}
-          <FadeOverlay position="top" height={30} startY={80} />
-        </View>
-      </View>
-    </PageWrapper>
+    <ScreenLayout
+      type="vault"
+      data={filteredVaults}
+      keyExtractor={(item) => item.id}
+      renderItem={({ item }) => (
+        <VaultCard
+          vault={item}
+          onPress={() => handleVaultPress(item.id)}
+        />
+      )}
+      FilterComponent={FilterTabs}
+      bottomGradientHeight={200}
+    >
+      {/* Children prop is empty - header is in TabNavigator */}
+    </ScreenLayout>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  filterContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    marginBottom: 12,
-  },
-  listContainer: {
-    flex: 1,
-    position: 'relative',
-  },
-  listContent: {
-    paddingTop: 15, // Ensure first item is below fade
-    paddingBottom: Platform.OS === 'ios' ? 120 : 140,
-  },
-  separator: {
-    height: 0, // Remove separator
-  },
-});
