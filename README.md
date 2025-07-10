@@ -61,32 +61,57 @@ Run on specific platforms:
 - **Zustand** - State management
 - **TanStack Query** - Data fetching and caching
 - **React Native Reanimated** - Animation library
-- **Bottom Sheet** - Modal bottom sheets
+- **@gorhom/bottom-sheet** - Modal bottom sheets
+- **@expo/vector-icons** - Icon library (Ionicons)
+- **expo-linear-gradient** - Gradient backgrounds
+- **expo-blur** - Blur effects
+- **react-native-dotenv** - Environment variables
+- **react-native-redash** - Animation utilities
+- **react-native-svg** - SVG support
 
 ## Project Structure
 
 ```
 src/
-├── components/       # Reusable UI components
-│   ├── common/      # Common components (Text, PageWrapper)
-│   ├── headers/     # Header components
-│   ├── navigation/  # Navigation components
-│   └── sheets/      # Bottom sheet components
-├── screens/         # Screen components
-├── theme/           # Theme configuration
-├── hooks/           # Custom React hooks
-├── store/           # State management
-└── types/           # TypeScript type definitions
+├── components/
+│   ├── common/         # Shared components (Text, PageWrapper, etc.)
+│   ├── headers/        # Header components
+│   ├── navigation/     # Navigation components
+│   ├── sheets/         # Bottom sheet components
+│   ├── activity/       # Activity tracking components
+│   ├── layout/         # Layout components
+│   ├── portfolio/      # Portfolio management
+│   ├── screener/       # Vault screening/filtering
+│   └── vaultDetail/    # Vault detail views
+├── screens/            # Screen components
+├── theme/              # Theme configuration and colors
+├── hooks/              # Custom React hooks
+├── store/              # Zustand state management
+├── constants/          # App constants (fonts, spacing)
+├── utils/              # Utility functions
+└── types/              # TypeScript type definitions
 ```
 
 ## Features
 
-- Tab navigation with custom styling
-- Light/dark mode support
-- Custom fonts (Geist Sans and Geist Mono)
-- Bottom sheet modals with keyboard support
-- Gradient backgrounds
-- Debug mode for development
+- **Portfolio Management**: Track vault positions and withdrawal requests
+- **Vault Screening**: Browse and filter vaults by category with search
+- **Activity History**: Track deposits, withdrawals, and claims
+- **Vault Details**: View performance metrics and strategy descriptions
+- **Transaction Sheets**: Deposit and withdraw using custom numpads
+- **Theme Support**: Light/dark mode with system preference detection
+- **Cross-Platform**: iOS, Android, and Web support
+- **Custom Components**: Bottom sheets, gradient backgrounds, custom fonts
+- **Mock Data**: DataInitializer component provides sample data
+
+## Data Architecture
+
+The app uses Zustand for state management with three main stores:
+- **vaultStore**: Manages vault data, filtering, and search
+- **portfolioStore**: Manages user positions and withdrawal requests
+- **activityStore**: Manages transaction history and activity filtering
+
+Data is initialized through the `DataInitializer` component which wraps the app and provides mock data for development.
 
 ## Scripts
 
@@ -94,6 +119,12 @@ src/
 - `npm run ios` - Run on iOS simulator
 - `npm run android` - Run on Android emulator
 - `npm run web` - Run in web browser
+
+## Known Issues/Notes
+
+- Web navigation icons use a custom overlay component for compatibility
+- Theme preference doesn't persist between sessions (temporary limitation)
+- All data is mock data initialized at app startup
 
 ## License
 

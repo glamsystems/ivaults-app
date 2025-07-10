@@ -69,7 +69,7 @@ export const SettingsScreen: React.FC = () => {
           </TouchableOpacity>
           
           <Text mono variant="regular" style={[styles.version, { color: colors.text.tertiary }]}>
-            v0.0.9
+            v0.0.10
           </Text>
         </View>
 
