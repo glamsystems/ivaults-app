@@ -1,5 +1,5 @@
 import React from 'react';
-import { Platform, TouchableOpacity, View, StyleSheet, Text } from 'react-native';
+import { Platform, TouchableOpacity, View, StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons as Icon } from '@expo/vector-icons';
 import { DEBUG } from '@env';
@@ -11,6 +11,7 @@ import {
   DebugScreen,
 } from '../../screens';
 import { BottomGradient } from '../screener';
+import { WebTabIconOverlay } from './WebTabIconOverlay';
 
 const Tab = createBottomTabNavigator();
 
@@ -70,35 +71,6 @@ export const TabNavigator: React.FC = () => {
               iconName = 'help-outline';
           }
 
-          // Platform-specific icon rendering
-          if (Platform.OS === 'web') {
-            // Web-specific unicode characters for Ionicons
-            const iconMap: Record<string, string> = {
-              'list': '\uF3C9',
-              'list-outline': '\uF3CA',
-              'bar-chart': '\uF2E3',
-              'bar-chart-outline': '\uF2E4',
-              'settings': '\uF4A7',
-              'settings-outline': '\uF4A8',
-              'bug': '\uF2BE',
-              'bug-outline': '\uF2BF',
-              'help-outline': '\uF444',
-            };
-            
-            return (
-              <Text
-                style={{
-                  fontFamily: 'Ionicons',
-                  fontSize: 28,
-                  color: focused ? colors.text.primary : colors.icon.secondary,
-                }}
-              >
-                {iconMap[iconName] || '?'}
-              </Text>
-            );
-          }
-          
-          // iOS and Android use the Icon component
           return (
             <Icon
               name={iconName}
@@ -114,6 +86,7 @@ export const TabNavigator: React.FC = () => {
       <Tab.Screen name="Settings" component={SettingsScreen} />
       {showDebugTab && <Tab.Screen name="Debug" component={DebugScreen} />}
     </Tab.Navigator>
+    <WebTabIconOverlay />
     </View>
   );
 };
