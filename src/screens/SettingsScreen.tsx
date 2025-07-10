@@ -5,9 +5,8 @@ import { useTheme } from '../theme';
 import { Text, PageWrapper } from '../components/common';
 
 export const SettingsScreen: React.FC = () => {
-  const { colors } = useTheme();
+  const { colors, themeMode, setThemeMode } = useTheme();
   const [isConnected, setIsConnected] = useState(false);
-  const [selectedTheme, setSelectedTheme] = useState<'light' | 'dark' | 'system'>('light');
 
   const handleConnect = () => {
     setIsConnected(!isConnected);
@@ -31,15 +30,15 @@ export const SettingsScreen: React.FC = () => {
   const ThemeButton = ({ theme, label }: { theme: 'light' | 'dark' | 'system'; label: string }) => (
     <TouchableOpacity
       style={[
-        selectedTheme === theme ? styles.themeButtonActive : styles.themeButtonInactive
+        themeMode === theme ? styles.themeButtonActive : styles.themeButtonInactive
       ]}
-      onPress={() => setSelectedTheme(theme)}
+      onPress={() => setThemeMode(theme)}
     >
       <Text 
         variant="regular" 
         style={[
           styles.themeButtonText,
-          { color: selectedTheme === theme ? '#FEFEFE' : '#3A3A3A' }
+          { color: themeMode === theme ? '#FEFEFE' : '#3A3A3A' }
         ]}
       >
         {label}

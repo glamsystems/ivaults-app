@@ -3,16 +3,19 @@ import { View, StyleSheet } from 'react-native';
 import { Text } from '../common';
 import { usePortfolioStore } from '../../store/portfolioStore';
 import { formatNumber } from '../../utils/formatters';
+import { useTheme } from '../../theme';
+import { FontSizes, Spacing } from '../../constants';
 
 export const PortfolioHeader: React.FC = () => {
   const { totalValue } = usePortfolioStore();
+  const { colors } = useTheme();
 
   return (
     <View style={styles.container}>
-      <Text variant="regular" style={styles.value}>
+      <Text variant="regular" style={[styles.value, { color: colors.text.primary }]}>
         {formatNumber(totalValue, { decimals: 2, forceDecimals: true })}
       </Text>
-      <Text variant="regular" style={styles.currency}>
+      <Text variant="regular" style={[styles.currency, { color: colors.text.tertiary }]}>
         USDC
       </Text>
     </View>
@@ -22,18 +25,16 @@ export const PortfolioHeader: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
-    paddingTop: 20,
-    paddingBottom: 30,
+    paddingTop: Spacing.header.portfolio.top,
+    paddingBottom: Spacing.header.portfolio.bottom,
   },
   value: {
-    fontSize: 64,
+    fontSize: FontSizes.display,
     fontWeight: '300',
-    color: '#010101',
     letterSpacing: -2,
   },
   currency: {
-    fontSize: 16,
-    color: '#A8A8A8', // Same as vault card symbol
+    fontSize: FontSizes.medium,
     marginTop: -5,
   },
 });

@@ -3,14 +3,15 @@ import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
 import { Text } from '../common';
 import { Vault } from '../../store/vaultStore';
-import { FontSizes } from '../../constants/fonts';
-import { fonts } from '../../theme';
+import { FontSizes, Spacing } from '../../constants';
+import { fonts, useTheme } from '../../theme';
 
 interface WithdrawSheetProps {
   vault: Vault;
 }
 
 export const WithdrawSheet: React.FC<WithdrawSheetProps> = ({ vault }) => {
+  const { colors } = useTheme();
   const [amount, setAmount] = useState('');
   const [selectedUnit, setSelectedUnit] = useState<'baseAsset' | 'symbol'>('symbol'); // Start with symbol
   
@@ -129,7 +130,7 @@ export const WithdrawSheet: React.FC<WithdrawSheetProps> = ({ vault }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingHorizontal: 38, // Match page padding
+    paddingHorizontal: Spacing.page,
   },
   infoTable: {
     marginBottom: 0,
@@ -154,7 +155,7 @@ const styles = StyleSheet.create({
     marginVertical: 20,
   },
   amountInput: {
-    fontSize: 72, // Size between vault name and portfolio value
+    fontSize: FontSizes.input,
     fontFamily: fonts.sans.regular,
     fontWeight: '400', // Match portfolio page
     color: '#010101',

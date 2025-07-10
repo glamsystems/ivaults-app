@@ -4,7 +4,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { ListCard } from '../common/ListCard';
 import { Text } from '../common';
 import { Vault } from '../../store/vaultStore';
-import { FontSizes } from '../../constants/fonts';
+import { FontSizes, Spacing } from '../../constants';
+import { useTheme } from '../../theme';
 
 interface VaultCardProps {
   vault: Vault;
@@ -12,7 +13,8 @@ interface VaultCardProps {
 }
 
 export const VaultCard: React.FC<VaultCardProps> = ({ vault, onPress }) => {
-  const performanceColor = vault.performance24h >= 0 ? '#0CC578' : '#FA155A';
+  const { colors } = useTheme();
+  const performanceColor = vault.performance24h >= 0 ? colors.status.success : colors.status.error;
   const performanceSign = vault.performance24h >= 0 ? '+' : '';
   
   const icon = (
@@ -29,7 +31,7 @@ export const VaultCard: React.FC<VaultCardProps> = ({ vault, onPress }) => {
       <Text variant="regular" style={[styles.performance, { color: performanceColor }]}>
         {performanceSign}{vault.performance24h.toFixed(2)}%
       </Text>
-      <Text variant="regular" style={styles.nav}>
+      <Text variant="regular" style={[styles.nav, { color: colors.text.primary }]}>
         {vault.nav.toLocaleString('en-US', { 
           minimumFractionDigits: 2,
           maximumFractionDigits: 2 
@@ -52,10 +54,10 @@ export const VaultCard: React.FC<VaultCardProps> = ({ vault, onPress }) => {
 
 const styles = StyleSheet.create({
   iconPlaceholder: {
-    width: 44,
-    height: 44,
+    width: Spacing.icon.standard,
+    height: Spacing.icon.standard,
     borderRadius: 8,
-    marginRight: 16,
+    marginRight: Spacing.icon.margin,
   },
   priceSection: {
     flexDirection: 'row',
@@ -64,7 +66,6 @@ const styles = StyleSheet.create({
   },
   nav: {
     fontSize: FontSizes.medium,
-    color: '#010101',
   },
   performance: {
     fontSize: FontSizes.small,

@@ -3,14 +3,15 @@ import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
 import { Text } from '../common';
 import { Vault } from '../../store/vaultStore';
-import { FontSizes } from '../../constants/fonts';
-import { fonts } from '../../theme';
+import { FontSizes, Spacing } from '../../constants';
+import { fonts, useTheme } from '../../theme';
 
 interface DepositSheetProps {
   vault: Vault;
 }
 
 export const DepositSheet: React.FC<DepositSheetProps> = ({ vault }) => {
+  const { colors } = useTheme();
   const [amount, setAmount] = useState('');
   const [selectedUnit, setSelectedUnit] = useState<'baseAsset' | 'symbol'>('baseAsset');
   
@@ -198,7 +199,7 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingHorizontal: 38, // Match page padding
+    paddingHorizontal: Spacing.page,
   },
   infoTable: {
     marginBottom: 0,
@@ -237,7 +238,7 @@ const styles = StyleSheet.create({
     marginVertical: 20,
   },
   amountInput: {
-    fontSize: 72, // Size between vault name and portfolio value
+    fontSize: FontSizes.input,
     fontFamily: fonts.sans.regular,
     fontWeight: '400', // Match portfolio page
     color: '#010101',

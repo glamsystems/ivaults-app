@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../theme';
+import { Spacing } from '../../constants';
 
 interface PageWrapperProps {
   children: React.ReactNode;
@@ -13,7 +14,7 @@ export const PageWrapper: React.FC<PageWrapperProps> = ({ children, style }) => 
 
   return (
     <LinearGradient
-      colors={[colors.background.primary, colors.background.secondary]}
+      colors={[colors.background.gradientStart, colors.background.gradientEnd]}
       style={[styles.container, style]}
     >
       {children}
@@ -24,6 +25,6 @@ export const PageWrapper: React.FC<PageWrapperProps> = ({ children, style }) => 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingHorizontal: 38, // Same as MainHeader padding
+    paddingHorizontal: Spacing.page,
   },
 });
