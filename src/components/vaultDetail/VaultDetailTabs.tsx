@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { Text } from '../common';
 import { FontSizes } from '../../constants/fonts';
+import { useTheme } from '../../theme';
 
 export type VaultDetailTab = 'Overview' | 'Fees';
 
@@ -20,6 +21,7 @@ export const VaultDetailTabs: React.FC<VaultDetailTabsProps> = ({
   selectedTab, 
   onTabChange 
 }) => {
+  const { colors } = useTheme();
   return (
     <View style={styles.container}>
       <View style={styles.tabContainer}>
@@ -36,6 +38,7 @@ export const VaultDetailTabs: React.FC<VaultDetailTabsProps> = ({
                 variant="regular"
                 style={[
                   styles.tabText,
+                  { color: isActive ? colors.text.primary : colors.text.tertiary },
                   isActive && styles.activeTabText,
                 ]}
               >
@@ -66,10 +69,8 @@ const styles = StyleSheet.create({
   },
   tabText: {
     fontSize: FontSizes.medium,
-    color: '#A8A8A8',
   },
   activeTabText: {
-    color: '#010101',
     textDecorationLine: 'underline',
   },
 });
