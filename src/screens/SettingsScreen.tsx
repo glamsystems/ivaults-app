@@ -101,11 +101,10 @@ export const SettingsScreen: React.FC = () => {
           <ThemeButton theme="system" label="System" />
         </View>
 
-        {/* Bottom Section - Connect Button */}
-        <View style={styles.bottomSection}>
+        {/* Connect/Disconnect Section */}
+        <View style={styles.connectSection}>
           {!isConnected ? (
             <>
-              <View style={styles.spacer} />
               <TouchableOpacity 
                 style={[styles.button, { backgroundColor: colors.button.primary, borderColor: colors.button.primary }]}
                 onPress={handleConnect}
@@ -200,8 +199,8 @@ const styles = StyleSheet.create({
   themeButtonText: {
     fontSize: 16,
   },
-  bottomSection: {
-    marginTop: 'auto',
+  connectSection: {
+    marginTop: 20,
   },
   button: {
     borderRadius: 8,
@@ -220,8 +219,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     marginBottom: 12,
-  },
-  spacer: {
-    flex: 1,
   },
 });

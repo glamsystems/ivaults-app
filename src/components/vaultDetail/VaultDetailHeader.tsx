@@ -22,14 +22,19 @@ export const VaultDetailHeader: React.FC<VaultDetailHeaderProps> = ({ vault }) =
         end={{ x: 1, y: 1 }}
       />
       <View style={styles.textContainer}>
-        <Text variant="regular" style={[styles.name, { color: colors.text.primary }]}>
+        <Text 
+          variant="regular" 
+          style={[styles.name, { color: colors.text.primary }]}
+          numberOfLines={1}
+          ellipsizeMode="tail"
+        >
           {vault.name}
         </Text>
         <View style={styles.row}>
           <Text mono variant="regular" style={[styles.label, { color: colors.text.tertiary }]}>
             Base Asset
           </Text>
-          <Text variant="regular" style={[styles.value, { color: colors.text.tertiary }]}>
+          <Text variant="regular" style={[styles.value, { color: colors.text.secondary }]}>
             {vault.baseAsset}
           </Text>
         </View>
@@ -37,7 +42,7 @@ export const VaultDetailHeader: React.FC<VaultDetailHeaderProps> = ({ vault }) =
           <Text mono variant="regular" style={[styles.label, { color: colors.text.tertiary }]}>
             NAV
           </Text>
-          <Text variant="regular" style={[styles.value, { color: colors.text.tertiary }]}>
+          <Text variant="regular" style={[styles.value, { color: colors.text.secondary }]}>
             {vault.nav.toLocaleString('en-US', { 
               minimumFractionDigits: 2,
               maximumFractionDigits: 2 

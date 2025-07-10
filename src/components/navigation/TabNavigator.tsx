@@ -90,7 +90,7 @@ export const TabNavigator: React.FC = () => {
                 style={{
                   fontFamily: 'Ionicons',
                   fontSize: 28,
-                  color: focused ? colors.icon.primary : colors.icon.secondary,
+                  color: focused ? colors.text.primary : colors.icon.secondary,
                 }}
               >
                 {iconMap[iconName] || '?'}
@@ -103,7 +103,7 @@ export const TabNavigator: React.FC = () => {
             <Icon
               name={iconName}
               size={28}
-              color={focused ? colors.icon.primary : colors.icon.secondary}
+              color={focused ? colors.text.primary : colors.icon.secondary}
             />
           );
         },
