@@ -7,12 +7,13 @@ import CustomBackground from './CustomBackground';
 
 interface BasicBottomSheetProps {
   children: React.ReactNode;
+  snapPoints?: string[];
 }
 
 export const BasicBottomSheet = forwardRef<BottomSheetModal, BasicBottomSheetProps>(
-  ({ children }, ref) => {
+  ({ children, snapPoints: customSnapPoints }, ref) => {
     // snap points
-    const snapPoints = useMemo(() => ['50%'], []);
+    const snapPoints = useMemo(() => customSnapPoints || ['50%'], [customSnapPoints]);
     
     // backdrop callback
     const renderBackdrop = useCallback(
@@ -58,7 +59,8 @@ BasicBottomSheet.displayName = 'BasicBottomSheet';
 const styles = StyleSheet.create({
   contentContainer: {
     flex: 1,
-    padding: 20,
+    paddingTop: 10,
+    paddingBottom: 38, // Let content control bottom padding
   },
   sheetShadow: {
     shadowColor: '#000',

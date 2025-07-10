@@ -29,6 +29,7 @@ export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ child
         baseAsset: 'USDC',
         capacity: 10000000,
         inception: '2024-03-15',
+        redemptionWindow: '7 days',
       },
       {
         id: '2',
@@ -48,6 +49,7 @@ export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ child
         baseAsset: 'USDC',
         capacity: 10000000,
         inception: '2024-06-22',
+        redemptionWindow: '14 days',
       },
       {
         id: '3',
@@ -67,6 +69,7 @@ export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ child
         baseAsset: 'USDC',
         capacity: 10000000,
         inception: '2024-09-10',
+        redemptionWindow: '3 days',
       },
       {
         id: '4',
@@ -86,6 +89,7 @@ export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ child
         baseAsset: 'USDT',
         capacity: 10000000,
         inception: '2024-01-08',
+        redemptionWindow: '7 days',
         },
       {
         id: '5',
@@ -105,6 +109,7 @@ export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ child
         baseAsset: 'USDC',
         capacity: 10000000,
         inception: '2024-11-29',
+        redemptionWindow: '30 days',
       },
       {
         id: '6',
@@ -124,6 +129,7 @@ export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ child
         baseAsset: 'USDC',
         capacity: 10000000,
         inception: '2024-07-18',
+        redemptionWindow: '7 days',
         },
       {
         id: '7',
@@ -142,6 +148,7 @@ export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ child
         baseAsset: 'USDC',
         capacity: 10000000,
         inception: '2025-01-12',
+        redemptionWindow: '7 days',
       },
       {
         id: '8',
@@ -160,6 +167,7 @@ export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ child
         baseAsset: 'USDC',
         capacity: 10000000,
         inception: '2024-04-25',
+        redemptionWindow: '21 days',
       },
       {
         id: '9',
@@ -178,6 +186,7 @@ export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ child
         baseAsset: 'USDC',
         capacity: 10000000,
         inception: '2024-10-03',
+        redemptionWindow: '14 days',
       },
       {
         id: '10',
@@ -196,6 +205,7 @@ export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ child
         baseAsset: 'USDC',
         capacity: 10000000,
         inception: '2024-02-14',
+        redemptionWindow: '7 days',
       },
       {
         id: '11',
@@ -214,6 +224,7 @@ export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ child
         baseAsset: 'USDC',
         capacity: 10000000,
         inception: '2024-08-30',
+        redemptionWindow: '7 days',
       },
       {
         id: '12',
@@ -232,6 +243,7 @@ export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ child
         baseAsset: 'USDT',
         capacity: 10000000,
         inception: '2024-05-17',
+        redemptionWindow: '5 days',
       },
       {
         id: '13',
@@ -250,6 +262,7 @@ export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ child
         baseAsset: 'USDC',
         capacity: 10000000,
         inception: '2024-12-05',
+        redemptionWindow: '7 days',
       },
       {
         id: '14',
@@ -268,6 +281,7 @@ export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ child
         baseAsset: 'USDC',
         capacity: 10000000,
         inception: '2024-03-28',
+        redemptionWindow: '10 days',
       },
     ]);
 

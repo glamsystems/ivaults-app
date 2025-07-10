@@ -22,6 +22,7 @@ export interface Vault {
   baseAsset: string; // Base asset (e.g., USDC)
   capacity: number; // Vault capacity
   inception: string; // Inception date (YYYY-MM-DD)
+  redemptionWindow: string; // Redemption window (e.g., "7 days")
 }
 
 interface VaultStore {

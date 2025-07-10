@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { View, StyleSheet, ScrollView, Platform } from 'react-native';
 import { SecondaryHeader } from '../components/headers';
-import { PageWrapper } from '../components/common';
+import { PageWrapper, Text } from '../components/common';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useTheme } from '../theme';
 import { Vault } from '../store/vaultStore';
 import { BottomGradient, FadeOverlay } from '../components/screener';
+import { BottomSheetModal } from '@gorhom/bottom-sheet';
+import { BasicBottomSheet, DepositSheet, WithdrawSheet } from '../components/sheets';
 import {
   VaultDetailHeader,
   HighlightsCarousel,
@@ -29,6 +31,10 @@ export const VaultDetailScreen: React.FC = () => {
   const route = useRoute<VaultDetailRouteProp>();
   const { vault } = route.params;
   const [selectedTab, setSelectedTab] = useState<VaultDetailTab>('Overview');
+  
+  // Sheet refs
+  const depositSheetRef = useRef<BottomSheetModal>(null);
+  const withdrawSheetRef = useRef<BottomSheetModal>(null);
 
   // Create highlights from vault data
   const highlights = [
@@ -73,10 +79,20 @@ export const VaultDetailScreen: React.FC = () => {
 
   const handleWithdraw = () => {
     console.log('Withdraw pressed');
+    withdrawSheetRef.current?.present();
+    // Ensure it snaps to index 0
+    setTimeout(() => {
+      withdrawSheetRef.current?.snapToIndex(0);
+    }, 100);
   };
 
   const handleDeposit = () => {
     console.log('Deposit pressed');
+    depositSheetRef.current?.present();
+    // Ensure it snaps to index 0
+    setTimeout(() => {
+      depositSheetRef.current?.snapToIndex(0);
+    }, 100);
   };
 
   return (
@@ -125,6 +141,16 @@ export const VaultDetailScreen: React.FC = () => {
           />
         </View>
       </View>
+      
+      {/* Deposit Sheet */}
+      <BasicBottomSheet ref={depositSheetRef} snapPoints={['75%']}>
+        <DepositSheet vault={vault} />
+      </BasicBottomSheet>
+      
+      {/* Withdraw Sheet */}
+      <BasicBottomSheet ref={withdrawSheetRef} snapPoints={['60%']}>
+        <WithdrawSheet vault={vault} />
+      </BasicBottomSheet>
     </PageWrapper>
   );
 };

@@ -130,7 +130,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     width: 10,
     height: 4,
-    backgroundColor: "#CACACA"
+    backgroundColor: "rgba(1, 1, 1, 0)"
   },
   leftIndicator: {
     borderTopStartRadius: 2,
