@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
 import { Text } from '../common';
 import { Vault } from '../../store/vaultStore';
 import { FontSizes } from '../../constants/fonts';
@@ -73,7 +74,7 @@ export const WithdrawSheet: React.FC<WithdrawSheetProps> = ({ vault }) => {
       
       {/* Amount Input Section */}
       <View style={styles.inputSection}>
-        <TextInput
+        <BottomSheetTextInput
           style={styles.amountInput}
           value={amount}
           onChangeText={setAmount}

@@ -39,9 +39,9 @@ export const BasicBottomSheet = forwardRef<BottomSheetModal, BasicBottomSheetPro
         backdropComponent={renderBackdrop}
         backgroundComponent={CustomBackground}
         style={styles.sheetShadow}
-        keyboardBehavior="interactive"
+        keyboardBehavior="extend"
         keyboardBlurBehavior="restore"
-        android_keyboardInputMode="adjustResize"
+        android_keyboardInputMode="adjustPan"
         onChange={(index) => {
           console.log('Sheet changed to index:', index);
         }}

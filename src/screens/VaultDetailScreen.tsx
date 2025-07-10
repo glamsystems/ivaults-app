@@ -143,12 +143,12 @@ export const VaultDetailScreen: React.FC = () => {
       </View>
       
       {/* Deposit Sheet */}
-      <BasicBottomSheet ref={depositSheetRef} snapPoints={['75%']}>
+      <BasicBottomSheet ref={depositSheetRef} snapPoints={['75%', '80%']}>
         <DepositSheet vault={vault} />
       </BasicBottomSheet>
       
       {/* Withdraw Sheet */}
-      <BasicBottomSheet ref={withdrawSheetRef} snapPoints={['60%']}>
+      <BasicBottomSheet ref={withdrawSheetRef} snapPoints={['60%', '73%']}>
         <WithdrawSheet vault={vault} />
       </BasicBottomSheet>
     </PageWrapper>
