@@ -1,5 +1,6 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { View, FlatList, StyleSheet, Platform } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../theme';
 import { PageWrapper } from '../components/common';
 import { ScreenLayout } from '../components/layout';
@@ -12,64 +13,56 @@ import {
 import { BottomGradient, FadeOverlay } from '../components/screener';
 import { usePortfolioStore } from '../store/portfolioStore';
 import { useActivityStore } from '../store/activityStore';
+import { useVaultStore } from '../store/vaultStore';
 
 export const PortfolioScreen: React.FC = () => {
   const { colors } = useTheme();
+  const navigation = useNavigation<any>();
   const { 
     positions, 
-    setPositions, 
     selectedTab,
-    totalValue,
-    setTotalValue
+    totalValue
   } = usePortfolioStore();
   const { activities } = useActivityStore();
+  const { vaults } = useVaultStore();
   
   // Filter only request activities
   const requestActivities = activities.filter(activity => activity.type === 'request');
   
-  useEffect(() => {
-    // Initialize with mock position data
-    setPositions([
-      {
-        id: '1',
-        vaultId: '1',
-        name: 'DeFi Yield Optimizer',
-        symbol: 'DYO',
-        category: 'SuperVault',
-        balance: 320.42,
-        performance24h: 9.87,
-        gradientColors: ['#FF6B6B', '#4ECDC4'],
-      },
-      {
-        id: '2',
-        vaultId: '3',
-        name: 'Arbitrage Alpha',
-        symbol: 'ARB',
-        category: 'xStocks',
-        balance: 100.27,
-        performance24h: 42.69,
-        gradientColors: ['#F093FB', '#F5576C'],
-      },
-    ]);
-    
-    // Calculate total value
-    const total = 420.69; // This would be calculated from positions
-    setTotalValue(total);
-  }, []);
+  // Data is now initialized globally in DataInitializer
+
+  const handlePositionPress = (vaultId: string) => {
+    const vault = vaults.find(v => v.id === vaultId);
+    if (vault) {
+      navigation.navigate('VaultDetail', { vault });
+    }
+  };
 
   const renderPosition = ({ item }: { item: any }) => {
-    return <PositionCard position={item} />;
+    return (
+      <PositionCard 
+        position={item} 
+        onPress={() => handlePositionPress(item.vaultId)}
+      />
+    );
   };
 
   const renderRequest = ({ item, index }: { item: any, index: number }) => {
-    // First request can be claimed, others have countdown
+    // Different states for demonstration:
+    // First request: claimable
+    // Second request: cancelable with countdown
+    // Third request: not cancelable, only countdown
     const canClaim = index === 0;
+    const canCancel = index === 1;
+    
     return (
       <RequestCard 
         request={item} 
         canClaim={canClaim}
-        daysRemaining={canClaim ? undefined : "7 days 3 hours"}
+        canCancel={canCancel}
+        daysRemaining={canClaim ? undefined : index === 1 ? "2 days 5 hours" : "7 days 3 hours"}
         onClaim={() => console.log('Claim pressed')}
+        onCancel={() => console.log('Cancel pressed')}
       />
     );
   };
@@ -94,6 +87,7 @@ export const PortfolioScreen: React.FC = () => {
             ]}
             showsVerticalScrollIndicator={false}
             ItemSeparatorComponent={() => <View style={styles.separator} />}
+            ListFooterComponent={() => <View style={{ height: 60 }} />}
           />
           
           {/* Top fade overlay */}

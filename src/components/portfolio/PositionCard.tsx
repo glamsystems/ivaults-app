@@ -8,9 +8,10 @@ import { FontSizes } from '../../constants/fonts';
 
 interface PositionCardProps {
   position: Position;
+  onPress?: () => void;
 }
 
-export const PositionCard: React.FC<PositionCardProps> = ({ position }) => {
+export const PositionCard: React.FC<PositionCardProps> = ({ position, onPress }) => {
   const icon = (
     <LinearGradient
       colors={position.gradientColors || ['#FF6B6B', '#4ECDC4']}
@@ -42,6 +43,7 @@ export const PositionCard: React.FC<PositionCardProps> = ({ position }) => {
       rightText={position.symbol}
       leftBottomContent={leftBottomContent}
       rightBottomContent={rightBottomContent}
+      onPress={onPress}
     />
   );
 };

@@ -9,15 +9,19 @@ import { FontSizes } from '../../constants/fonts';
 interface RequestCardProps {
   request: Activity;
   canClaim?: boolean;
+  canCancel?: boolean;
   daysRemaining?: string; // e.g., "7 days 3 hours"
   onClaim?: () => void;
+  onCancel?: () => void;
 }
 
 export const RequestCard: React.FC<RequestCardProps> = ({ 
   request, 
   canClaim = false,
+  canCancel = false,
   daysRemaining,
-  onClaim 
+  onClaim,
+  onCancel 
 }) => {
   const icon = (
     <View style={styles.iconContainer}>
@@ -41,8 +45,25 @@ export const RequestCard: React.FC<RequestCardProps> = ({
             Claim
           </Text>
         </TouchableOpacity>
+      ) : canCancel ? (
+        <View style={styles.buttonRow}>
+          <TouchableOpacity 
+            style={styles.cancelButton}
+            onPress={onCancel}
+            activeOpacity={0.7}
+          >
+            <Text variant="regular" style={styles.cancelButtonText}>
+              Cancel
+            </Text>
+          </TouchableOpacity>
+          <View style={styles.countdownButtonInRow}>
+            <Text variant="regular" style={styles.countdownText}>
+              {daysRemaining || '7 days 3 hours'}
+            </Text>
+          </View>
+        </View>
       ) : (
-        <View style={styles.countdownButton}>
+        <View style={styles.countdownButtonFull}>
           <Text variant="regular" style={styles.countdownText}>
             {daysRemaining || '7 days 3 hours'}
           </Text>
@@ -102,7 +123,35 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#FEFEFE',
   },
-  countdownButton: {
+  buttonRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  cancelButton: {
+    flex: 1,
+    backgroundColor: 'transparent',
+    paddingHorizontal: 19,
+    paddingVertical: 11,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(113, 113, 113, 0.25)', // 25% opacity
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    fontSize: 18,
+    color: 'rgba(113, 113, 113, 0.25)', // 25% opacity
+  },
+  countdownButtonInRow: {
+    flex: 2,
+    backgroundColor: 'transparent',
+    paddingHorizontal: 19,
+    paddingVertical: 11,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(113, 113, 113, 0.25)', // 25% opacity
+    alignItems: 'center',
+  },
+  countdownButtonFull: {
     backgroundColor: 'transparent',
     paddingHorizontal: 19,
     paddingVertical: 11,

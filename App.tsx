@@ -10,6 +10,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from './src/theme';
 import { RootNavigator } from './src/components/navigation';
 import { useFonts } from './src/hooks/useFonts';
+import { DataInitializer } from './src/components/DataInitializer';
 
 // Android font rendering fix
 if (Platform.OS === 'android' && RNText.defaultProps == null) {
@@ -40,10 +41,12 @@ export default function App() {
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
           <ThemeProvider>
-            <BottomSheetModalProvider>
-              <StatusBar style="auto" />
-              <RootNavigator />
-            </BottomSheetModalProvider>
+            <DataInitializer>
+              <BottomSheetModalProvider>
+                <StatusBar style="auto" />
+                <RootNavigator />
+              </BottomSheetModalProvider>
+            </DataInitializer>
           </ThemeProvider>
         </QueryClientProvider>
       </SafeAreaProvider>

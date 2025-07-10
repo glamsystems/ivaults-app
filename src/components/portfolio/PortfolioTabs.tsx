@@ -45,7 +45,7 @@ export const PortfolioTabs: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 5,
   },
   tabContainer: {
     flexDirection: 'row',

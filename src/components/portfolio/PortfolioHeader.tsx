@@ -6,11 +6,11 @@ import { usePortfolioStore } from '../../store/portfolioStore';
 // Format number with k/m/b suffixes
 const formatValue = (value: number): string => {
   if (value >= 1000000000) {
-    return `${(value / 1000000000).toFixed(2)}b`;
+    return `{(value / 1000000000).toFixed(2)}b`;
   } else if (value >= 1000000) {
-    return `${(value / 1000000).toFixed(2)}m`;
+    return `{(value / 1000000).toFixed(2)}m`;
   } else if (value >= 10000) {
-    return `${(value / 1000).toFixed(2)}k`;
+    return `{(value / 1000).toFixed(2)}k`;
   } else {
     return value.toFixed(2);
   }

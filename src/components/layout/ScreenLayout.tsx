@@ -114,6 +114,7 @@ export const ScreenLayout: React.FC<ScreenLayoutProps> = ({
             ]}
             showsVerticalScrollIndicator={false}
             ItemSeparatorComponent={() => <View style={styles.separator} />}
+            ListFooterComponent={() => <View style={{ height: 60 }} />}
             // Performance optimizations
             initialNumToRender={10}
             maxToRenderPerBatch={5}
