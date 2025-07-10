@@ -5,6 +5,7 @@ import { ListCard } from '../common/ListCard';
 import { Text } from '../common';
 import { Activity } from '../../store/activityStore';
 import { FontSizes } from '../../constants/fonts';
+import { useTheme } from '../../theme';
 
 interface RequestCardProps {
   request: Activity;
@@ -23,12 +24,14 @@ export const RequestCard: React.FC<RequestCardProps> = ({
   onClaim,
   onCancel 
 }) => {
+  const { colors } = useTheme();
+  
   const icon = (
-    <View style={styles.iconContainer}>
+    <View style={[styles.iconContainer, { backgroundColor: colors.icon.container }]}>
       <Icon
         name="remove-circle-outline"
         size={24}
-        color="#717171"
+        color={colors.icon.secondary}
       />
     </View>
   );
@@ -37,33 +40,33 @@ export const RequestCard: React.FC<RequestCardProps> = ({
     <View style={styles.buttonContainer}>
       {canClaim ? (
         <TouchableOpacity 
-          style={styles.claimButton}
+          style={[styles.claimButton, { backgroundColor: colors.button.primary }]}
           onPress={onClaim}
           activeOpacity={0.7}
         >
-          <Text variant="regular" style={styles.claimButtonText}>
+          <Text variant="regular" style={[styles.claimButtonText, { color: colors.button.primaryText }]}>
             Claim
           </Text>
         </TouchableOpacity>
       ) : canCancel ? (
         <View style={styles.buttonRow}>
           <TouchableOpacity 
-            style={styles.cancelButton}
+            style={[styles.cancelButton, { borderColor: colors.border.secondary }]}
             onPress={onCancel}
             activeOpacity={0.7}
           >
-            <Text variant="regular" style={styles.cancelButtonText}>
+            <Text variant="regular" style={[styles.cancelButtonText, { color: colors.text.disabled }]}>
               Cancel
             </Text>
           </TouchableOpacity>
-          <View style={styles.countdownButtonInRow}>
-            <Text variant="regular" style={styles.countdownText}>
+          <View style={[styles.countdownButtonInRow, { borderColor: colors.border.secondary }]}>
+            <Text variant="regular" style={[styles.countdownText, { color: colors.text.disabled }]}>
               {daysRemaining || '7 days 3 hours'}
             </Text>
           </View>
         </View>
       ) : (
-        <View style={styles.countdownButtonFull}>
+        <View style={[styles.countdownButtonFull, { borderColor: colors.border.secondary }]}>
           <Text variant="regular" style={styles.countdownText}>
             {daysRemaining || '7 days 3 hours'}
           </Text>
@@ -82,7 +85,7 @@ export const RequestCard: React.FC<RequestCardProps> = ({
         rightBottomContent={
           <Text 
             variant="regular" 
-            style={[styles.amount, { color: '#FA155A' }]}
+            style={[styles.amount, { color: colors.status.error }]}
           >
             -{Math.abs(request.amount).toLocaleString('en-US', {
               minimumFractionDigits: 2,
@@ -101,7 +104,6 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 8,
-    backgroundColor: '#E6E6E6',
     marginRight: 16,
     alignItems: 'center',
     justifyContent: 'center',
@@ -113,7 +115,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   claimButton: {
-    backgroundColor: '#3A3A3A',
     paddingHorizontal: 19,
     paddingVertical: 11,
     borderRadius: 8,
@@ -121,7 +122,6 @@ const styles = StyleSheet.create({
   },
   claimButtonText: {
     fontSize: 18,
-    color: '#FEFEFE',
   },
   buttonRow: {
     flexDirection: 'row',
@@ -134,12 +134,11 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: 'rgba(113, 113, 113, 0.25)', // 25% opacity
+    borderWidth: 1,
     alignItems: 'center',
   },
   cancelButtonText: {
     fontSize: 18,
-    color: 'rgba(113, 113, 113, 0.25)', // 25% opacity
   },
   countdownButtonInRow: {
     flex: 2,
@@ -148,7 +147,7 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: 'rgba(113, 113, 113, 0.25)', // 25% opacity
+    borderWidth: 1,
     alignItems: 'center',
   },
   countdownButtonFull: {
@@ -157,11 +156,10 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: 'rgba(113, 113, 113, 0.25)', // 25% opacity
+    borderWidth: 1,
     alignItems: 'center',
   },
   countdownText: {
     fontSize: 18,
-    color: 'rgba(113, 113, 113, 0.25)', // 25% opacity
   },
 });

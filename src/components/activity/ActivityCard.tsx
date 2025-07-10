@@ -5,6 +5,7 @@ import { ListCard } from '../common/ListCard';
 import { Text } from '../common';
 import { Activity, ActivityType } from '../../store/activityStore';
 import { FontSizes } from '../../constants/fonts';
+import { useTheme } from '../../theme';
 
 interface ActivityCardProps {
   activity: Activity;
@@ -23,15 +24,15 @@ const getActivityIcon = (type: ActivityType): keyof typeof Icon.glyphMap => {
   }
 };
 
-const getAmountColor = (type: ActivityType): string => {
+const getAmountColor = (type: ActivityType, colors: any): string => {
   switch (type) {
     case 'deposit':
-      return '#0CC578'; // Green
+      return colors.status.success;
     case 'cancel':
     case 'request':
-      return '#FA155A'; // Red
+      return colors.status.error;
     case 'claim':
-      return '#010101'; // Black
+      return colors.text.primary;
   }
 };
 
@@ -53,12 +54,14 @@ const formatAmount = (type: ActivityType, amount: number): string => {
 };
 
 export const ActivityCard: React.FC<ActivityCardProps> = ({ activity }) => {
+  const { colors } = useTheme();
+  
   const icon = (
-    <View style={styles.iconContainer}>
+    <View style={[styles.iconContainer, { backgroundColor: colors.icon.container }]}>
       <Icon
         name={getActivityIcon(activity.type)}
         size={24}
-        color="#717171"
+        color={colors.icon.secondary}
       />
     </View>
   );
@@ -68,7 +71,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({ activity }) => {
       variant="regular" 
       style={[
         styles.amount,
-        { color: getAmountColor(activity.type) }
+        { color: getAmountColor(activity.type, colors) }
       ]}
     >
       {formatAmount(activity.type, activity.amount)}
@@ -94,7 +97,6 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 8,
-    backgroundColor: '#E6E6E6',
     marginRight: 16,
     alignItems: 'center',
     justifyContent: 'center',
