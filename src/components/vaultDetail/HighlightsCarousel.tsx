@@ -147,9 +147,8 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   value: {
-    fontSize: FontSizes.large + 4,
+    fontSize: FontSizes.xLarge,
     color: '#010101',
-    fontWeight: '300',
     marginTop: 4,
     marginBottom: 4,
   },

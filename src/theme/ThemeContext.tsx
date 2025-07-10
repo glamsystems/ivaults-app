@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useColorScheme } from 'react-native';
-import { MMKV } from 'react-native-mmkv';
 import { colors } from './colors';
 
 type Theme = 'light' | 'dark';
@@ -15,21 +14,10 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-const storage = new MMKV();
-const THEME_STORAGE_KEY = 'ivaults_theme_mode';
-
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const systemColorScheme = useColorScheme();
   const [themeMode, setThemeMode] = useState<ThemeMode>('system');
   const [theme, setTheme] = useState<Theme>(systemColorScheme || 'light');
-
-  // Load saved theme mode on mount
-  useEffect(() => {
-    const savedMode = storage.getString(THEME_STORAGE_KEY);
-    if (savedMode && ['light', 'dark', 'system'].includes(savedMode)) {
-      setThemeMode(savedMode as ThemeMode);
-    }
-  }, []);
 
   // Update theme based on mode and system scheme
   useEffect(() => {
@@ -42,7 +30,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const handleSetThemeMode = (mode: ThemeMode) => {
     setThemeMode(mode);
-    storage.set(THEME_STORAGE_KEY, mode);
+    // Note: Theme preference won't persist between app restarts without storage
+    // This is a temporary solution until we can properly enable TurboModules
   };
 
   const value = {

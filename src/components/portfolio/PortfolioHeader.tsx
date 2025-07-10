@@ -30,7 +30,6 @@ const styles = StyleSheet.create({
   },
   value: {
     fontSize: FontSizes.display,
-    fontWeight: '300',
     letterSpacing: -2,
   },
   currency: {
