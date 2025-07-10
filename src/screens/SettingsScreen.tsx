@@ -65,7 +65,7 @@ export const SettingsScreen: React.FC = () => {
           </TouchableOpacity>
           
           <Text mono variant="regular" style={[styles.version, { color: '#A8A8A8' }]}>
-            v0.0.5
+            v0.0.6
           </Text>
         </View>
 
@@ -190,10 +190,10 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 11,
     alignItems: 'center',
-    backgroundColor: 'transparent',
+    backgroundColor: 'rgba(217, 217, 217, 0.01)',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#3A3A3A',
+    borderColor: '#717171',
   },
   themeButtonText: {
     fontSize: 16,

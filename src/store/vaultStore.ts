@@ -12,6 +12,16 @@ export interface Vault {
   totalValue?: number;
   gradientColors?: [string, string];
   glam_state?: string;
+  // Additional detail fields
+  tvl: number; // Total Value Locked in millions
+  volume24h: number; // 24h volume in millions
+  userCount: number; // Number of users in thousands
+  apy: number; // Annual Percentage Yield
+  deposits: number; // Number of deposits
+  manager: string; // Vault manager name
+  baseAsset: string; // Base asset (e.g., USDC)
+  capacity: number; // Vault capacity
+  inception: string; // Inception date (YYYY-MM-DD)
 }
 
 interface VaultStore {

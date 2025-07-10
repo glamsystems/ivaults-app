@@ -1,4 +1,5 @@
-import React, { useEffect } from 'react';
+import React from 'react';
+import { Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../theme';
 import { ScreenLayout } from '../components/layout';
@@ -30,7 +31,7 @@ export const ScreenerScreen: React.FC = () => {
         />
       )}
       FilterComponent={FilterTabs}
-      bottomGradientHeight={200}
+      bottomGradientHeight={Platform.OS === 'ios' ? 200 : 200}
     >
       {/* Children prop is empty - header is in TabNavigator */}
     </ScreenLayout>

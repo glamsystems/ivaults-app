@@ -53,7 +53,7 @@ export const MainHeader: React.FC<MainHeaderProps> = ({
 const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 38, // 50 * 0.75 = 37.5, rounded to 38
-    paddingBottom: 30,
+    paddingBottom: 10,
   },
   content: {
     flexDirection: 'row',

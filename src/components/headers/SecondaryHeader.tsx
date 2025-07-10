@@ -38,7 +38,7 @@ export const SecondaryHeader: React.FC<SecondaryHeaderProps> = ({
 
 const styles = StyleSheet.create({
   container: {  
-    paddingBottom: 30,
+    paddingBottom: 10,
   },
   content: {
     flexDirection: 'row',

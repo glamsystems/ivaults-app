@@ -144,15 +144,15 @@ const styles = StyleSheet.create({
   filterContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    marginBottom: 12,
+    paddingVertical: 14,
+    marginBottom: 0,
   },
   listContainer: {
     flex: 1,
     position: 'relative',
   },
   listContent: {
-    paddingTop: 15,
+    paddingTop: 8,
   },
   separator: {
     height: 0,

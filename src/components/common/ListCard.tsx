@@ -59,7 +59,7 @@ export const ListCard: React.FC<ListCardProps> = ({
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'column',
-    paddingVertical: 25,
+    paddingVertical: 30,
   },
   row: {
     flexDirection: 'row',

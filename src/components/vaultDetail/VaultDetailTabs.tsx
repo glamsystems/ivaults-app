@@ -5,14 +5,21 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { Text } from '../common';
-import { usePortfolioStore, PortfolioTab } from '../../store/portfolioStore';
 import { FontSizes } from '../../constants/fonts';
 
-const TAB_OPTIONS: PortfolioTab[] = ['Positions', 'Requests'];
+export type VaultDetailTab = 'Overview' | 'Fees';
 
-export const PortfolioTabs: React.FC = () => {
-  const { selectedTab, setSelectedTab } = usePortfolioStore();
+interface VaultDetailTabsProps {
+  selectedTab: VaultDetailTab;
+  onTabChange: (tab: VaultDetailTab) => void;
+}
 
+const TAB_OPTIONS: VaultDetailTab[] = ['Overview', 'Fees'];
+
+export const VaultDetailTabs: React.FC<VaultDetailTabsProps> = ({ 
+  selectedTab, 
+  onTabChange 
+}) => {
   return (
     <View style={styles.container}>
       <View style={styles.tabContainer}>
@@ -21,7 +28,7 @@ export const PortfolioTabs: React.FC = () => {
           return (
             <TouchableOpacity
               key={tab}
-              onPress={() => setSelectedTab(tab)}
+              onPress={() => onTabChange(tab)}
               style={styles.tab}
               activeOpacity={0.7}
             >
@@ -45,15 +52,17 @@ export const PortfolioTabs: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
-    marginBottom: 0,
+    marginBottom: 5,
+    width: '100%',
   },
   tabContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginLeft: -31, // Shift tabs left to align with carousel gap
   },
   tab: {
     marginHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 4,
   },
   tabText: {
     fontSize: FontSizes.medium,
