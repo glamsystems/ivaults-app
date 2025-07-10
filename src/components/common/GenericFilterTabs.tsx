@@ -7,6 +7,7 @@ import {
 } from 'react-native';
 import { Text } from './Text';
 import { FontSizes } from '../../constants/fonts';
+import { useTheme } from '../../theme';
 
 interface GenericFilterTabsProps<T> {
   options: T[];
@@ -23,6 +24,7 @@ export function GenericFilterTabs<T extends string>({
   scrollEnabled = true,
   getOptionLabel = (option) => option,
 }: GenericFilterTabsProps<T>) {
+  const { colors } = useTheme();
   return (
     <ScrollView
       horizontal
@@ -44,6 +46,7 @@ export function GenericFilterTabs<T extends string>({
               variant="regular"
               style={[
                 styles.tabText,
+                { color: isActive ? colors.text.primary : colors.text.tertiary },
                 isActive && styles.activeTabText,
               ]}
             >
@@ -71,10 +74,8 @@ const styles = StyleSheet.create({
   },
   tabText: {
     fontSize: FontSizes.medium,
-    color: '#A8A8A8',
   },
   activeTabText: {
-    color: '#010101',
     textDecorationLine: 'underline',
   },
 });

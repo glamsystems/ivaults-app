@@ -10,6 +10,7 @@ import {
 import { Ionicons as Icon } from '@expo/vector-icons';
 import { useVaultStore } from '../../store/vaultStore';
 import { useActivityStore } from '../../store/activityStore';
+import { useTheme } from '../../theme';
 
 interface SearchBarProps {
   isExpanded: boolean;
@@ -28,6 +29,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
 }) => {
   const vaultStore = useVaultStore();
   const activityStore = useActivityStore();
+  const { colors } = useTheme();
   
   const { searchQuery, setSearchQuery } = type === 'vault' ? vaultStore : activityStore;
   const inputRef = useRef<TextInput>(null);
@@ -48,12 +50,12 @@ export const SearchBar: React.FC<SearchBarProps> = ({
   };
 
   return (
-    <Animated.View style={[styles.container, { width }]}>
+    <Animated.View style={[styles.container, { width, backgroundColor: colors.background.input }]}>
       <TouchableOpacity onPress={onToggle} style={styles.iconButton}>
         <Icon 
           name="search" 
           size={20} 
-          color="#717171" 
+          color={colors.icon.secondary} 
         />
       </TouchableOpacity>
       
@@ -61,16 +63,16 @@ export const SearchBar: React.FC<SearchBarProps> = ({
         <Animated.View style={[styles.inputContainer, { opacity: contentOpacity }]}>
           <TextInput
             ref={inputRef}
-            style={styles.input}
+            style={[styles.input, { color: colors.text.primary }]}
             placeholder={type === 'vault' ? "Search vaults..." : "Search activity..."}
-            placeholderTextColor="#A8A8A8"
+            placeholderTextColor={colors.text.tertiary}
             value={searchQuery}
             onChangeText={setSearchQuery}
             autoCapitalize="none"
             autoCorrect={false}
           />
           <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-            <Icon name="close" size={18} color="#717171" />
+            <Icon name="close" size={18} color={colors.icon.secondary} />
           </TouchableOpacity>
         </Animated.View>
       )}
@@ -81,7 +83,6 @@ export const SearchBar: React.FC<SearchBarProps> = ({
 const styles = StyleSheet.create({
   container: {
     height: 40,
-    backgroundColor: '#F0F0F0',
     borderRadius: 8,
     flexDirection: 'row',
     alignItems: 'center',
@@ -102,7 +103,6 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 14,
-    color: '#010101',
     paddingRight: 8,
   },
   closeButton: {

@@ -7,11 +7,13 @@ import {
 import { Text } from '../common';
 import { usePortfolioStore, PortfolioTab } from '../../store/portfolioStore';
 import { FontSizes } from '../../constants/fonts';
+import { useTheme } from '../../theme';
 
 const TAB_OPTIONS: PortfolioTab[] = ['Positions', 'Requests'];
 
 export const PortfolioTabs: React.FC = () => {
   const { selectedTab, setSelectedTab } = usePortfolioStore();
+  const { colors } = useTheme();
 
   return (
     <View style={styles.container}>
@@ -29,6 +31,7 @@ export const PortfolioTabs: React.FC = () => {
                 variant="regular"
                 style={[
                   styles.tabText,
+                  { color: isActive ? colors.text.primary : colors.text.tertiary },
                   isActive && styles.activeTabText,
                 ]}
               >
@@ -57,10 +60,8 @@ const styles = StyleSheet.create({
   },
   tabText: {
     fontSize: FontSizes.medium,
-    color: '#A8A8A8',
   },
   activeTabText: {
-    color: '#010101',
     textDecorationLine: 'underline',
   },
 });

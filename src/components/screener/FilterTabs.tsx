@@ -8,6 +8,7 @@ import {
 import { Text } from '../common';
 import { useVaultStore, VaultCategory } from '../../store/vaultStore';
 import { FontSizes } from '../../constants/fonts';
+import { useTheme } from '../../theme';
 
 type FilterOption = 'All' | VaultCategory;
 
@@ -19,6 +20,7 @@ interface FilterTabsProps {
 
 export const FilterTabs: React.FC<FilterTabsProps> = ({ scrollEnabled = true }) => {
   const { selectedFilter, setSelectedFilter } = useVaultStore();
+  const { colors } = useTheme();
 
   const handleFilterPress = (filter: FilterOption) => {
     setSelectedFilter(filter);
@@ -45,6 +47,7 @@ export const FilterTabs: React.FC<FilterTabsProps> = ({ scrollEnabled = true }) 
               variant="regular"
               style={[
                 styles.tabText,
+                { color: isActive ? colors.text.primary : colors.text.tertiary },
                 isActive && styles.activeTabText,
               ]}
             >
@@ -72,10 +75,8 @@ const styles = StyleSheet.create({
   },
   tabText: {
     fontSize: FontSizes.medium,
-    color: '#A8A8A8',
   },
   activeTabText: {
-    color: '#010101',
     textDecorationLine: 'underline',
   },
 });
