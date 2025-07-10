@@ -85,4 +85,7 @@ export const colors = {
     },
     shadow: 'rgba(1, 1, 1, 0.25)',
   },
+  gradient: {
+    default: ['#FF6B6B', '#4ECDC4'],
+  },
 };

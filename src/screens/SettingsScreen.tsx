@@ -3,6 +3,7 @@ import { View, StyleSheet, TouchableOpacity, Linking, Platform } from 'react-nat
 import { Ionicons as Icon } from '@expo/vector-icons';
 import { useTheme } from '../theme';
 import { Text, PageWrapper } from '../components/common';
+import { FontSizes, Spacing } from '../constants';
 
 export const SettingsScreen: React.FC = () => {
   const { colors, themeMode, setThemeMode } = useTheme();
@@ -18,10 +19,10 @@ export const SettingsScreen: React.FC = () => {
 
   const IconButton = ({ icon, label, onPress }: { icon: string; label: string; onPress: () => void }) => (
     <View style={styles.iconButtonContainer}>
-      <TouchableOpacity style={styles.iconButton} onPress={onPress}>
-        <Icon name={icon} size={24} color="#717171" />
+      <TouchableOpacity style={[styles.iconButton, { backgroundColor: colors.icon.container }]} onPress={onPress}>
+        <Icon name={icon} size={24} color={colors.icon.secondary} />
       </TouchableOpacity>
-      <Text variant="regular" style={[styles.iconLabel, { color: '#3A3A3A' }]}>
+      <Text variant="regular" style={[styles.iconLabel, { color: colors.text.primary }]}>
         {label}
       </Text>
     </View>
@@ -30,7 +31,11 @@ export const SettingsScreen: React.FC = () => {
   const ThemeButton = ({ theme, label }: { theme: 'light' | 'dark' | 'system'; label: string }) => (
     <TouchableOpacity
       style={[
-        themeMode === theme ? styles.themeButtonActive : styles.themeButtonInactive
+        themeMode === theme ? styles.themeButtonActive : styles.themeButtonInactive,
+        {
+          backgroundColor: themeMode === theme ? colors.button.primary : colors.button.secondary,
+          borderColor: themeMode === theme ? colors.button.primary : colors.button.secondaryBorder,
+        }
       ]}
       onPress={() => setThemeMode(theme)}
     >
@@ -38,7 +43,7 @@ export const SettingsScreen: React.FC = () => {
         variant="regular" 
         style={[
           styles.themeButtonText,
-          { color: themeMode === theme ? '#FEFEFE' : '#3A3A3A' }
+          { color: themeMode === theme ? colors.button.primaryText : colors.text.primary }
         ]}
       >
         {label}
@@ -52,18 +57,18 @@ export const SettingsScreen: React.FC = () => {
         {/* Top Section - Links */}
         <View style={styles.topSection}>
           <TouchableOpacity onPress={() => handleLinkPress('https://example.com/terms')}>
-            <Text variant="regular" style={[styles.link, { color: '#717171' }]}>
-              Terms of Service
+            <Text variant="regular" style={[styles.link, { color: colors.text.secondary }]}>
+              Terms & Conditions
             </Text>
           </TouchableOpacity>
           
           <TouchableOpacity onPress={() => handleLinkPress('https://example.com/privacy')}>
-            <Text variant="regular" style={[styles.link, { color: '#717171' }]}>
+            <Text variant="regular" style={[styles.link, { color: colors.text.secondary }]}>
               Privacy Policy
             </Text>
           </TouchableOpacity>
           
-          <Text mono variant="regular" style={[styles.version, { color: '#A8A8A8' }]}>
+          <Text mono variant="regular" style={[styles.version, { color: colors.text.tertiary }]}>
             v0.0.7
           </Text>
         </View>
@@ -102,10 +107,10 @@ export const SettingsScreen: React.FC = () => {
             <>
               <View style={styles.spacer} />
               <TouchableOpacity 
-                style={[styles.button]}
+                style={[styles.button, { backgroundColor: colors.button.primary, borderColor: colors.button.primary }]}
                 onPress={handleConnect}
               >
-                <Text variant="regular" style={[styles.buttonText, { color: '#FEFEFE' }]}>
+                <Text variant="regular" style={[styles.buttonText, { color: colors.button.primaryText }]}>
                   Connect
                 </Text>
               </TouchableOpacity>
@@ -113,19 +118,24 @@ export const SettingsScreen: React.FC = () => {
           ) : (
             <>
               <TouchableOpacity 
-                style={[styles.buttonOutline]}
+                style={[styles.buttonOutline, { 
+                  borderColor: colors.button.secondaryBorder,
+                  backgroundColor: colors.button.secondary 
+                }]}
                 onPress={handleConnect}
               >
-                <Text variant="regular" style={[styles.buttonText, { color: '#717171' }]}>
+                <Text variant="regular" style={[styles.buttonText, { color: colors.button.secondaryText }]}>
                   Disconnect
                 </Text>
               </TouchableOpacity>
               
-              <View style={[styles.button, styles.addressButton]}>
-                <Text variant="regular" style={[styles.buttonText, { color: '#FEFEFE' }]}>
-                  J8enw...p9vv5
+              <TouchableOpacity 
+                style={[styles.button, { backgroundColor: colors.button.primary, borderColor: colors.button.primary }]}
+              >
+                <Text variant="regular" style={[styles.buttonText, { color: colors.button.primaryText }]}>
+                  0x3c46...ec4b
                 </Text>
-              </View>
+              </TouchableOpacity>
             </>
           )}
         </View>
@@ -157,78 +167,61 @@ const styles = StyleSheet.create({
   iconButtonContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 12,
+    marginBottom: 16,
   },
   iconButton: {
-    width: 44, // Same height as buttons
+    width: 44,
     height: 44,
     borderRadius: 8,
-    backgroundColor: '#E6E6E6',
-    alignItems: 'center',
     justifyContent: 'center',
+    alignItems: 'center',
     marginRight: 16,
   },
   iconLabel: {
-    fontSize: 18,
+    fontSize: 16,
   },
   themeSelector: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     marginBottom: Platform.OS === 'ios' ? 20 : 30,
-    gap: 10,
   },
   themeButtonActive: {
-    flex: 1,
-    paddingVertical: 11,
-    alignItems: 'center',
-    backgroundColor: '#3A3A3A',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#3A3A3A',
   },
   themeButtonInactive: {
-    flex: 1,
-    paddingVertical: 11,
-    alignItems: 'center',
-    backgroundColor: 'rgba(217, 217, 217, 0.01)',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#717171',
   },
   themeButtonText: {
     fontSize: 16,
   },
   bottomSection: {
+    marginTop: 'auto',
   },
   button: {
-    paddingHorizontal: 19,
-    paddingVertical: 11,
     borderRadius: 8,
-    marginVertical: 10,
-    alignItems: 'center',
-    backgroundColor: '#3A3A3A',
-    borderWidth: 1,
-    borderColor: '#3A3A3A',
-  },
-  buttonOutline: {
-    paddingHorizontal: 19,
     paddingVertical: 11,
-    borderRadius: 8,
-    marginVertical: 10,
+    paddingHorizontal: 19,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#717171',
-    backgroundColor: 'rgba(217, 217, 217, 0.01)',
   },
   buttonText: {
-    fontSize: 18,
-    textAlign: 'center',
-    lineHeight: 24,
+    fontSize: FontSizes.large,
   },
-  addressButton: {
-    backgroundColor: '#3A3A3A',
+  buttonOutline: {
+    borderRadius: 8,
+    paddingVertical: 11,
+    paddingHorizontal: 19,
+    alignItems: 'center',
+    borderWidth: 1,
+    marginBottom: 12,
   },
   spacer: {
-    height: 48, // Exact button height: 24 (line-height) + 22 (padding) + 2 (border)
-    marginVertical: 10, // Same margin as button
+    flex: 1,
   },
 });

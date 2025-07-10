@@ -8,7 +8,7 @@ type ThemeMode = 'light' | 'dark' | 'system';
 interface ThemeContextType {
   theme: Theme;
   themeMode: ThemeMode;
-  colors: typeof colors.light;
+  colors: typeof colors.light & { gradient: typeof colors.gradient };
   setThemeMode: (mode: ThemeMode) => void;
 }
 
@@ -37,7 +37,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const value = {
     theme,
     themeMode,
-    colors: colors[theme],
+    colors: { ...colors[theme], gradient: colors.gradient },
     setThemeMode: handleSetThemeMode,
   };
 

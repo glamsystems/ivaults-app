@@ -1,7 +1,8 @@
 import React, { ReactNode } from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { Text } from './Text';
-import { FontSizes } from '../../constants/fonts';
+import { FontSizes, Spacing } from '../../constants';
+import { useTheme } from '../../theme';
 
 interface ListCardProps {
   leftIcon: ReactNode;
@@ -22,23 +23,24 @@ export const ListCard: React.FC<ListCardProps> = ({
   rightBottomContent,
   onPress,
 }) => {
+  const { colors } = useTheme();
   const content = (
     <>
       {/* Row 1 */}
       <View style={styles.row}>
         <View style={styles.leftSection}>
           {leftIcon}
-          <Text variant="regular" style={styles.title} numberOfLines={1} ellipsizeMode="tail">
+          <Text variant="regular" style={[styles.title, { color: colors.text.primary }]} numberOfLines={1} ellipsizeMode="tail">
             {title}
           </Text>
         </View>
-        <Text variant="regular" style={styles.rightText}>{rightText}</Text>
+        <Text variant="regular" style={[styles.rightText, { color: colors.text.tertiary }]}>{rightText}</Text>
       </View>
       
       {/* Row 2 */}
       <View style={[styles.row, styles.secondRow]}>
         {leftBottomContent || (leftBottomText && (
-          <Text variant="regular" style={styles.leftBottomText}>{leftBottomText}</Text>
+          <Text variant="regular" style={[styles.leftBottomText, { color: colors.text.secondary }]}>{leftBottomText}</Text>
         ))}
         {rightBottomContent}
       </View>
@@ -59,7 +61,7 @@ export const ListCard: React.FC<ListCardProps> = ({
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'column',
-    paddingVertical: 30,
+    paddingVertical: Spacing.card.vertical,
   },
   row: {
     flexDirection: 'row',
@@ -68,7 +70,7 @@ const styles = StyleSheet.create({
   },
   secondRow: {
     marginTop: 0,
-    paddingLeft: 60, // Icon width (44) + margin (16)
+    paddingLeft: Spacing.icon.standard + Spacing.icon.margin,
   },
   leftSection: {
     flexDirection: 'row',
@@ -77,14 +79,11 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: FontSizes.large,
-    color: '#010101',
   },
   rightText: {
     fontSize: FontSizes.medium,
-    color: '#A8A8A8',
   },
   leftBottomText: {
     fontSize: FontSizes.medium,
-    color: '#717171',
   },
 });

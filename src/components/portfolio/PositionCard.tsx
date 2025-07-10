@@ -4,7 +4,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { ListCard } from '../common/ListCard';
 import { Text } from '../common';
 import { Position } from '../../store/portfolioStore';
-import { FontSizes } from '../../constants/fonts';
+import { FontSizes, Spacing } from '../../constants';
+import { useTheme } from '../../theme';
 
 interface PositionCardProps {
   position: Position;
@@ -12,9 +13,10 @@ interface PositionCardProps {
 }
 
 export const PositionCard: React.FC<PositionCardProps> = ({ position, onPress }) => {
+  const { colors } = useTheme();
   const icon = (
     <LinearGradient
-      colors={position.gradientColors || ['#FF6B6B', '#4ECDC4']}
+      colors={position.gradientColors || colors.gradient.default}
       style={styles.iconPlaceholder}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
@@ -22,7 +24,7 @@ export const PositionCard: React.FC<PositionCardProps> = ({ position, onPress })
   );
 
   const rightBottomContent = (
-    <Text variant="regular" style={styles.value}>
+    <Text variant="regular" style={[styles.value, { color: colors.text.primary }]}>
       {(position.balance || 0).toLocaleString('en-US', { 
         minimumFractionDigits: 2,
         maximumFractionDigits: 2 
@@ -31,7 +33,7 @@ export const PositionCard: React.FC<PositionCardProps> = ({ position, onPress })
   );
 
   const leftBottomContent = (
-    <Text variant="regular" style={styles.category}>
+    <Text variant="regular" style={[styles.category, { color: colors.text.secondary }]}>
       {position.category === 'SuperVault' ? 'SuperVault' : 'xStocks'}
     </Text>
   );
@@ -50,17 +52,15 @@ export const PositionCard: React.FC<PositionCardProps> = ({ position, onPress })
 
 const styles = StyleSheet.create({
   iconPlaceholder: {
-    width: 44,
-    height: 44,
+    width: Spacing.icon.standard,
+    height: Spacing.icon.standard,
     borderRadius: 8,
-    marginRight: 16,
+    marginRight: Spacing.icon.margin,
   },
   value: {
     fontSize: FontSizes.medium,
-    color: '#010101',
   },
   category: {
     fontSize: FontSizes.medium,
-    color: '#717171', // Same as VaultCard category
   },
 });

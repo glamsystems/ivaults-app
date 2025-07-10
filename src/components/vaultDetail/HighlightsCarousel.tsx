@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView, Dimensions } from 'react-native';
 import { Text } from '../common';
-import { FontSizes } from '../../constants/fonts';
+import { FontSizes } from '../../constants';
+import { useTheme } from '../../theme';
 
 interface HighlightItem {
   label: string;
@@ -21,6 +22,7 @@ const SCREEN_WIDTH = Dimensions.get('window').width;
 const CAROUSEL_PADDING = 76; // 38px padding on each side
 
 export const HighlightsCarousel: React.FC<HighlightsCarouselProps> = ({ items }) => {
+  const { colors } = useTheme();
   const [currentPage, setCurrentPage] = useState(0);
   const itemsPerPage = 4;
   const totalPages = Math.ceil(items.length / itemsPerPage);
@@ -30,13 +32,13 @@ export const HighlightsCarousel: React.FC<HighlightsCarouselProps> = ({ items })
   
   // Get color for value based on positive/negative
   const getValueColor = (item: HighlightItem): string => {
-    if (!item.colorFormat) return '#010101'; // Default black
+    if (!item.colorFormat) return colors.text.primary;
     
     // Parse the value to check if it's positive or negative
     const numericValue = parseFloat(item.value.replace(/[^-\d.]/g, ''));
-    if (numericValue > 0) return '#0CC578'; // Green
-    if (numericValue < 0) return '#FA155A'; // Red
-    return '#010101'; // Black for zero
+    if (numericValue > 0) return colors.status.success;
+    if (numericValue < 0) return colors.status.error;
+    return colors.text.primary;
   };
   
   // Format the display value with prefix, suffix, and sign
@@ -85,14 +87,14 @@ export const HighlightsCarousel: React.FC<HighlightsCarouselProps> = ({ items })
             <View style={styles.grid}>
               {page.map((item, index) => (
                 <View key={index} style={styles.highlightItem}>
-                  <Text mono variant="regular" style={styles.label}>
+                  <Text mono variant="regular" style={[styles.label, { color: colors.text.tertiary }]}>
                     {item.label}
                   </Text>
                   <Text variant="regular" style={[styles.value, { color: getValueColor(item) }]}>
                     {formatValue(item)}
                   </Text>
                   {item.unit ? (
-                    <Text mono variant="regular" style={styles.unit}>
+                    <Text mono variant="regular" style={[styles.unit, { color: colors.text.tertiary }]}>
                       {item.unit}
                     </Text>
                   ) : (
@@ -111,7 +113,7 @@ export const HighlightsCarousel: React.FC<HighlightsCarouselProps> = ({ items })
             key={index}
             style={[
               styles.paginationDot,
-              currentPage === index && styles.paginationDotActive,
+              { backgroundColor: currentPage === index ? colors.text.disabled : colors.text.subtle },
             ]}
           />
         ))}
@@ -143,18 +145,15 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: FontSizes.small,
-    color: '#A8A8A8',
     marginBottom: 4,
   },
   value: {
     fontSize: FontSizes.xLarge,
-    color: '#010101',
     marginTop: 4,
     marginBottom: 4,
   },
   unit: {
     fontSize: FontSizes.small,
-    color: '#A8A8A8',
   },
   unitPlaceholder: {
     height: FontSizes.small + 4, // Same height as unit text
@@ -169,10 +168,6 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 2,
-    backgroundColor: 'rgba(1, 1, 1, 0.1)', // 10% opacity
     marginHorizontal: 4,
-  },
-  paginationDotActive: {
-    backgroundColor: 'rgba(1, 1, 1, 0.25)', // 25% opacity
   },
 });

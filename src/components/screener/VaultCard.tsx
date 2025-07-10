@@ -19,7 +19,7 @@ export const VaultCard: React.FC<VaultCardProps> = ({ vault, onPress }) => {
   
   const icon = (
     <LinearGradient
-      colors={vault.gradientColors || ['#FF6B6B', '#4ECDC4']}
+      colors={vault.gradientColors || colors.gradient.default}
       style={styles.iconPlaceholder}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
