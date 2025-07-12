@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, Fragment } from 'react';
 import {
   View,
   StyleSheet,
@@ -23,6 +23,8 @@ import { Text, PageWrapper } from '../components/common';
 import { ConnectionProvider, useConnection, RPC_ENDPOINT, NETWORK_ENDPOINTS, NetworkType } from '../solana/providers/ConnectionProvider';
 import { AuthorizationProvider, useAuthorization, Account } from '../solana/providers/AuthorizationProvider';
 import { alertAndLog } from '../solana/utils';
+import { SuccessModal } from '../components/SuccessModal';
+import { useWalletStore } from '../store/walletStore';
 
 // Section Component
 const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => {
@@ -112,6 +114,12 @@ const SignTransactionButton: React.FC = () => {
   const { connection } = useConnection();
   const { authorizeSession, selectedAccount } = useAuthorization();
   const [loading, setLoading] = useState(false);
+  const [successModal, setSuccessModal] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    details: [] as any[],
+  });
 
   const signTransaction = useCallback(async () => {
     if (!selectedAccount) return;
@@ -195,11 +203,34 @@ const SignTransactionButton: React.FC = () => {
         return signedTransactions[0];
       });
 
-      alertAndLog(
-        'Transaction signed',
-        'View DebugScreen.tsx for implementation.',
-      );
-      console.log(fromUint8Array(signedTransaction.serialize()));
+      const signature = fromUint8Array(signedTransaction.serialize());
+      console.log('[DebugScreen] Transaction signature:', signature);
+      
+      setSuccessModal({
+        visible: true,
+        title: 'Transaction Signed!',
+        message: 'Your transaction has been signed successfully.',
+        details: [
+          {
+            label: 'Signature',
+            value: signature,
+            copyable: true,
+          },
+          {
+            label: 'Amount',
+            value: '0.000001 SOL',
+          },
+          {
+            label: 'Network',
+            value: connection.rpcEndpoint.includes('devnet') ? 'Devnet' : 'Mainnet',
+          },
+          {
+            label: 'From',
+            value: selectedAccount?.publicKey.toBase58() || '',
+            copyable: true,
+          },
+        ],
+      });
     } catch (err: any) {
       alertAndLog(
         'Error during signing',
@@ -211,6 +242,7 @@ const SignTransactionButton: React.FC = () => {
   }, [authorizeSession, connection, selectedAccount]);
 
   return (
+    <>
     <TouchableOpacity
       style={[styles.button]}
       onPress={signTransaction}
@@ -224,6 +256,14 @@ const SignTransactionButton: React.FC = () => {
         </Text>
       )}
     </TouchableOpacity>
+    <SuccessModal
+      visible={successModal.visible}
+      onClose={() => setSuccessModal({ ...successModal, visible: false })}
+      title={successModal.title}
+      message={successModal.message}
+      details={successModal.details}
+    />
+    </>
   );
 };
 
@@ -231,6 +271,12 @@ const SignTransactionButton: React.FC = () => {
 const SignMessageButton: React.FC = () => {
   const { authorizeSession, selectedAccount } = useAuthorization();
   const [loading, setLoading] = useState(false);
+  const [successModal, setSuccessModal] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    details: [] as any[],
+  });
 
   const signMessage = useCallback(async () => {
     if (!selectedAccount) return;
@@ -249,7 +295,26 @@ const SignMessageButton: React.FC = () => {
           payloads: [messageBuffer],
         });
 
-        alertAndLog('Message signed', `Signature: ${JSON.stringify(signedMessages[0], null, 2)}`);
+        const signatureBase64 = fromUint8Array(signedMessages[0]);
+        console.log('[DebugScreen] Message signature:', signatureBase64);
+        
+        setSuccessModal({
+          visible: true,
+          title: 'Message Signed!',
+          message: `Successfully signed: "${message}"`,
+          details: [
+            {
+              label: 'Signature',
+              value: signatureBase64,
+              copyable: true,
+            },
+            {
+              label: 'Signer',
+              value: freshAccount.publicKey.toBase58(),
+              copyable: true,
+            },
+          ],
+        });
       });
     } catch (error) {
       alertAndLog('Error signing message', error instanceof Error ? error.message : error);
@@ -259,6 +324,7 @@ const SignMessageButton: React.FC = () => {
   }, [authorizeSession, selectedAccount]);
 
   return (
+    <>
     <TouchableOpacity
       style={[styles.button]}
       onPress={signMessage}
@@ -272,6 +338,14 @@ const SignMessageButton: React.FC = () => {
         </Text>
       )}
     </TouchableOpacity>
+    <SuccessModal
+      visible={successModal.visible}
+      onClose={() => setSuccessModal({ ...successModal, visible: false })}
+      title={successModal.title}
+      message={successModal.message}
+      details={successModal.details}
+    />
+    </>
   );
 };
 
@@ -280,6 +354,12 @@ const RequestAirdropButton: React.FC<{ onAirdropSuccess: () => void }> = ({ onAi
   const { connection } = useConnection();
   const { selectedAccount } = useAuthorization();
   const [loading, setLoading] = useState(false);
+  const [successModal, setSuccessModal] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    details: [] as any[],
+  });
 
   const requestAirdrop = useCallback(async () => {
     if (!selectedAccount) return;
@@ -291,7 +371,24 @@ const RequestAirdropButton: React.FC<{ onAirdropSuccess: () => void }> = ({ onAi
         LAMPORTS_PER_SOL,
       );
       await connection.confirmTransaction(signature, 'finalized');
-      alertAndLog('Airdrop successful', '1 SOL airdropped successfully!');
+      
+      setSuccessModal({
+        visible: true,
+        title: 'Airdrop Successful!',
+        message: 'You have received 1 SOL',
+        details: [
+          {
+            label: 'Transaction Signature',
+            value: signature,
+            copyable: true,
+          },
+          {
+            label: 'Amount',
+            value: '1.0 SOL',
+          },
+        ],
+      });
+      
       onAirdropSuccess();
     } catch (error) {
       alertAndLog('Error requesting airdrop', error instanceof Error ? error.message : error);
@@ -301,6 +398,7 @@ const RequestAirdropButton: React.FC<{ onAirdropSuccess: () => void }> = ({ onAi
   }, [connection, selectedAccount, onAirdropSuccess]);
 
   return (
+    <>
     <TouchableOpacity
       style={[styles.button, styles.airdropButton]}
       onPress={requestAirdrop}
@@ -314,6 +412,14 @@ const RequestAirdropButton: React.FC<{ onAirdropSuccess: () => void }> = ({ onAi
         </Text>
       )}
     </TouchableOpacity>
+    <SuccessModal
+      visible={successModal.visible}
+      onClose={() => setSuccessModal({ ...successModal, visible: false })}
+      title={successModal.title}
+      message={successModal.message}
+      details={successModal.details}
+    />
+    </>
   );
 };
 
@@ -321,8 +427,10 @@ const RequestAirdropButton: React.FC<{ onAirdropSuccess: () => void }> = ({ onAi
 const AccountInfo: React.FC<{
   selectedAccount: Account;
   balance: number | null;
+  balanceInSol: number;
+  isLoadingBalance: boolean;
   fetchAndUpdateBalance: (account: Account) => void;
-}> = ({ selectedAccount, balance, fetchAndUpdateBalance }) => {
+}> = ({ selectedAccount, balance, balanceInSol, isLoadingBalance, fetchAndUpdateBalance }) => {
   const { colors } = useTheme();
 
   return (
@@ -334,9 +442,15 @@ const AccountInfo: React.FC<{
         {selectedAccount.publicKey.toBase58().slice(0, 8)}...
         {selectedAccount.publicKey.toBase58().slice(-8)}
       </Text>
-      {balance !== null && (
+      {isLoadingBalance ? (
+        <ActivityIndicator size="small" color={colors.text.primary} style={{ marginVertical: 8 }} />
+      ) : balance !== null ? (
         <Text variant="bold" style={[styles.balance, { color: colors.text.primary }]}>
-          {(balance / LAMPORTS_PER_SOL).toFixed(4)} SOL
+          {balanceInSol.toFixed(4)} SOL
+        </Text>
+      ) : (
+        <Text variant="regular" style={[styles.balance, { color: colors.text.tertiary, fontSize: 14 }]}>
+          Unable to fetch balance
         </Text>
       )}
       <View style={styles.accountButtons}>
@@ -409,28 +523,31 @@ const DebugScreenContent: React.FC<{ endpoint: string }> = ({ endpoint }) => {
   const { colors } = useTheme();
   const { connection } = useConnection();
   const { selectedAccount } = useAuthorization();
-  const [balance, setBalance] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<DebugTab>('Solana');
+  
+  // Use wallet store
+  const { balance, balanceInSol, isLoadingBalance, startBalancePolling, stopBalancePolling, updateBalance } = useWalletStore();
 
   const fetchAndUpdateBalance = useCallback(
     async (account: Account) => {
-      try {
-        const fetchedBalance = await connection.getBalance(account.publicKey);
-        setBalance(fetchedBalance);
-      } catch (error) {
-        console.error('Error fetching balance:', error);
-      }
+      await updateBalance(connection);
     },
-    [connection],
+    [connection, updateBalance],
   );
 
   useEffect(() => {
     if (!selectedAccount) {
-      setBalance(null);
+      stopBalancePolling();
       return;
     }
-    fetchAndUpdateBalance(selectedAccount);
-  }, [fetchAndUpdateBalance, selectedAccount]);
+    // Start balance polling when account is selected
+    startBalancePolling(connection);
+    
+    // Cleanup on unmount or account change
+    return () => {
+      stopBalancePolling();
+    };
+  }, [selectedAccount, connection, startBalancePolling, stopBalancePolling]);
 
   const tabOptions: DebugTab[] = ['Solana', 'GLAM'];
 
@@ -487,6 +604,8 @@ const DebugScreenContent: React.FC<{ endpoint: string }> = ({ endpoint }) => {
                 <AccountInfo
                   selectedAccount={selectedAccount}
                   balance={balance}
+                  balanceInSol={balanceInSol}
+                  isLoadingBalance={isLoadingBalance}
                   fetchAndUpdateBalance={fetchAndUpdateBalance}
                 />
               </>

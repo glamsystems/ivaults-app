@@ -18,6 +18,7 @@ import {
 } from '@solana-mobile/mobile-wallet-adapter-protocol';
 import { toUint8Array } from 'js-base64';
 import { RPC_ENDPOINT, NetworkType } from './ConnectionProvider';
+import { useWalletStore } from '../../store/walletStore';
 
 export type Account = Readonly<{
   address: Base64EncodedAddress;
@@ -75,6 +76,7 @@ const AuthorizationContext = createContext<AuthorizationProviderContext>({
 
 export function AuthorizationProvider({ children, network = 'devnet' }: { children: ReactNode; network?: NetworkType }) {
   const [authorization, setAuthorization] = useState<Authorization | null>(null);
+  const { setAccount, clearWallet, setNetwork } = useWalletStore();
 
   const handleAuthorizationResult = useCallback(
     async (
@@ -99,9 +101,12 @@ export function AuthorizationProvider({ children, network = 'devnet' }: { childr
         selectedAccount,
       };
       setAuthorization(nextAuthorization);
+      // Update wallet store
+      setAccount(nextAuthorization.selectedAccount);
+      setNetwork(network);
       return nextAuthorization;
     },
-    [authorization],
+    [authorization, setAccount, setNetwork, network],
   );
 
   const authorizeSession = useCallback(
@@ -137,6 +142,8 @@ export function AuthorizationProvider({ children, network = 'devnet' }: { childr
       if (authorization?.authToken) {
         await wallet.deauthorize({ auth_token: authorization.authToken });
         setAuthorization(null);
+        // Clear wallet store
+        clearWallet();
       }
     },
     [authorization, network],
