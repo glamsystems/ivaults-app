@@ -558,8 +558,11 @@ export class GlamService {
             
             console.log('[GLAM Summary] Vault types found:', vaultsByType);
             
-            // Filter to only show Fund type (account type 2) - relevant for iVaults
-            const fundVaults = vaults.filter(v => v.productType === 'Fund');
+            // Filter to only show Fund type (account type 2) with mints - relevant for iVaults
+            const fundVaults = vaults.filter(v => 
+              v.productType === 'Fund' && 
+              v.mintPubkey // Only include vaults that have a mint
+            );
             
             // Return the fund vaults
             debugInfo.push(`[RPC] Found ${vaults.length} total vaults, returning ${fundVaults.length} funds`);
