@@ -1,187 +1,689 @@
-import React, { useRef, useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Button } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { BottomSheetModal, BottomSheetTextInput } from '@gorhom/bottom-sheet';
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+  View,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  ActivityIndicator,
+} from 'react-native';
+import {
+  SystemProgram,
+  PublicKey,
+  Transaction,
+  LAMPORTS_PER_SOL,
+  Keypair,
+} from '@solana/web3.js';
+import { 
+  transact,
+  Web3MobileWallet,
+} from '@solana-mobile/mobile-wallet-adapter-protocol-web3js';
+import { fromUint8Array } from 'js-base64';
 import { useTheme } from '../theme';
-import { CustomBottomSheet, BasicBottomSheet } from '../components/sheets';
 import { Text, PageWrapper } from '../components/common';
-export const DebugScreen: React.FC = () => {
+import { ConnectionProvider, useConnection, RPC_ENDPOINT, NETWORK_ENDPOINTS, NetworkType } from '../solana/providers/ConnectionProvider';
+import { AuthorizationProvider, useAuthorization, Account } from '../solana/providers/AuthorizationProvider';
+import { alertAndLog } from '../solana/utils';
+
+// Section Component
+const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => {
   const { colors } = useTheme();
-  const navigation = useNavigation<any>();
-  const sheetRef = useRef<BottomSheetModal>(null);
-  const keyboardSheetRef = useRef<BottomSheetModal>(null);
+  return (
+    <View style={styles.section}>
+      <Text variant="bold" style={[styles.sectionTitle, { color: colors.text.primary }]}>
+        {title}
+      </Text>
+      {children}
+    </View>
+  );
+};
 
-  const handleFullScreenPress = () => {
-    navigation.navigate('FullScreen');
-  };
+// Connect Button Component
+const ConnectButton: React.FC<{ title: string }> = ({ title }) => {
+  const { authorizeSession } = useAuthorization();
+  const [loading, setLoading] = useState(false);
 
-  const handleSheetPress = () => {
-    console.log('Sheet button pressed');
-    console.log('Sheet ref:', sheetRef.current);
-    sheetRef.current?.present();
-  };
-
-  const handleKeyboardSheetPress = () => {
-    console.log('Keyboard sheet button pressed');
-    console.log('Keyboard sheet ref:', keyboardSheetRef.current);
-    keyboardSheetRef.current?.present();
-  };
-
-  // Test with a simple modal first
-  const testModalRef = useRef<BottomSheetModal>(null);
-  
-  // Basic bottom sheet ref
-  const basicSheetRef = useRef<BottomSheetModal>(null);
-  
-  // State for number input
-  const [inputValue, setInputValue] = useState('');
+  const handleConnect = useCallback(async () => {
+    try {
+      setLoading(true);
+      await transact(async (wallet: Web3MobileWallet) => {
+        await authorizeSession(wallet);
+      });
+    } catch (error) {
+      alertAndLog('Error during connect', error instanceof Error ? error.message : error);
+    } finally {
+      setLoading(false);
+    }
+  }, [authorizeSession]);
 
   return (
-    <PageWrapper>
-      <View style={styles.container}>
-      <Text variant="bold" style={[styles.title, { color: colors.text.primary }]}>Debug Screen</Text>
+    <TouchableOpacity
+      style={[styles.button, styles.connectButton]}
+      onPress={handleConnect}
+      disabled={loading}
+    >
+      {loading ? (
+        <ActivityIndicator color="#FFFFFF" />
+      ) : (
+        <Text variant="regular" style={styles.buttonText}>
+          {title}
+        </Text>
+      )}
+    </TouchableOpacity>
+  );
+};
 
-      <Button 
-        title="Test Basic v5 Sheet" 
-        onPress={() => {
-          console.log('Basic sheet button pressed');
-          basicSheetRef.current?.present();
-          // Ensure it snaps to index 0 (50%)
-          setTimeout(() => {
-            basicSheetRef.current?.snapToIndex(0);
-          }, 100);
-        }}
-      />
+// Disconnect Button Component
+const DisconnectButton: React.FC = () => {
+  const { deauthorizeSession } = useAuthorization();
+  const [loading, setLoading] = useState(false);
+
+  const handleDisconnect = useCallback(async () => {
+    try {
+      setLoading(true);
+      await transact(async (wallet: Web3MobileWallet) => {
+        await deauthorizeSession(wallet);
+      });
+    } catch (error) {
+      alertAndLog('Error during disconnect', error instanceof Error ? error.message : error);
+    } finally {
+      setLoading(false);
+    }
+  }, [deauthorizeSession]);
+
+  return (
+    <TouchableOpacity
+      style={[styles.button, styles.disconnectButton]}
+      onPress={handleDisconnect}
+      disabled={loading}
+    >
+      {loading ? (
+        <ActivityIndicator color="#FF0000" />
+      ) : (
+        <Text variant="regular" style={[styles.buttonText, { color: '#FF0000' }]}>
+          Disconnect
+        </Text>
+      )}
+    </TouchableOpacity>
+  );
+};
+
+// Sign Transaction Button Component
+const SignTransactionButton: React.FC = () => {
+  const { connection } = useConnection();
+  const { authorizeSession, selectedAccount } = useAuthorization();
+  const [loading, setLoading] = useState(false);
+
+  const signTransaction = useCallback(async () => {
+    if (!selectedAccount) return;
+
+    try {
+      setLoading(true);
+      console.log('[DebugScreen] Starting transaction signing...');
+      console.log('[DebugScreen] Selected account:', selectedAccount);
       
-      <TouchableOpacity 
-        style={[styles.button]}
-        onPress={handleFullScreenPress}
-      >
-        <Text variant="regular" style={[styles.buttonText, { color: '#FEFEFE' }]}>
-          Connect
-        </Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity 
-        style={[styles.buttonOutline]}
-        onPress={handleSheetPress}
-      >
-        <Text variant="regular" style={[styles.buttonText, { color: '#717171' }]}>
-          Show Bottom Sheet
-        </Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity 
-        style={[styles.buttonDisabled]}
-        onPress={handleKeyboardSheetPress}
-        disabled={true}
-      >
-        <Text variant="regular" style={[styles.buttonText, { color: '#A8A8A8' }]}>
-          Show Keyboard Sheet
-        </Text>
-      </TouchableOpacity>
-
-      <CustomBottomSheet ref={sheetRef}>
-        <View style={{ flex: 1, padding: 25 }}>
-          <Text style={[styles.sheetText, { color: colors.text.primary }]}>
-            Bottom Sheet without Keyboard
-          </Text>
-        </View>
-      </CustomBottomSheet>
-
-      <CustomBottomSheet ref={keyboardSheetRef} withKeyboard>
-        <View style={{ flex: 1, padding: 25 }}>
-          <Text style={[styles.sheetText, { color: colors.text.primary }]}>
-            Bottom Sheet with Keyboard Support
-          </Text>
-        </View>
-      </CustomBottomSheet>
+      // Fetch blockhash BEFORE transact since we know this works
+      let latestBlockhash;
+      try {
+        console.log('[DebugScreen] Fetching blockhash before transact...');
+        latestBlockhash = await connection.getLatestBlockhash();
+        console.log('[DebugScreen] Pre-transact blockhash fetch successful:', latestBlockhash);
+      } catch (error) {
+        console.error('[DebugScreen] Failed to fetch blockhash:', error);
+        alertAndLog('Error fetching blockhash', error instanceof Error ? error.message : error);
+        setLoading(false);
+        return;
+      }
       
-      {/* Basic v5 Bottom Sheet */}
-      <BasicBottomSheet ref={basicSheetRef}>
-        <Text style={{ fontSize: 18, textAlign: 'center', marginBottom: 20 }}>
-          Basic v5 Bottom Sheet 🎉
+      const signedTransaction = await transact(async (wallet: Web3MobileWallet) => {
+        console.log('[DebugScreen] Inside transact callback...');
+        console.log('[DebugScreen] Using pre-fetched blockhash:', latestBlockhash);
+        
+        // Test network availability
+        console.log('[DebugScreen] Testing network availability...');
+        console.log('[DebugScreen] fetch available:', typeof fetch !== 'undefined');
+        console.log('[DebugScreen] XMLHttpRequest available:', typeof XMLHttpRequest !== 'undefined');
+        
+        // First, request for authorization from the wallet
+        let authorizedAccount;
+        try {
+          console.log('[DebugScreen] Calling authorizeSession...');
+          authorizedAccount = await authorizeSession(wallet);
+          console.log('[DebugScreen] Authorization successful:', authorizedAccount);
+        } catch (error) {
+          console.error('[DebugScreen] Authorization failed:', error);
+          throw error;
+        }
+
+        console.log('[DebugScreen] Authorized account:', authorizedAccount);
+        console.log('[DebugScreen] Using blockhash:', latestBlockhash);
+
+        // Construct a transaction. This transaction uses web3.js `SystemProgram`
+        // to create a transfer that sends lamports to randomly generated address.
+        const keypair = Keypair.generate();
+        console.log('[DebugScreen] Generated random keypair:', keypair.publicKey.toBase58());
+        
+        const randomTransferTransaction = new Transaction({
+          ...latestBlockhash,
+          feePayer: authorizedAccount.publicKey,
+        }).add(
+          SystemProgram.transfer({
+            fromPubkey: authorizedAccount.publicKey,
+            toPubkey: keypair.publicKey,
+            lamports: 1_000,
+          }),
+        );
+        
+        console.log('[DebugScreen] Transaction created:', randomTransferTransaction);
+        console.log('[DebugScreen] Transaction details:', {
+          feePayer: randomTransferTransaction.feePayer?.toBase58(),
+          recentBlockhash: randomTransferTransaction.recentBlockhash,
+          instructionCount: randomTransferTransaction.instructions.length,
+        });
+        console.log('[DebugScreen] Calling wallet.signTransactions...');
+
+        // Sign a transaction and receive
+        const signedTransactions = await wallet.signTransactions({
+          transactions: [randomTransferTransaction],
+        });
+        
+        console.log('[DebugScreen] Signed transactions received:', signedTransactions);
+        console.log('[DebugScreen] Signed transaction details:', {
+          signatures: signedTransactions[0].signatures.length,
+          feePayer: signedTransactions[0].feePayer?.toBase58(),
+        });
+
+        return signedTransactions[0];
+      });
+
+      alertAndLog(
+        'Transaction signed',
+        'View DebugScreen.tsx for implementation.',
+      );
+      console.log(fromUint8Array(signedTransaction.serialize()));
+    } catch (err: any) {
+      alertAndLog(
+        'Error during signing',
+        err instanceof Error ? err.message : err,
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [authorizeSession, connection, selectedAccount]);
+
+  return (
+    <TouchableOpacity
+      style={[styles.button]}
+      onPress={signTransaction}
+      disabled={loading}
+    >
+      {loading ? (
+        <ActivityIndicator color="#FFFFFF" />
+      ) : (
+        <Text variant="regular" style={styles.buttonText}>
+          Sign Transaction
         </Text>
-        <BottomSheetTextInput
-          style={[styles.numberInput, { color: colors.text.primary, borderColor: colors.text.secondary }]}
-          placeholder="Enter a number"
-          placeholderTextColor={colors.text.disabled}
-          keyboardType="numeric"
-          value={inputValue}
-          onChangeText={setInputValue}
-        />
-        <Text style={{ fontSize: 18, textAlign: 'center', marginTop: 20 }}>
-          Basic v5 Bottom Sheet 🎉
+      )}
+    </TouchableOpacity>
+  );
+};
+
+// Sign Message Button Component
+const SignMessageButton: React.FC = () => {
+  const { authorizeSession, selectedAccount } = useAuthorization();
+  const [loading, setLoading] = useState(false);
+
+  const signMessage = useCallback(async () => {
+    if (!selectedAccount) return;
+
+    try {
+      setLoading(true);
+      await transact(async (wallet: Web3MobileWallet) => {
+        const freshAccount = await authorizeSession(wallet);
+        const message = 'Hello, Solana!';
+        const messageBuffer = new Uint8Array(
+          message.split('').map(c => c.charCodeAt(0)),
+        );
+
+        const signedMessages = await wallet.signMessages({
+          addresses: [freshAccount.address],
+          payloads: [messageBuffer],
+        });
+
+        alertAndLog('Message signed', `Signature: ${JSON.stringify(signedMessages[0], null, 2)}`);
+      });
+    } catch (error) {
+      alertAndLog('Error signing message', error instanceof Error ? error.message : error);
+    } finally {
+      setLoading(false);
+    }
+  }, [authorizeSession, selectedAccount]);
+
+  return (
+    <TouchableOpacity
+      style={[styles.button]}
+      onPress={signMessage}
+      disabled={loading}
+    >
+      {loading ? (
+        <ActivityIndicator color="#FFFFFF" />
+      ) : (
+        <Text variant="regular" style={styles.buttonText}>
+          Sign Message
         </Text>
-        <Text style={{ fontSize: 18, textAlign: 'center' }}>
-          Basic v5 Bottom Sheet 🎉
+      )}
+    </TouchableOpacity>
+  );
+};
+
+// Request Airdrop Button Component
+const RequestAirdropButton: React.FC<{ onAirdropSuccess: () => void }> = ({ onAirdropSuccess }) => {
+  const { connection } = useConnection();
+  const { selectedAccount } = useAuthorization();
+  const [loading, setLoading] = useState(false);
+
+  const requestAirdrop = useCallback(async () => {
+    if (!selectedAccount) return;
+
+    try {
+      setLoading(true);
+      const signature = await connection.requestAirdrop(
+        selectedAccount.publicKey,
+        LAMPORTS_PER_SOL,
+      );
+      await connection.confirmTransaction(signature, 'finalized');
+      alertAndLog('Airdrop successful', '1 SOL airdropped successfully!');
+      onAirdropSuccess();
+    } catch (error) {
+      alertAndLog('Error requesting airdrop', error instanceof Error ? error.message : error);
+    } finally {
+      setLoading(false);
+    }
+  }, [connection, selectedAccount, onAirdropSuccess]);
+
+  return (
+    <TouchableOpacity
+      style={[styles.button, styles.airdropButton]}
+      onPress={requestAirdrop}
+      disabled={loading}
+    >
+      {loading ? (
+        <ActivityIndicator color="#00FF00" />
+      ) : (
+        <Text variant="regular" style={[styles.buttonText, { color: '#00FF00' }]}>
+          Airdrop 1 SOL
         </Text>
-      </BasicBottomSheet>
+      )}
+    </TouchableOpacity>
+  );
+};
+
+// Account Info Component
+const AccountInfo: React.FC<{
+  selectedAccount: Account;
+  balance: number | null;
+  fetchAndUpdateBalance: (account: Account) => void;
+}> = ({ selectedAccount, balance, fetchAndUpdateBalance }) => {
+  const { colors } = useTheme();
+
+  return (
+    <View style={[styles.accountInfo, { backgroundColor: colors.background.secondary }]}>
+      <Text variant="bold" style={[styles.accountLabel, { color: colors.text.secondary }]}>
+        Connected Account
+      </Text>
+      <Text variant="regular" style={[styles.accountAddress, { color: colors.text.primary }]}>
+        {selectedAccount.publicKey.toBase58().slice(0, 8)}...
+        {selectedAccount.publicKey.toBase58().slice(-8)}
+      </Text>
+      {balance !== null && (
+        <Text variant="bold" style={[styles.balance, { color: colors.text.primary }]}>
+          {(balance / LAMPORTS_PER_SOL).toFixed(4)} SOL
+        </Text>
+      )}
+      <View style={styles.accountButtons}>
+        <DisconnectButton />
+        <RequestAirdropButton onAirdropSuccess={() => fetchAndUpdateBalance(selectedAccount)} />
       </View>
+    </View>
+  );
+};
+
+// Tab types
+type DebugTab = 'Solana' | 'GLAM';
+
+// Network Switcher Component
+const NetworkSwitcher: React.FC<{
+  currentNetwork: NetworkType;
+  onNetworkChange: (network: NetworkType) => void;
+}> = ({ currentNetwork, onNetworkChange }) => {
+  const { colors } = useTheme();
+  
+  return (
+    <View style={[styles.networkSwitcher, { backgroundColor: colors.background.secondary }]}>
+      <Text variant="bold" style={[styles.networkLabel, { color: colors.text.secondary }]}>
+        Network
+      </Text>
+      <View style={styles.networkButtons}>
+        <TouchableOpacity
+          style={[
+            styles.networkButton,
+            currentNetwork === 'devnet' && styles.activeNetworkButton,
+            currentNetwork === 'devnet' && { backgroundColor: colors.primary }
+          ]}
+          onPress={() => onNetworkChange('devnet')}
+        >
+          <Text
+            variant="regular"
+            style={[
+              styles.networkButtonText,
+              { color: currentNetwork === 'devnet' ? '#FFFFFF' : colors.text.primary }
+            ]}
+          >
+            Devnet
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.networkButton,
+            currentNetwork === 'mainnet' && styles.activeNetworkButton,
+            currentNetwork === 'mainnet' && { backgroundColor: colors.primary }
+          ]}
+          onPress={() => onNetworkChange('mainnet')}
+        >
+          <Text
+            variant="regular"
+            style={[
+              styles.networkButtonText,
+              { color: currentNetwork === 'mainnet' ? '#FFFFFF' : colors.text.primary }
+            ]}
+          >
+            Mainnet
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+};
+
+// Main Debug Screen Content
+const DebugScreenContent: React.FC<{ endpoint: string }> = ({ endpoint }) => {
+  const { colors } = useTheme();
+  const { connection } = useConnection();
+  const { selectedAccount } = useAuthorization();
+  const [balance, setBalance] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState<DebugTab>('Solana');
+
+  const fetchAndUpdateBalance = useCallback(
+    async (account: Account) => {
+      try {
+        const fetchedBalance = await connection.getBalance(account.publicKey);
+        setBalance(fetchedBalance);
+      } catch (error) {
+        console.error('Error fetching balance:', error);
+      }
+    },
+    [connection],
+  );
+
+  useEffect(() => {
+    if (!selectedAccount) {
+      setBalance(null);
+      return;
+    }
+    fetchAndUpdateBalance(selectedAccount);
+  }, [fetchAndUpdateBalance, selectedAccount]);
+
+  const tabOptions: DebugTab[] = ['Solana', 'GLAM'];
+
+  return (
+    <PageWrapper style={styles.pageWrapper}>
+      <Text variant="bold" style={[styles.title, { color: colors.text.primary }]}>
+        Debug
+      </Text>
+
+      <View style={[styles.tabsContainer, { backgroundColor: colors.background.secondary }]}>
+        <View style={styles.tabsWrapper}>
+          {tabOptions.map((tab) => (
+            <TouchableOpacity
+              key={tab}
+              style={[
+                styles.tab,
+                activeTab === tab && styles.activeTab,
+                activeTab === tab && { borderBottomColor: colors.text.primary }
+              ]}
+              onPress={() => setActiveTab(tab)}
+              activeOpacity={0.7}
+            >
+              <Text
+                variant="regular"
+                style={[
+                  styles.tabText,
+                  { color: activeTab === tab ? colors.text.primary : colors.text.tertiary }
+                ]}
+              >
+                {tab}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {activeTab === 'Solana' ? (
+          <>
+            {selectedAccount ? (
+              <>
+                <Section title="Sign a transaction">
+                  <SignTransactionButton />
+                </Section>
+
+                <Section title="Sign a message">
+                  <SignMessageButton />
+                </Section>
+
+                <AccountInfo
+                  selectedAccount={selectedAccount}
+                  balance={balance}
+                  fetchAndUpdateBalance={fetchAndUpdateBalance}
+                />
+              </>
+            ) : (
+              <View style={styles.connectContainer}>
+                <ConnectButton title="Connect wallet" />
+              </View>
+            )}
+
+            <Text variant="regular" style={[styles.clusterInfo, { color: colors.text.secondary }]}>
+              Connected to: {endpoint}
+            </Text>
+          </>
+        ) : (
+          <View style={styles.glamContent}>
+            <Section title="GLAM Integration">
+              <Text variant="regular" style={[styles.placeholderText, { color: colors.text.secondary }]}>
+                GLAM vault integration will be added here.
+              </Text>
+            </Section>
+          </View>
+        )}
+      </ScrollView>
     </PageWrapper>
   );
 };
 
+// Main Debug Screen with Providers
+export const DebugScreen: React.FC = () => {
+  const [currentNetwork, setCurrentNetwork] = useState<NetworkType>('devnet');
+  const [key, setKey] = useState(0); // Force re-mount on network change
+  const endpoint = NETWORK_ENDPOINTS[currentNetwork];
+  const config = { commitment: 'confirmed' as const };
+  
+  const handleNetworkChange = useCallback((network: NetworkType) => {
+    setCurrentNetwork(network);
+    // Force re-mount of providers to trigger re-authorization
+    setKey(prev => prev + 1);
+    alertAndLog('Network Changed', `Switched to ${network}. Please reconnect your wallet.`);
+  }, []);
+  
+  return (
+    <ConnectionProvider key={key} endpoint={endpoint} config={config}>
+      <AuthorizationProvider network={currentNetwork}>
+        <View style={{ flex: 1 }}>
+          <NetworkSwitcher 
+            currentNetwork={currentNetwork} 
+            onNetworkChange={handleNetworkChange} 
+          />
+          <DebugScreenContent endpoint={endpoint} />
+        </View>
+      </AuthorizationProvider>
+    </ConnectionProvider>
+  );
+};
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'stretch',
-    paddingHorizontal: 38, // Match header padding
-    paddingVertical: 20,
-    paddingBottom: 140, // Account for tab bar height + existing padding
+  pageWrapper: {
+    paddingHorizontal: 0,
   },
   title: {
     fontSize: 24,
-    marginBottom: 40,
+    marginBottom: 12,
     textAlign: 'center',
+    marginHorizontal: 20,
+  },
+  tabsContainer: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    marginBottom: 8,
+    borderRadius: 12,
+    marginHorizontal: 20,
+  },
+  tabsWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  tab: {
+    marginRight: 32,
+    paddingBottom: 8,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  activeTab: {
+    borderBottomWidth: 2,
+  },
+  tabText: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+  },
+  section: {
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    marginBottom: 6,
   },
   button: {
-    paddingHorizontal: 19,
-    paddingVertical: 11,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     borderRadius: 8,
-    marginVertical: 10,
     alignItems: 'center',
     backgroundColor: '#3A3A3A',
-    borderWidth: 1,
-    borderColor: '#3A3A3A',
+    marginVertical: 3,
   },
-  buttonOutline: {
-    paddingHorizontal: 19, // Reduced by 1px to account for border
-    paddingVertical: 11, // Reduced by 1px to account for border
-    borderRadius: 8,
-    marginVertical: 10,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#717171',
-    backgroundColor: 'rgba(217, 217, 217, 0.01)',
+  connectButton: {
+    backgroundColor: '#512DA8',
+    marginTop: 20,
   },
-  buttonDisabled: {
-    paddingHorizontal: 19, // Reduced by 1px to account for border
-    paddingVertical: 11, // Reduced by 1px to account for border
-    borderRadius: 8,
-    marginVertical: 10,
-    alignItems: 'center',
+  connectContainer: {
+    marginVertical: 20,
+  },
+  disconnectButton: {
+    backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: '#A8A8A8',
-    backgroundColor: 'rgba(217, 217, 217, 0.01)',
+    borderColor: '#FF0000',
+    paddingVertical: 8,
+  },
+  airdropButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#00FF00',
+    paddingVertical: 8,
   },
   buttonText: {
-    fontSize: 18,
-    textAlign: 'center',
-    lineHeight: 24, // normal line height for 18px font
+    fontSize: 14,
+    color: '#FFFFFF',
   },
-  sheetText: {
-    fontSize: 18,
+  accountInfo: {
+    padding: 12,
+    borderRadius: 12,
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  accountLabel: {
+    fontSize: 12,
+    marginBottom: 2,
+  },
+  accountAddress: {
+    fontSize: 14,
+    marginBottom: 4,
+  },
+  balance: {
+    fontSize: 20,
+    marginBottom: 8,
+  },
+  accountButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  clusterInfo: {
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  glamContent: {
+    flex: 1,
+  },
+  placeholderText: {
+    fontSize: 14,
     textAlign: 'center',
     marginTop: 20,
   },
-  numberInput: {
-    height: 50,
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    fontSize: 16,
+  networkSwitcher: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    marginBottom: 8,
+    borderRadius: 12,
     marginHorizontal: 20,
+  },
+  networkLabel: {
+    fontSize: 12,
+    marginBottom: 8,
+  },
+  networkButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  networkButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#3A3A3A',
+  },
+  activeNetworkButton: {
+    borderWidth: 0,
+  },
+  networkButtonText: {
+    fontSize: 14,
   },
 });
