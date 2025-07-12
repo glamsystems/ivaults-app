@@ -1,291 +1,63 @@
 import { useEffect } from 'react';
+import { Connection } from '@solana/web3.js';
 import { useVaultStore } from '../store/vaultStore';
 import { useActivityStore } from '../store/activityStore';
 import { usePortfolioStore } from '../store/portfolioStore';
+import { VaultDataService } from '../services/vaultDataService';
+import { NetworkType } from '../solana/providers/ConnectionProvider';
+import { DEBUG, DEBUGLOAD, NETWORK, DEVNET_RPC, SOLANA_RPC } from '@env';
 
 export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { setVaults } = useVaultStore();
+  const { setVaults, setIsLoading } = useVaultStore();
   const { setActivities } = useActivityStore();
   const { setPositions, setTotalValue } = usePortfolioStore();
 
   useEffect(() => {
-    // Initialize vaults
-    setVaults([
-      {
-        id: '1',
-        name: 'DeFi Yield Optimizer',
-        symbol: 'DYO',
-        category: 'SuperVault',
-        nav: 1234.56,
-        performance24h: 9.87,
-        gradientColors: ['#FF6B6B', '#4ECDC4'],
-        glam_state: '7EFk3VrWeb29SWJPQs5XEQagPhdRoaKhNhTqUgWPK5Ar',
-        tvl: 4.2,
-        volume24h: 1.8,
-        userCount: 2.3,
-        apy: 12.5,
-        deposits: 456,
-        manager: 'iVaults',
-        baseAsset: 'USDC',
-        capacity: 10000000,
-        inception: '2024-03-15',
-        redemptionWindow: '7 days',
-      },
-      {
-        id: '2',
-        name: 'Solana Staking Pool',
-        symbol: 'SSP',
-        category: 'SuperVault',
-        nav: 1012.19,
-        performance24h: -7.30,
-        gradientColors: ['#667EEA', '#764BA2'],
-        glam_state: '9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM',
-        tvl: 8.9,
-        volume24h: 3.2,
-        userCount: 5.1,
-        apy: -2.5,
-        deposits: 892,
-        manager: 'iVaults',
-        baseAsset: 'USDC',
-        capacity: 10000000,
-        inception: '2024-06-22',
-        redemptionWindow: '14 days',
-      },
-      {
-        id: '3',
-        name: 'Arbitrage Alpha',
-        symbol: 'ARB',
-        category: 'xStocks',
-        nav: 456.78,
-        performance24h: 42.69,
-        gradientColors: ['#F093FB', '#F5576C'],
-        glam_state: 'Ax9ujW5B9oqcv59N8m6f1BpTBq2rGeGaBcpKjC5UYsXU',
-        tvl: 2.1,
-        volume24h: 0.9,
-        userCount: 1.2,
-        apy: 28.9,
-        deposits: 234,
-        manager: 'Alpha Traders',
-        baseAsset: 'USDC',
-        capacity: 10000000,
-        inception: '2024-09-10',
-        redemptionWindow: '3 days',
-      },
-      {
-        id: '4',
-        name: 'Stable Yield',
-        symbol: 'STY',
-        category: 'xStocks',
-        nav: 87.65,
-        performance24h: -1.23,
-        gradientColors: ['#FA709A', '#FEE140'],
-        glam_state: '3Jd2MgumN7Ex7HzNiPpGRpYKdyBGHgPt5SJNjhVjKK6Z',
-        tvl: 15.7,
-        volume24h: 5.4,
-        userCount: 8.9,
-        apy: 5.2,
-        deposits: 1203,
-        manager: 'iVaults',
-        baseAsset: 'USDT',
-        capacity: 10000000,
-        inception: '2024-01-08',
-        redemptionWindow: '7 days',
-        },
-      {
-        id: '5',
-        name: 'Ethereum Growth Fund',
-        symbol: 'EGF',
-        category: 'SuperVault',
-        nav: 2341.78,
-        performance24h: 15.42,
-        gradientColors: ['#4FACFE', '#00F2FE'],
-        glam_state: 'HZ1JovNiVvGrGNiiYvEozEVgZ58xaU3RKwX8eACQBCt3',
-        tvl: 12.4,
-        volume24h: 4.7,
-        userCount: 3.8,
-        apy: 18.3,
-        deposits: 678,
-        manager: 'ETH Capital',
-        baseAsset: 'USDC',
-        capacity: 10000000,
-        inception: '2024-11-29',
-        redemptionWindow: '30 days',
-      },
-      {
-        id: '6',
-        name: 'Tech Giants Index',
-        symbol: 'TGI',
-        category: 'xStocks',
-        nav: 3456.90,
-        performance24h: -3.67,
-        gradientColors: ['#43E97B', '#38F9D7'],
-        glam_state: '5omQJtDUHA3gMFdHEQg1zZSvcBUVzey5WaKWYRmqF1Vj',
-        tvl: 18.3,
-        volume24h: 7.2,
-        userCount: 6.4,
-        apy: 9.8,
-        deposits: 1567,
-        manager: 'TechFund Pro',
-        baseAsset: 'USDC',
-        capacity: 10000000,
-        inception: '2024-07-18',
-        redemptionWindow: '7 days',
-        },
-      {
-        id: '7',
-        name: 'Crypto Blue Chips',
-        symbol: 'CBC',
-        category: 'SuperVault',
-        nav: 5678.34,
-        performance24h: 28.91,
-        gradientColors: ['#FA709A', '#FEE140'],
-        tvl: 22.6,
-        volume24h: 9.8,
-        userCount: 12.3,
-        apy: 35.2,
-        deposits: 2341,
-        manager: 'iVaults',
-        baseAsset: 'USDC',
-        capacity: 10000000,
-        inception: '2025-01-12',
-        redemptionWindow: '7 days',
-      },
-      {
-        id: '8',
-        name: 'Green Energy Portfolio',
-        symbol: 'GEP',
-        category: 'xStocks',
-        nav: 891.23,
-        performance24h: -12.45,
-        gradientColors: ['#30CFD0', '#330867'],
-        tvl: 6.7,
-        volume24h: 2.3,
-        userCount: 3.2,
-        apy: -8.9,
-        deposits: 432,
-        manager: 'Green Invest',
-        baseAsset: 'USDC',
-        capacity: 10000000,
-        inception: '2024-04-25',
-        redemptionWindow: '21 days',
-      },
-      {
-        id: '9',
-        name: 'AI Innovation Fund',
-        symbol: 'AIF',
-        category: 'SuperVault',
-        nav: 4567.89,
-        performance24h: 6.78,
-        gradientColors: ['#A8EDEA', '#FED6E3'],
-        tvl: 9.4,
-        volume24h: 3.9,
-        userCount: 4.7,
-        apy: 14.2,
-        deposits: 891,
-        manager: 'iVaults',
-        baseAsset: 'USDC',
-        capacity: 10000000,
-        inception: '2024-10-03',
-        redemptionWindow: '14 days',
-      },
-      {
-        id: '10',
-        name: 'Emerging Markets Mix',
-        symbol: 'EMM',
-        category: 'xStocks',
-        nav: 234.56,
-        performance24h: -0.89,
-        gradientColors: ['#D299C2', '#FEF9D7'],
-        tvl: 3.8,
-        volume24h: 1.2,
-        userCount: 2.1,
-        apy: 2.3,
-        deposits: 321,
-        manager: 'EM Capital',
-        baseAsset: 'USDC',
-        capacity: 10000000,
-        inception: '2024-02-14',
-        redemptionWindow: '7 days',
-      },
-      {
-        id: '11',
-        name: 'Healthcare Leaders',
-        symbol: 'HCL',
-        category: 'SuperVault',
-        nav: 1789.45,
-        performance24h: 3.21,
-        gradientColors: ['#89F7FE', '#66A6FF'],
-        tvl: 7.9,
-        volume24h: 2.8,
-        userCount: 3.9,
-        apy: 7.6,
-        deposits: 654,
-        manager: 'iVaults',
-        baseAsset: 'USDC',
-        capacity: 10000000,
-        inception: '2024-08-30',
-        redemptionWindow: '7 days',
-      },
-      {
-        id: '12',
-        name: 'Real Estate Trust',
-        symbol: 'RET',
-        category: 'xStocks',
-        nav: 987.65,
-        performance24h: -5.43,
-        gradientColors: ['#FDBB2D', '#22C1C3'],
-        tvl: 14.2,
-        volume24h: 4.3,
-        userCount: 5.6,
-        apy: 4.8,
-        deposits: 987,
-        manager: 'RE Invest',
-        baseAsset: 'USDT',
-        capacity: 10000000,
-        inception: '2024-05-17',
-        redemptionWindow: '5 days',
-      },
-      {
-        id: '13',
-        name: 'Gaming Metaverse',
-        symbol: 'GMV',
-        category: 'SuperVault',
-        nav: 678.90,
-        performance24h: 18.76,
-        gradientColors: ['#E0C3FC', '#8EC5FC'],
-        tvl: 5.3,
-        volume24h: 2.7,
-        userCount: 7.8,
-        apy: 24.5,
-        deposits: 1432,
-        manager: 'iVaults',
-        baseAsset: 'USDC',
-        capacity: 10000000,
-        inception: '2024-12-05',
-        redemptionWindow: '7 days',
-      },
-      {
-        id: '14',
-        name: 'Bond Ladder Strategy',
-        symbol: 'BLS',
-        category: 'xStocks',
-        nav: 1456.78,
-        performance24h: 0.45,
-        gradientColors: ['#FBC2EB', '#A6C1EE'],
-        tvl: 11.7,
-        volume24h: 3.4,
-        userCount: 4.2,
-        apy: 3.9,
-        deposits: 765,
-        manager: 'Bond Pro',
-        baseAsset: 'USDC',
-        capacity: 10000000,
-        inception: '2024-03-28',
-        redemptionWindow: '10 days',
-      },
-    ]);
+    const initializeData = async () => {
+      // Debug environment variables
+      console.log('[DataInitializer] DEBUG:', DEBUG, typeof DEBUG);
+      console.log('[DataInitializer] DEBUGLOAD:', DEBUGLOAD, typeof DEBUGLOAD);
+      
+      // Check if we should show loading state indefinitely for debugging
+      if (DEBUGLOAD === 'true' && DEBUG === 'true') {
+        console.log('[DataInitializer] Debug mode enabled, keeping loading state');
+        setIsLoading(true);
+        // Keep loading state indefinitely when debugging
+        return;
+      }
 
-    // Initialize activities
+      // Set loading true while fetching
+      setIsLoading(true);
+
+      try {
+        // Determine network from environment variable
+        const network: NetworkType = NETWORK === 'devnet' ? 'devnet' : 'mainnet';
+        const rpcEndpoint = network === 'devnet' 
+          ? (DEVNET_RPC || 'https://api.devnet.solana.com')
+          : (SOLANA_RPC || 'https://api.mainnet-beta.solana.com');
+        
+        console.log('[DataInitializer] Using network:', network, 'RPC:', rpcEndpoint);
+        
+        // Create connection for fetching vault data
+        const connection = new Connection(rpcEndpoint);
+        
+        // Fetch real vault data
+        const vaultService = new VaultDataService(connection, network);
+        const { vaults } = await vaultService.fetchVaults();
+        
+        // Set the vaults
+        setVaults(vaults);
+        console.log('[DataInitializer] Vaults loaded:', vaults.length);
+      } catch (error) {
+        console.error('[DataInitializer] Error fetching vaults:', error);
+      } finally {
+        // Always set loading false when done (unless in debug mode)
+        console.log('[DataInitializer] Setting loading to false');
+        setIsLoading(false);
+      }
+    };
+
+    // Initialize activities (static for now)
     setActivities([
       {
         id: '1',
@@ -411,7 +183,10 @@ export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ child
     
     // Calculate total value
     setTotalValue(420.69);
-  }, []);
+
+    // Initialize vault data
+    initializeData();
+  }, [setVaults, setIsLoading, setActivities, setPositions, setTotalValue]);
 
   return <>{children}</>;
 };

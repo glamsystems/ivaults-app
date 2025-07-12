@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View,
   StyleSheet,
@@ -7,16 +7,82 @@ import {
   RefreshControl,
   ScrollView,
   Clipboard,
+  Animated,
 } from 'react-native';
 import { useTheme } from '../theme';
 import { Text } from './common';
 import { useConnection } from '../solana/providers/ConnectionProvider';
 import { NetworkType } from '../solana/providers/ConnectionProvider';
 import { GlamService, GlamVault, GlamServiceResult } from '../services/glamService';
+import { DEBUG, DEBUGLOAD } from '@env';
 
 interface GlamVaultsListProps {
   network: NetworkType;
 }
+
+// Skeleton Row Component
+const SkeletonRow: React.FC<{ colors: any }> = ({ colors }) => {
+  const animatedValue = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(animatedValue, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(animatedValue, {
+          toValue: 0,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, [animatedValue]);
+
+  const opacity = animatedValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.02, 0.1], // 2% to 10% opacity
+  });
+
+  const SkeletonItem = ({ width, height, style }: any) => (
+    <Animated.View 
+      style={[
+        { 
+          width, 
+          height, 
+          backgroundColor: colors.text.primary,
+          borderRadius: 4,
+          opacity,
+        }, 
+        style
+      ]} 
+    />
+  );
+
+  return (
+    <View style={[styles.tableRow, { borderColor: colors.background.tertiary }]}>
+      {/* Name skeleton */}
+      <View style={[styles.tableCell, { flex: 2 }]}>
+        <SkeletonItem width="80%" height={16} />
+      </View>
+      
+      {/* Type skeleton */}
+      <View style={[styles.tableCell, { flex: 1, alignItems: 'center' }]}>
+        <SkeletonItem width="60%" height={16} />
+      </View>
+      
+      {/* Inception date skeleton */}
+      <View style={[styles.tableCell, { flex: 1, alignItems: 'flex-end' }]}>
+        <SkeletonItem width="70%" height={14} />
+      </View>
+      
+      {/* Copy button skeleton */}
+      <SkeletonItem width={40} height={24} style={{ marginLeft: 8, borderRadius: 6 }} />
+    </View>
+  );
+};
 
 export const GlamVaultsList: React.FC<GlamVaultsListProps> = ({ network }) => {
   const { colors } = useTheme();
@@ -73,16 +139,11 @@ export const GlamVaultsList: React.FC<GlamVaultsListProps> = ({ network }) => {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.text.primary} />
-        <Text variant="regular" style={[styles.loadingText, { color: colors.text.secondary }]}>
-          Loading GLAM vaults...
-        </Text>
-      </View>
-    );
-  }
+  // Check if we should show skeletons
+  const showSkeletons = loading || (DEBUGLOAD === 'true' && DEBUG === 'true');
+  
+  // Debug log
+  console.log('[GlamVaultsList] showSkeletons:', showSkeletons, 'loading:', loading, 'DEBUGLOAD:', DEBUGLOAD, 'DEBUG:', DEBUG);
 
   if (error && vaults.length === 0) {
     return (
@@ -129,7 +190,12 @@ export const GlamVaultsList: React.FC<GlamVaultsListProps> = ({ network }) => {
           </Text>
         </View>
         
-        {vaults.length === 0 ? (
+        {showSkeletons ? (
+          // Show 5 skeleton rows
+          Array.from({ length: 5 }).map((_, index) => (
+            <SkeletonRow key={`skeleton-${index}`} colors={colors} />
+          ))
+        ) : vaults.length === 0 ? (
           <View style={[styles.tableRow, { borderColor: colors.background.tertiary }]}>
             <Text 
               variant="regular" 
@@ -189,9 +255,11 @@ export const GlamVaultsList: React.FC<GlamVaultsListProps> = ({ network }) => {
         )}
       </View>
       
-      <Text variant="regular" style={[styles.countText, { color: colors.text.tertiary }]}>
-        {vaults.length} vault{vaults.length !== 1 ? 's' : ''} found
-      </Text>
+      {!showSkeletons && (
+        <Text variant="regular" style={[styles.countText, { color: colors.text.tertiary }]}>
+          {vaults.length} vault{vaults.length !== 1 ? 's' : ''} found
+        </Text>
+      )}
       
       {/* Debug info hidden for now */}
     </ScrollView>

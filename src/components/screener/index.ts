@@ -1,4 +1,6 @@
 export { VaultCard } from './VaultCard';
+export { AnimatedVaultCard } from './AnimatedVaultCard';
+export { SkeletonVaultCard } from './SkeletonVaultCard';
 export { SearchBar } from './SearchBar';
 export { FilterTabs } from './FilterTabs';
 export { FadeOverlay } from './FadeOverlay';

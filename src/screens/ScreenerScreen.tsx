@@ -3,14 +3,17 @@ import { Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../theme';
 import { ScreenLayout } from '../components/layout';
-import { VaultCard, FilterTabs } from '../components/screener';
+import { AnimatedVaultCard, SkeletonVaultCard, FilterTabs } from '../components/screener';
 import { useVaultStore } from '../store/vaultStore';
 
 export const ScreenerScreen: React.FC = () => {
   const { colors } = useTheme();
   const navigation = useNavigation<any>();
-  const { getFilteredVaults, vaults } = useVaultStore();
+  const { getFilteredVaults, vaults, isLoading } = useVaultStore();
   const filteredVaults = getFilteredVaults();
+  
+  // Debug log
+  console.log('[ScreenerScreen] isLoading:', isLoading, 'vaults:', vaults.length, 'filteredVaults:', filteredVaults.length);
 
   const handleVaultPress = (vaultId: string) => {
     const vault = vaults.find(v => v.id === vaultId);
@@ -19,17 +22,27 @@ export const ScreenerScreen: React.FC = () => {
     }
   };
 
+  // Generate skeleton data when loading
+  const skeletonData = isLoading 
+    ? Array.from({ length: 5 }, (_, index) => ({ id: `skeleton-${index}` }))
+    : filteredVaults;
+
   return (
     <ScreenLayout
       type="vault"
-      data={filteredVaults}
+      data={skeletonData}
       keyExtractor={(item) => item.id}
-      renderItem={({ item }) => (
-        <VaultCard
-          vault={item}
-          onPress={() => handleVaultPress(item.id)}
-        />
-      )}
+      renderItem={({ item, index }) => 
+        isLoading ? (
+          <SkeletonVaultCard key={item.id} index={index} />
+        ) : (
+          <AnimatedVaultCard
+            vault={item}
+            onPress={() => handleVaultPress(item.id)}
+            index={index}
+          />
+        )
+      }
       FilterComponent={FilterTabs}
       bottomGradientHeight={Platform.OS === 'ios' ? 200 : 200}
     >

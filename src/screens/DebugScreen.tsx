@@ -26,6 +26,7 @@ import { alertAndLog } from '../solana/utils';
 import { SuccessModal } from '../components/SuccessModal';
 import { useWalletStore } from '../store/walletStore';
 import { GlamVaultsList } from '../components/GlamVaultsList';
+import { NETWORK } from '@env';
 
 // Section Component
 const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => {
@@ -634,7 +635,8 @@ const DebugScreenContent: React.FC<{ endpoint: string; currentNetwork: NetworkTy
 
 // Main Debug Screen with Providers
 export const DebugScreen: React.FC = () => {
-  const [currentNetwork, setCurrentNetwork] = useState<NetworkType>('mainnet');
+  const defaultNetwork: NetworkType = NETWORK === 'devnet' ? 'devnet' : 'mainnet';
+  const [currentNetwork, setCurrentNetwork] = useState<NetworkType>(defaultNetwork);
   const [key, setKey] = useState(0); // Force re-mount on network change
   const endpoint = NETWORK_ENDPOINTS[currentNetwork];
   const config = { commitment: 'confirmed' as const };

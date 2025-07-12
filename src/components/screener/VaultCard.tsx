@@ -14,6 +14,7 @@ interface VaultCardProps {
 
 export const VaultCard: React.FC<VaultCardProps> = ({ vault, onPress }) => {
   const { colors } = useTheme();
+  const isError = vault.id === 'error';
   const performanceColor = vault.performance24h >= 0 ? colors.status.success : colors.status.error;
   const performanceSign = vault.performance24h >= 0 ? '+' : '';
   
@@ -26,7 +27,7 @@ export const VaultCard: React.FC<VaultCardProps> = ({ vault, onPress }) => {
     />
   );
 
-  const rightBottomContent = (
+  const rightBottomContent = !isError ? (
     <View style={styles.priceSection}>
       <Text variant="regular" style={[styles.performance, { color: performanceColor }]}>
         {performanceSign}{vault.performance24h.toFixed(2)}%
@@ -38,16 +39,16 @@ export const VaultCard: React.FC<VaultCardProps> = ({ vault, onPress }) => {
         })}
       </Text>
     </View>
-  );
+  ) : null;
 
   return (
     <ListCard
       leftIcon={icon}
       title={vault.name}
       rightText={vault.symbol}
-      leftBottomText={vault.category}
+      leftBottomText={!isError ? vault.category : undefined}
       rightBottomContent={rightBottomContent}
-      onPress={onPress}
+      onPress={isError ? undefined : onPress}
     />
   );
 };

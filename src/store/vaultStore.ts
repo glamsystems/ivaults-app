@@ -29,9 +29,11 @@ interface VaultStore {
   vaults: Vault[];
   searchQuery: string;
   selectedFilter: 'All' | VaultCategory;
+  isLoading: boolean;
   setVaults: (vaults: Vault[]) => void;
   setSearchQuery: (query: string) => void;
   setSelectedFilter: (filter: 'All' | VaultCategory) => void;
+  setIsLoading: (loading: boolean) => void;
   getFilteredVaults: () => Vault[];
 }
 
@@ -39,10 +41,12 @@ export const useVaultStore = create<VaultStore>((set, get) => ({
   vaults: [],
   searchQuery: '',
   selectedFilter: 'All',
+  isLoading: false,
   
   setVaults: (vaults) => set({ vaults }),
   setSearchQuery: (query) => set({ searchQuery: query }),
   setSelectedFilter: (filter) => set({ selectedFilter: filter }),
+  setIsLoading: (loading) => set({ isLoading: loading }),
   
   getFilteredVaults: () => {
     const { vaults, searchQuery, selectedFilter } = get();

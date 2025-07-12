@@ -5,6 +5,8 @@ import { BorshAccountsCoder } from '@coral-xyz/anchor';
 import glamIdl from '../utils/GLAMbTqav9N9witRjswJ8enwp9vv5G8bsSJ2kPJ4rcyc.json';
 import { Buffer } from 'buffer';
 import { TextDecoder } from 'text-encoding';
+import { unpackMint, ExtensionType, getExtensionData, TOKEN_2022_PROGRAM_ID } from '@solana/spl-token';
+import { unpack } from '@solana/spl-token-metadata';
 
 export interface GlamVault {
   pubkey: string;
@@ -497,10 +499,69 @@ export class GlamService {
             debugInfo.push(`[RPC] Successfully decoded ${decodedCount} StateAccount(s)`);
             debugInfo.push(`[RPC] Skipped ${skippedCount} non-StateAccount or invalid accounts`);
             
-            // Filter to only show Fund type (account type 2)
+            // Fetch mint accounts to get symbols
+            debugInfo.push('[RPC] Fetching mint accounts for symbols...');
+            const mintAddresses = vaults
+              .map(v => v.mintPubkey)
+              .filter((addr): addr is string => !!addr)
+              .map(addr => new PublicKey(addr));
+            
+            if (mintAddresses.length > 0) {
+              try {
+                const mintAccounts = await this.connection.getMultipleAccountsInfo(mintAddresses);
+                
+                mintAccounts.forEach((accountInfo, index) => {
+                  if (accountInfo) {
+                    try {
+                      const mintPubkey = mintAddresses[index];
+                      const mint = unpackMint(mintPubkey, accountInfo, TOKEN_2022_PROGRAM_ID);
+                      
+                      // Extract TokenMetadata extension
+                      const extMetadata = getExtensionData(
+                        ExtensionType.TokenMetadata,
+                        mint.tlvData
+                      );
+                      
+                      if (extMetadata) {
+                        const tokenMetadata = unpack(extMetadata);
+                        const mintAddress = mintPubkey.toBase58();
+                        
+                        // Find the vault with this mint and update its symbol
+                        const vaultIndex = vaults.findIndex(v => v.mintPubkey === mintAddress);
+                        if (vaultIndex !== -1) {
+                          vaults[vaultIndex].symbol = tokenMetadata.symbol || vaults[vaultIndex].symbol;
+                          vaults[vaultIndex].name = tokenMetadata.name || vaults[vaultIndex].name;
+                          
+                          debugInfo.push(`[RPC] Updated vault ${vaults[vaultIndex].name} with symbol: ${tokenMetadata.symbol}`);
+                          console.log(`[GLAM Mint Metadata] ${mintAddress}:`, {
+                            symbol: tokenMetadata.symbol,
+                            name: tokenMetadata.name,
+                            uri: tokenMetadata.uri
+                          });
+                        }
+                      }
+                    } catch (e) {
+                      debugInfo.push(`[RPC] Failed to unpack mint at index ${index}: ${e}`);
+                    }
+                  }
+                });
+              } catch (e) {
+                debugInfo.push(`[RPC] Failed to fetch mint accounts: ${e}`);
+              }
+            }
+            
+            // Log all vault types found
+            const vaultsByType = vaults.reduce((acc, v) => {
+              acc[v.productType] = (acc[v.productType] || 0) + 1;
+              return acc;
+            }, {} as Record<string, number>);
+            
+            console.log('[GLAM Summary] Vault types found:', vaultsByType);
+            
+            // Filter to only show Fund type (account type 2) - relevant for iVaults
             const fundVaults = vaults.filter(v => v.productType === 'Fund');
             
-            // Return the vaults we found
+            // Return the fund vaults
             debugInfo.push(`[RPC] Found ${vaults.length} total vaults, returning ${fundVaults.length} funds`);
             
             // Log summary to console
@@ -513,7 +574,7 @@ export class GlamService {
             })));
             
             return {
-              vaults: fundVaults,
+              vaults: fundVaults, // Return only Fund type vaults
               debugInfo
             };
           } catch (coderError) {
