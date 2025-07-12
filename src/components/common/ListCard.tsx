@@ -76,12 +76,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
+    marginRight: 12, // Add margin to prevent overlap
   },
   title: {
     fontSize: FontSizes.large,
+    flexShrink: 1, // Allow title to shrink if needed
   },
   rightText: {
     fontSize: FontSizes.medium,
+    marginLeft: 8, // Add some spacing
   },
   leftBottomText: {
     fontSize: FontSizes.medium,

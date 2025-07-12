@@ -530,7 +530,7 @@ export class GlamService {
                         const vaultIndex = vaults.findIndex(v => v.mintPubkey === mintAddress);
                         if (vaultIndex !== -1) {
                           vaults[vaultIndex].symbol = tokenMetadata.symbol || vaults[vaultIndex].symbol;
-                          vaults[vaultIndex].name = tokenMetadata.name || vaults[vaultIndex].name;
+                          // Note: We don't update the name from mint metadata as that's the share class name, not the fund name
                           
                           debugInfo.push(`[RPC] Updated vault ${vaults[vaultIndex].name} with symbol: ${tokenMetadata.symbol}`);
                           console.log(`[GLAM Mint Metadata] ${mintAddress}:`, {
