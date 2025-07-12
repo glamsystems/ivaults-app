@@ -25,6 +25,7 @@ import { AuthorizationProvider, useAuthorization, Account } from '../solana/prov
 import { alertAndLog } from '../solana/utils';
 import { SuccessModal } from '../components/SuccessModal';
 import { useWalletStore } from '../store/walletStore';
+import { GlamVaultsList } from '../components/GlamVaultsList';
 
 // Section Component
 const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => {
@@ -519,7 +520,7 @@ const NetworkSwitcher: React.FC<{
 };
 
 // Main Debug Screen Content
-const DebugScreenContent: React.FC<{ endpoint: string }> = ({ endpoint }) => {
+const DebugScreenContent: React.FC<{ endpoint: string; currentNetwork: NetworkType }> = ({ endpoint, currentNetwork }) => {
   const { colors } = useTheme();
   const { connection } = useConnection();
   const { selectedAccount } = useAuthorization();
@@ -621,10 +622,8 @@ const DebugScreenContent: React.FC<{ endpoint: string }> = ({ endpoint }) => {
           </>
         ) : (
           <View style={styles.glamContent}>
-            <Section title="GLAM Integration">
-              <Text variant="regular" style={[styles.placeholderText, { color: colors.text.secondary }]}>
-                GLAM vault integration will be added here.
-              </Text>
+            <Section title="GLAM Vaults">
+              <GlamVaultsList network={currentNetwork} />
             </Section>
           </View>
         )}
@@ -635,7 +634,7 @@ const DebugScreenContent: React.FC<{ endpoint: string }> = ({ endpoint }) => {
 
 // Main Debug Screen with Providers
 export const DebugScreen: React.FC = () => {
-  const [currentNetwork, setCurrentNetwork] = useState<NetworkType>('devnet');
+  const [currentNetwork, setCurrentNetwork] = useState<NetworkType>('mainnet');
   const [key, setKey] = useState(0); // Force re-mount on network change
   const endpoint = NETWORK_ENDPOINTS[currentNetwork];
   const config = { commitment: 'confirmed' as const };
@@ -655,7 +654,7 @@ export const DebugScreen: React.FC = () => {
             currentNetwork={currentNetwork} 
             onNetworkChange={handleNetworkChange} 
           />
-          <DebugScreenContent endpoint={endpoint} />
+          <DebugScreenContent endpoint={endpoint} currentNetwork={currentNetwork} />
         </View>
       </AuthorizationProvider>
     </ConnectionProvider>
