@@ -84,9 +84,17 @@ function mapGlamVaultToVault(glamVault: GlamVault, index: number): Vault {
     capacity: 10000000,
     inception: glamVault.inceptionDate || new Date().toISOString().split('T')[0],
     redemptionWindow: '7 days',
-    // Hurdle rate - mock data for now, will be from GLAM later
-    hurdleRateBps: index % 3 === 0 ? 0 : (index % 3 === 1 ? 500 : 1000), // 0%, 5%, or 10%
-    hurdleRateType: index % 3 === 0 ? null : (index % 2 === 0 ? 'soft' : 'hard'),
+    // Pass through all fee data from GLAM
+    managementFeeBps: glamVault.managementFeeBps || 0,
+    performanceFeeBps: glamVault.performanceFeeBps || 0,
+    vaultSubscriptionFeeBps: glamVault.vaultSubscriptionFeeBps || 0,
+    vaultRedemptionFeeBps: glamVault.vaultRedemptionFeeBps || 0,
+    managerSubscriptionFeeBps: glamVault.managerSubscriptionFeeBps || 0,
+    managerRedemptionFeeBps: glamVault.managerRedemptionFeeBps || 0,
+    protocolBaseFeeBps: glamVault.protocolBaseFeeBps || 0,
+    protocolFlowFeeBps: glamVault.protocolFlowFeeBps || 0,
+    hurdleRateBps: glamVault.hurdleRateBps || 0,
+    hurdleRateType: glamVault.hurdleRateType || null,
   };
 }
 
@@ -99,7 +107,7 @@ export class VaultDataService {
     this.network = network;
   }
   
-  async fetchVaults(): Promise<{ vaults: Vault[], error?: string }> {
+  async fetchVaults(): Promise<{ vaults: Vault[], error?: string, droppedVaults?: Array<{ name: string; glamStatePubkey: string; reason: string }> }> {
     try {
       // Fetch real GLAM data
       const glamService = new GlamService(this.connection, this.network);
@@ -112,7 +120,7 @@ export class VaultDataService {
         );
         
         console.log(`[VaultDataService] Mapped ${vaults.length} GLAM vaults to Vault interface`);
-        return { vaults };
+        return { vaults, droppedVaults: result.droppedVaults };
       } else {
         // If no GLAM vaults found, return error vault
         console.log('[VaultDataService] No GLAM vaults found, returning error vault');
@@ -153,6 +161,14 @@ function createErrorVault(): Vault {
     capacity: 0,
     inception: '',
     redemptionWindow: '',
+    managementFeeBps: 0,
+    performanceFeeBps: 0,
+    vaultSubscriptionFeeBps: 0,
+    vaultRedemptionFeeBps: 0,
+    managerSubscriptionFeeBps: 0,
+    managerRedemptionFeeBps: 0,
+    protocolBaseFeeBps: 0,
+    protocolFlowFeeBps: 0,
     hurdleRateBps: 0,
     hurdleRateType: null,
   };

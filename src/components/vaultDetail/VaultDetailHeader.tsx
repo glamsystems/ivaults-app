@@ -35,7 +35,7 @@ export const VaultDetailHeader: React.FC<VaultDetailHeaderProps> = ({ vault }) =
             Base Asset
           </Text>
           <Text variant="regular" style={[styles.value, { color: colors.text.secondary }]}>
-            <DisplayPubkey pubkey={vault.baseAsset} />
+            <DisplayPubkey pubkey={vault.baseAsset} type="hardcoded" />
           </Text>
         </View>
         <View style={styles.row}>

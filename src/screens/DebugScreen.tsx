@@ -25,6 +25,7 @@ import { AuthorizationProvider, useAuthorization, Account } from '../solana/prov
 import { alertAndLog } from '../solana/utils';
 import { SuccessModal } from '../components/SuccessModal';
 import { useWalletStore } from '../store/walletStore';
+import { useVaultStore } from '../store/vaultStore';
 import { GlamVaultsList } from '../components/GlamVaultsList';
 import { NETWORK } from '@env';
 
@@ -464,7 +465,78 @@ const AccountInfo: React.FC<{
 };
 
 // Tab types
-type DebugTab = 'Solana' | 'GLAM';
+type DebugTab = 'Solana' | 'GLAM' | 'Skipped';
+
+// Skipped Vaults List Component
+const SkippedVaultsList: React.FC = () => {
+  const { colors } = useTheme();
+  const { droppedVaults } = useVaultStore();
+  
+  if (!droppedVaults || droppedVaults.length === 0) {
+    return (
+      <View style={styles.glamContent}>
+        <Section title="Skipped Vaults">
+          <Text variant="regular" style={[styles.emptyText, { color: colors.text.tertiary }]}>
+            No vaults were skipped
+          </Text>
+        </Section>
+      </View>
+    );
+  }
+  
+  return (
+    <View style={styles.glamContent}>
+      <Section title="Skipped Vaults">
+        <View style={[styles.table, { borderColor: colors.background.tertiary }]}>
+          <View style={[styles.tableHeader, { backgroundColor: colors.background.secondary }]}>
+            <Text variant="bold" style={[styles.tableHeaderText, { color: colors.text.primary, flex: 2 }]}>
+              Name
+            </Text>
+            <Text variant="bold" style={[styles.tableHeaderText, { color: colors.text.primary, flex: 2 }]}>
+              GLAM State
+            </Text>
+            <Text variant="bold" style={[styles.tableHeaderText, { color: colors.text.primary, flex: 3 }]}>
+              Reason
+            </Text>
+          </View>
+          
+          {droppedVaults.map((vault, index) => (
+            <View
+              key={vault.glamStatePubkey}
+              style={[styles.tableRow, { borderColor: colors.background.tertiary }]}
+            >
+              <Text 
+                variant="regular" 
+                style={[styles.tableCell, { color: colors.text.primary, flex: 2 }]}
+                numberOfLines={1}
+              >
+                {vault.name}
+              </Text>
+              <Text 
+                variant="regular" 
+                style={[styles.tableCell, { color: colors.text.secondary, flex: 2, fontSize: 12 }]}
+                numberOfLines={1}
+              >
+                {vault.glamStatePubkey.slice(0, 8)}...
+              </Text>
+              <Text 
+                variant="regular" 
+                style={[styles.tableCell, { color: colors.text.tertiary, flex: 3, fontSize: 12 }]}
+                numberOfLines={2}
+              >
+                {vault.reason}
+              </Text>
+            </View>
+          ))}
+        </View>
+        
+        <Text variant="regular" style={[styles.countText, { color: colors.text.tertiary }]}>
+          {droppedVaults.length} vault{droppedVaults.length !== 1 ? 's' : ''} skipped
+        </Text>
+      </Section>
+    </View>
+  );
+};
 
 // Network Switcher Component
 const NetworkSwitcher: React.FC<{
@@ -551,7 +623,7 @@ const DebugScreenContent: React.FC<{ endpoint: string; currentNetwork: NetworkTy
     };
   }, [selectedAccount, connection, startBalancePolling, stopBalancePolling]);
 
-  const tabOptions: DebugTab[] = ['Solana', 'GLAM'];
+  const tabOptions: DebugTab[] = ['Solana', 'GLAM', 'Skipped'];
 
   return (
     <PageWrapper style={styles.pageWrapper}>
@@ -621,12 +693,14 @@ const DebugScreenContent: React.FC<{ endpoint: string; currentNetwork: NetworkTy
               Connected to: {endpoint}
             </Text>
           </>
-        ) : (
+        ) : activeTab === 'GLAM' ? (
           <View style={styles.glamContent}>
             <Section title="GLAM Vaults">
               <GlamVaultsList network={currentNetwork} />
             </Section>
           </View>
+        ) : (
+          <SkippedVaultsList />
         )}
       </ScrollView>
     </PageWrapper>
@@ -772,6 +846,42 @@ const styles = StyleSheet.create({
   },
   glamContent: {
     flex: 1,
+  },
+  table: {
+    borderWidth: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginBottom: 16,
+  },
+  tableHeader: {
+    flexDirection: 'row',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  tableHeaderText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  tableRow: {
+    flexDirection: 'row',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderTopWidth: 1,
+    alignItems: 'center',
+  },
+  tableCell: {
+    fontSize: 14,
+    paddingRight: 8,
+  },
+  emptyText: {
+    fontSize: 14,
+    textAlign: 'center',
+    padding: 20,
+  },
+  countText: {
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 8,
   },
   placeholderText: {
     fontSize: 14,

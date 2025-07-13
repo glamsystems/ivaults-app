@@ -23,6 +23,15 @@ export interface Vault {
   capacity: number; // Vault capacity
   inception: string; // Inception date (YYYY-MM-DD)
   redemptionWindow: string; // Redemption window (e.g., "7 days")
+  // Fee fields (in basis points)
+  managementFeeBps?: number;
+  performanceFeeBps?: number;
+  vaultSubscriptionFeeBps?: number;
+  vaultRedemptionFeeBps?: number;
+  managerSubscriptionFeeBps?: number;
+  managerRedemptionFeeBps?: number;
+  protocolBaseFeeBps?: number;
+  protocolFlowFeeBps?: number;
   // Hurdle rate fields
   hurdleRateBps?: number; // Hurdle rate in basis points
   hurdleRateType?: 'soft' | 'hard' | null; // Type of hurdle rate
@@ -33,10 +42,12 @@ interface VaultStore {
   searchQuery: string;
   selectedFilter: 'All' | VaultCategory;
   isLoading: boolean;
+  droppedVaults?: Array<{ name: string; glamStatePubkey: string; reason: string }>;
   setVaults: (vaults: Vault[]) => void;
   setSearchQuery: (query: string) => void;
   setSelectedFilter: (filter: 'All' | VaultCategory) => void;
   setIsLoading: (loading: boolean) => void;
+  setDroppedVaults: (dropped: Array<{ name: string; glamStatePubkey: string; reason: string }> | undefined) => void;
   getFilteredVaults: () => Vault[];
 }
 
@@ -45,11 +56,13 @@ export const useVaultStore = create<VaultStore>((set, get) => ({
   searchQuery: '',
   selectedFilter: 'All',
   isLoading: false,
+  droppedVaults: undefined,
   
   setVaults: (vaults) => set({ vaults }),
   setSearchQuery: (query) => set({ searchQuery: query }),
   setSelectedFilter: (filter) => set({ selectedFilter: filter }),
   setIsLoading: (loading) => set({ isLoading: loading }),
+  setDroppedVaults: (dropped) => set({ droppedVaults: dropped }),
   
   getFilteredVaults: () => {
     const { vaults, searchQuery, selectedFilter } = get();

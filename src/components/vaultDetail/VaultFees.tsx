@@ -48,17 +48,21 @@ export const VaultFees: React.FC<VaultFeesProps> = ({ vault }) => {
   };
   
   const vaultFees: FeeRow[] = [
-    { label: 'Entry', value: '0.00%' },
-    { label: 'Exit', value: '0.00%' },
+    { label: 'Entry', value: bpsToPercentage(vault.vaultSubscriptionFeeBps) },
+    { label: 'Exit', value: bpsToPercentage(vault.vaultRedemptionFeeBps) },
   ];
 
   const managerFees: FeeRow[] = [
-    { label: 'Entry', value: '0.00%' },
-    { label: 'Exit', value: '0.00%' },
-    { label: 'Management', value: '0.01%' },
-    { label: 'Performance', value: '0.00%' },
+    { label: 'Entry', value: bpsToPercentage(vault.managerSubscriptionFeeBps) },
+    { label: 'Exit', value: bpsToPercentage(vault.managerRedemptionFeeBps) },
+    { label: 'Management', value: bpsToPercentage(vault.managementFeeBps) },
+    { label: 'Performance', value: bpsToPercentage(vault.performanceFeeBps) },
     { label: 'Hurdle Rate', value: formatHurdleRate() },
     { label: 'High-water Mark', value: 'Yes' },
+  ];
+
+  const protocolFees: FeeRow[] = [
+    { label: 'Base', value: bpsToPercentage(vault.protocolBaseFeeBps) },
   ];
   const isZeroFee = (value: string | React.ReactNode): boolean => {
     if (typeof value !== 'string') return false;
@@ -102,6 +106,7 @@ export const VaultFees: React.FC<VaultFeesProps> = ({ vault }) => {
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {renderFeeSection('Vault', vaultFees)}
       {renderFeeSection('Manager', managerFees)}
+      {renderFeeSection('Protocol', protocolFees)}
     </ScrollView>
   );
 };

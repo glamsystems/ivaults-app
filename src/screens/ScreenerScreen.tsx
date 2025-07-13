@@ -9,11 +9,16 @@ import { useVaultStore } from '../store/vaultStore';
 export const ScreenerScreen: React.FC = () => {
   const { colors } = useTheme();
   const navigation = useNavigation<any>();
-  const { getFilteredVaults, vaults, isLoading } = useVaultStore();
+  const { getFilteredVaults, vaults, isLoading, droppedVaults } = useVaultStore();
   const filteredVaults = getFilteredVaults();
   
   // Debug log
-  console.log('[ScreenerScreen] isLoading:', isLoading, 'vaults:', vaults.length, 'filteredVaults:', filteredVaults.length);
+  let logMessage = `[ScreenerScreen] isLoading: ${isLoading}, vaults: ${vaults.length}, filteredVaults: ${filteredVaults.length}`;
+  if (droppedVaults && droppedVaults.length > 0) {
+    const droppedInfo = droppedVaults.map(v => `${v.name} [${v.glamStatePubkey}]`).join(', ');
+    logMessage += `, droppedVaults: ${droppedVaults.length} (${droppedInfo})`;
+  }
+  console.log(logMessage);
 
   const handleVaultPress = (vaultId: string) => {
     const vault = vaults.find(v => v.id === vaultId);

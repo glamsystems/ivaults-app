@@ -41,7 +41,7 @@ export const VaultDetailScreen: React.FC = () => {
     { 
       label: 'TVL', 
       value: vault.tvl.toFixed(1), 
-      unit: DisplayPubkey({ pubkey: vault.baseAsset }), 
+      unit: DisplayPubkey({ pubkey: vault.baseAsset, type: 'hardcoded' }), 
       suffix: 'M' 
     },
     { 
@@ -62,7 +62,7 @@ export const VaultDetailScreen: React.FC = () => {
     { 
       label: 'Capacity', 
       value: formatNumber(vault.capacity, { decimals: 0 }), 
-      unit: DisplayPubkey({ pubkey: vault.baseAsset })
+      unit: DisplayPubkey({ pubkey: vault.baseAsset, type: 'hardcoded' })
     },
     { 
       label: 'Performance', 

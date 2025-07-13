@@ -24,12 +24,22 @@ export interface GlamVault {
   performanceFeeBps?: number;
   minSubscription?: string;
   minRedemption?: string;
+  // Additional fee fields
+  vaultSubscriptionFeeBps?: number;
+  vaultRedemptionFeeBps?: number;
+  managerSubscriptionFeeBps?: number;
+  managerRedemptionFeeBps?: number;
+  protocolBaseFeeBps?: number;
+  protocolFlowFeeBps?: number;
+  hurdleRateBps?: number;
+  hurdleRateType?: 'soft' | 'hard' | null;
 }
 
 export interface GlamServiceResult {
   vaults: GlamVault[];
   debugInfo: string[];
   error?: string;
+  droppedVaults?: Array<{ name: string; glamStatePubkey: string; reason: string }>;
 }
 
 // Map account type numbers to names
@@ -39,27 +49,129 @@ const accountTypeNames: { [key: number]: string } = {
   2: 'Fund'
 };
 
+// Helper functions for Borsh parsing
+function readU8(data: Uint8Array, offset: number): { value: number; offset: number } {
+  if (offset >= data.length) {
+    throw new Error(`readU8: offset ${offset} exceeds data length ${data.length}`);
+  }
+  return { value: data[offset], offset: offset + 1 };
+}
+
+function readU16(data: Uint8Array, offset: number): { value: number; offset: number } {
+  if (offset + 2 > data.length) {
+    throw new Error(`readU16: offset ${offset} + 2 exceeds data length ${data.length}`);
+  }
+  const value = data[offset] | (data[offset + 1] << 8);
+  return { value, offset: offset + 2 };
+}
+
+function readU32(data: Uint8Array, offset: number): { value: number; offset: number } {
+  if (offset + 4 > data.length) {
+    throw new Error(`readU32: offset ${offset} + 4 exceeds data length ${data.length}`);
+  }
+  const value = data[offset] | (data[offset + 1] << 8) | (data[offset + 2] << 16) | (data[offset + 3] << 24);
+  return { value, offset: offset + 4 };
+}
+
+function readU64(data: Uint8Array, offset: number): { value: number; offset: number } {
+  if (offset + 8 > data.length) {
+    throw new Error(`readU64: offset ${offset} + 8 exceeds data length ${data.length}`);
+  }
+  let value = 0;
+  for (let i = 0; i < 8; i++) {
+    value += data[offset + i] * Math.pow(256, i);
+  }
+  return { value, offset: offset + 8 };
+}
+
+function readPubkey(data: Uint8Array, offset: number): { value: PublicKey; offset: number } {
+  if (offset + 32 > data.length) {
+    throw new Error(`readPubkey: offset ${offset} + 32 exceeds data length ${data.length}`);
+  }
+  const pubkey = new PublicKey(data.slice(offset, offset + 32));
+  return { value: pubkey, offset: offset + 32 };
+}
+
+function readString(data: Uint8Array, offset: number): { value: string; offset: number } {
+  const lengthResult = readU32(data, offset);
+  const length = lengthResult.value;
+  offset = lengthResult.offset;
+  
+  if (offset + length > data.length) {
+    throw new Error(`readString: offset ${offset} + length ${length} exceeds data length ${data.length}`);
+  }
+  
+  const decoder = new TextDecoder();
+  const value = decoder.decode(data.slice(offset, offset + length));
+  return { value, offset: offset + length };
+}
+
+function readOption<T>(data: Uint8Array, offset: number, readFn: (data: Uint8Array, offset: number) => { value: T; offset: number }): { value: T | null; offset: number } {
+  if (offset >= data.length) {
+    throw new Error(`readOption: offset ${offset} exceeds data length ${data.length}`);
+  }
+  
+  const hasValue = data[offset] === 1;
+  offset += 1;
+  
+  if (hasValue) {
+    return readFn(data, offset);
+  }
+  
+  return { value: null, offset };
+}
+
+function readVec<T>(data: Uint8Array, offset: number, readFn: (data: Uint8Array, offset: number) => { value: T; offset: number }): { value: T[]; offset: number } {
+  const lengthResult = readU32(data, offset);
+  const length = lengthResult.value;
+  offset = lengthResult.offset;
+  
+  const values: T[] = [];
+  for (let i = 0; i < length; i++) {
+    const result = readFn(data, offset);
+    values.push(result.value);
+    offset = result.offset;
+  }
+  
+  return { value: values, offset };
+}
+
 // Manual decoder for StateAccount
 function decodeStateAccount(data: Uint8Array): any {
-  const decoder = new TextDecoder();
   let offset = 8; // Skip discriminator
+  
+  console.log(`[Decoder] Starting decode with data length: ${data.length}`);
+  
+  // Track partial decode results
+  let partialDecode: any = {
+    _parseProgress: 'started'
+  };
   
   try {
     // First byte after discriminator is account_type (u8)
-    const accountType = data[offset];
-    offset += 1;
+    partialDecode._parseProgress = 'reading account_type';
+    const accountTypeResult = readU8(data, offset);
+    const accountType = accountTypeResult.value;
+    offset = accountTypeResult.offset;
+    partialDecode.account_type = accountType;
+    console.log(`[Decoder] Account type: ${accountType}, offset: ${offset}`);
     
     // Next 32 bytes is owner pubkey
-    const owner = new PublicKey(data.slice(offset, offset + 32));
-    offset += 32;
+    partialDecode._parseProgress = 'reading owner';
+    const ownerResult = readPubkey(data, offset);
+    const owner = ownerResult.value;
+    offset = ownerResult.offset;
+    partialDecode.owner = owner;
     
     // Next 32 bytes is vault pubkey
-    const vault = new PublicKey(data.slice(offset, offset + 32));
-    offset += 32;
+    const vaultResult = readPubkey(data, offset);
+    const vault = vaultResult.value;
+    offset = vaultResult.offset;
     
     // Next byte is enabled (bool)
-    const enabled = data[offset] === 1;
-    offset += 1;
+    const enabledResult = readU8(data, offset);
+    const enabled = enabledResult.value === 1;
+    offset = enabledResult.offset;
     
     // Created field structure: key (8 bytes), created_by (32 bytes pubkey), created_at (i64)
     // Skip key (8 bytes)
@@ -69,148 +181,388 @@ function decodeStateAccount(data: Uint8Array): any {
     offset += 32;
     
     // Read created_at as i64 (8 bytes, little-endian)
-    let createdAt = 0;
-    for (let i = 0; i < 8; i++) {
-      createdAt += data[offset + i] * Math.pow(256, i);
-    }
-    const createdTimestamp = createdAt;
-    offset += 8;
+    const createdAtResult = readU64(data, offset);
+    const createdTimestamp = createdAtResult.value;
+    offset = createdAtResult.offset;
     
     console.log(`[Decoder] Created timestamp: ${createdTimestamp} (${new Date(createdTimestamp * 1000).toISOString()})`);
     
     // Next 32 bytes is engine pubkey
-    const engine = new PublicKey(data.slice(offset, offset + 32));
-    offset += 32;
+    const engineResult = readPubkey(data, offset);
+    const engine = engineResult.value;
+    offset = engineResult.offset;
     
-    // Next is mints vector - 4 bytes for length, then array of 32-byte pubkeys
-    const mintsLength = data[offset] | (data[offset + 1] << 8) | (data[offset + 2] << 16) | (data[offset + 3] << 24);
-    offset += 4;
+    // Next is mints vector
+    partialDecode._parseProgress = 'reading mints vector';
+    const mintsResult = readVec(data, offset, readPubkey);
+    const mints = mintsResult.value;
+    offset = mintsResult.offset;
+    partialDecode.mints = mints;
+    console.log(`[Decoder] Found ${mints.length} mints`);
     
-    const mints: PublicKey[] = [];
-    for (let i = 0; i < mintsLength && offset + 32 <= data.length; i++) {
+    // Parse metadata (Option<Metadata>)
+    partialDecode._parseProgress = 'reading metadata';
+    function readMetadata(data: Uint8Array, offset: number): { value: any; offset: number } {
+      console.log(`[Decoder] Reading metadata at offset ${offset}`);
+      
+      // Check if Option is Some (1) or None (0)
+      const hasMetadata = data[offset] === 1;
+      offset += 1;
+      
+      if (hasMetadata) {
+        // Metadata structure: template (enum), pubkey, uri (string)
+        const templateResult = readU8(data, offset); // Template enum
+        offset = templateResult.offset;
+        
+        const pubkeyResult = readPubkey(data, offset);
+        offset = pubkeyResult.offset;
+        
+        const uriResult = readString(data, offset);
+        offset = uriResult.offset;
+        
+        console.log(`[Decoder] Metadata - template: ${templateResult.value}, uri: "${uriResult.value}"`);
+        return { value: { template: templateResult.value, pubkey: pubkeyResult.value, uri: uriResult.value }, offset };
+      } else {
+        console.log(`[Decoder] No metadata present`);
+        return { value: null, offset };
+      }
+    }
+    
+    const metadataResult = readMetadata(data, offset);
+    offset = metadataResult.offset;
+    
+    // Parse name (String)
+    partialDecode._parseProgress = 'reading name';
+    const nameResult = readString(data, offset);
+    const name = nameResult.value;
+    offset = nameResult.offset;
+    partialDecode.name = name;
+    console.log(`[Decoder] Name: "${name}"`);
+    
+    // Parse uri (String)
+    const uriResult = readString(data, offset);
+    const uri = uriResult.value;
+    offset = uriResult.offset;
+    console.log(`[Decoder] URI: "${uri}"`);
+    
+    // Parse assets (Vec<Pubkey>)
+    const assetsResult = readVec(data, offset, readPubkey);
+    const assets = assetsResult.value;
+    offset = assetsResult.offset;
+    console.log(`[Decoder] Found ${assets.length} assets`);
+    
+    // Parse delegate_acls (Vec<DelegateAcl>)
+    function readDelegateAcl(data: Uint8Array, offset: number): { value: any; offset: number } {
+      // DelegateAcl structure: pubkey, permissions (Vec<Permission>), expires_at
+      const pubkeyResult = readPubkey(data, offset);
+      offset = pubkeyResult.offset;
+      
+      // Skip permissions for now (it's a Vec of enums)
+      const permissionsLengthResult = readU32(data, offset);
+      offset = permissionsLengthResult.offset;
+      // Each permission is 1 byte enum + optional data
+      for (let i = 0; i < permissionsLengthResult.value; i++) {
+        offset += 1; // Skip each permission enum
+      }
+      
+      // Read expires_at (i64)
+      const expiresAtResult = readU64(data, offset);
+      offset = expiresAtResult.offset;
+      
+      return { value: { pubkey: pubkeyResult.value, expires_at: expiresAtResult.value }, offset };
+    }
+    
+    const delegateAclsResult = readVec(data, offset, readDelegateAcl);
+    offset = delegateAclsResult.offset;
+    console.log(`[Decoder] Found ${delegateAclsResult.value.length} delegate ACLs`);
+    
+    // Parse integrations (Vec<Integration>)
+    function readIntegration(data: Uint8Array, offset: number): { value: number; offset: number } {
+      // Integration is just an enum (1 byte)
+      return readU8(data, offset);
+    }
+    
+    const integrationsResult = readVec(data, offset, readIntegration);
+    offset = integrationsResult.offset;
+    console.log(`[Decoder] Found ${integrationsResult.value.length} integrations`);
+    
+    // Parse params (Vec<Vec<EngineField>>)
+    // This is where the fees are stored!
+    function readEngineField(data: Uint8Array, offset: number): { value: any; offset: number } {
       try {
-        const mint = new PublicKey(data.slice(offset, offset + 32));
-        mints.push(mint);
-        offset += 32;
+        // EngineField structure: name (EngineFieldName enum), value (EngineFieldValue enum + data)
+        const nameResult = readU8(data, offset); // EngineFieldName is an enum
+        offset = nameResult.offset;
+        
+        // Read EngineFieldValue
+        const valueTypeResult = readU8(data, offset); // EngineFieldValue variant
+        offset = valueTypeResult.offset;
+        
+        console.log(`[Decoder] EngineField - name: ${nameResult.value}, valueType: ${valueTypeResult.value}, offset: ${offset}/${data.length}`);
+        
+        let value: any = null;
+        
+        // Parse based on the value type from the EngineFieldValue enum
+        switch (valueTypeResult.value) {
+        case 0: // Boolean
+          const boolResult = readU8(data, offset);
+          value = boolResult.value === 1;
+          offset = boolResult.offset;
+          break;
+          
+        case 1: // Date (string)
+        case 2: // Double (i64)
+        case 3: // Integer (i32)
+        case 4: // String
+        case 5: // Time (string)
+        case 10: // URI (string)
+          // Skip these for now
+          if (valueTypeResult.value === 2) {
+            offset += 8; // i64
+          } else if (valueTypeResult.value === 3) {
+            offset += 4; // i32
+          } else {
+            // String types
+            const strResult = readString(data, offset);
+            offset = strResult.offset;
+          }
+          break;
+          
+        case 6: // U8
+          const u8Result = readU8(data, offset);
+          value = u8Result.value;
+          offset = u8Result.offset;
+          break;
+          
+        case 7: // U64
+          const u64Result = readU64(data, offset);
+          value = u64Result.value;
+          offset = u64Result.offset;
+          break;
+          
+        case 8: // Pubkey
+          const pubkeyResult = readPubkey(data, offset);
+          value = pubkeyResult.value;
+          offset = pubkeyResult.offset;
+          break;
+          
+        case 12: // VecPubkey
+          const vecPubkeyResult = readVec(data, offset, readPubkey);
+          value = vecPubkeyResult.value;
+          offset = vecPubkeyResult.offset;
+          break;
+          
+        case 14: // VecPricedAssets
+          // Parse VecPricedAssets properly
+          const vecLengthResult = readU32(data, offset);
+          offset = vecLengthResult.offset;
+          console.log(`[Decoder] Reading ${vecLengthResult.value} PricedAssets`);
+          
+          // Skip the actual data
+          for (let i = 0; i < vecLengthResult.value; i++) {
+            // Each PricedAsset has: denom (1 byte), accounts (Vec<Pubkey>), rent (u64), amount (i128), decimals (u8), last_updated_slot (u64), integration (Option<u8>)
+            offset += 1; // denom enum
+            
+            // accounts: Vec<Pubkey>
+            const accountsLenResult = readU32(data, offset);
+            offset = accountsLenResult.offset;
+            offset += accountsLenResult.value * 32; // skip pubkeys
+            
+            offset += 8; // rent (u64)
+            offset += 16; // amount (i128)
+            offset += 1; // decimals (u8)
+            offset += 8; // last_updated_slot (u64)
+            
+            // integration: Option<Integration>
+            const hasIntegration = data[offset] === 1;
+            offset += 1;
+            if (hasIntegration) {
+              offset += 1; // Integration enum
+            }
+          }
+          break;
+          
+        case 15: // Ledger
+          // Skip for now
+          const ledgerLengthResult = readU32(data, offset);
+          offset = ledgerLengthResult.offset;
+          // Skip ledger entries
+          offset += ledgerLengthResult.value * 100; // Rough estimate
+          break;
+          
+        case 16: // FeeStructure
+          console.log(`[Decoder] Found FeeStructure at offset ${offset}`);
+          
+          // Parse FeeStructure
+          // vault: EntryExitFees
+          const vaultSubscriptionResult = readU16(data, offset);
+          offset = vaultSubscriptionResult.offset;
+          const vaultRedemptionResult = readU16(data, offset);
+          offset = vaultRedemptionResult.offset;
+          
+          // manager: EntryExitFees
+          const managerSubscriptionResult = readU16(data, offset);
+          offset = managerSubscriptionResult.offset;
+          const managerRedemptionResult = readU16(data, offset);
+          offset = managerRedemptionResult.offset;
+          
+          // management: ManagementFee
+          const managementFeeResult = readU16(data, offset);
+          offset = managementFeeResult.offset;
+          
+          // performance: PerformanceFee
+          const performanceFeeResult = readU16(data, offset);
+          offset = performanceFeeResult.offset;
+          const hurdleRateResult = readU16(data, offset);
+          offset = hurdleRateResult.offset;
+          const hurdleTypeResult = readU8(data, offset); // 0 = Hard, 1 = Soft
+          offset = hurdleTypeResult.offset;
+          
+          // protocol: ProtocolFees
+          const protocolBaseFeeResult = readU16(data, offset);
+          offset = protocolBaseFeeResult.offset;
+          const protocolFlowFeeResult = readU16(data, offset);
+          offset = protocolFlowFeeResult.offset;
+          
+          value = {
+            vault: {
+              subscription_fee_bps: vaultSubscriptionResult.value,
+              redemption_fee_bps: vaultRedemptionResult.value
+            },
+            manager: {
+              subscription_fee_bps: managerSubscriptionResult.value,
+              redemption_fee_bps: managerRedemptionResult.value,
+              management_fee_bps: managementFeeResult.value,
+              performance_fee_bps: performanceFeeResult.value
+            },
+            hurdle: {
+              rate_bps: hurdleRateResult.value,
+              type: hurdleTypeResult.value === 0 ? 'hard' : 'soft'
+            },
+            protocol: {
+              base_fee_bps: protocolBaseFeeResult.value,
+              flow_fee_bps: protocolFlowFeeResult.value
+            }
+          };
+          
+          console.log(`[Decoder] Parsed FeeStructure:`, value);
+          break;
+          
+        case 17: // FeeParams
+          // Skip for now
+          offset += 4; // year_in_seconds
+          offset += 16; // pa_high_water_mark (i128)
+          offset += 16; // pa_last_nav (i128)
+          offset += 16; // last_aum (i128)
+          offset += 8; // last_performance_fee_crystallized
+          offset += 8; // last_management_fee_crystallized
+          offset += 8; // last_protocol_fee_crystallized
+          break;
+          
+        case 18: // AccruedFees
+          // Skip for now - 8 u128 values
+          offset += 8 * 16;
+          break;
+          
+        case 19: // NotifyAndSettle
+          // Skip for now
+          offset += 1; // model
+          offset += 8; // notice_period
+          offset += 1; // notice_period_type
+          offset += 1; // permissionless_fulfillment
+          offset += 8; // settlement_period
+          offset += 8; // cancellation_window
+          offset += 1; // _padding
+          break;
+          
+        case 22: // TimeUnit
+          const timeUnitResult = readU8(data, offset);
+          value = timeUnitResult.value === 0 ? 'Second' : 'Slot';
+          offset = timeUnitResult.offset;
+          break;
+          
+        default:
+          console.log(`[Decoder] Unknown EngineFieldValue variant ${valueTypeResult.value}, attempting to continue`);
+          // Try to continue by skipping a reasonable amount
+          offset += 8;
+      }
+      
+      return { value: { name: nameResult.value, value }, offset };
       } catch (e) {
-        break;
+        console.log(`[Decoder] Error reading EngineField at offset ${offset}: ${e}`);
+        throw e;
       }
     }
     
-    // After mints, we have:
-    // - metadata (Option<Metadata>)
-    // - name (String)
-    // - uri (String)
-    // - assets (Vec<Pubkey>)
-    // - delegate_acls (Vec<DelegateAcl>)
-    // - integrations (Vec<Integration>)
-    // - params (Vec<Vec<EngineField>>)
-    
-    // Skip to find the name string (it's after metadata option)
-    // For now, let's search for strings to find name
-    const metadata: { [key: string]: string } = {};
-    const strings: string[] = [];
-    
-    // Log some bytes to help debug string locations
-    console.log(`[Decoder] Sample bytes at offset ${offset}: ${Array.from(data.slice(offset, offset + 20)).join(', ')}`);
-    
-    // Search for readable strings in the data
-    for (let i = offset; i < data.length - 10; i++) {
-      // Look for string length indicators (4 bytes for Vec length)
-      if (i + 4 < data.length) {
-        const strLen = data[i] | (data[i + 1] << 8) | (data[i + 2] << 16) | (data[i + 3] << 24);
-        if (strLen > 0 && strLen < 200 && i + 4 + strLen <= data.length) {
-          const possibleStr = data.slice(i + 4, i + 4 + strLen);
-          try {
-            const decoded = decoder.decode(possibleStr);
-            // Check if it's a valid string with only printable characters
-            if (/^[\x20-\x7E]+$/.test(decoded) && decoded.length >= 1) {
-              strings.push(decoded);
-              console.log(`[Decoder] Found string at offset ${i}: "${decoded}" (len: ${strLen})`);
-              i += 3 + strLen; // Skip ahead
-            }
-          } catch (e) {
-            // Not a valid string, continue
-          }
-        }
-      }
-      
-      // Also check for short strings (1 byte length)
-      const shortLen = data[i];
-      if (shortLen > 0 && shortLen < 50 && i + 1 + shortLen <= data.length) {
-        const possibleStr = data.slice(i + 1, i + 1 + shortLen);
-        try {
-          const decoded = decoder.decode(possibleStr);
-          if (/^[\x20-\x7E]+$/.test(decoded) && decoded.length >= 1) {
-            if (!strings.includes(decoded)) {
-              strings.push(decoded);
-              console.log(`[Decoder] Found short string at offset ${i}: "${decoded}" (len: ${shortLen})`);
-            }
-            i += shortLen; // Skip ahead
-          }
-        } catch (e) {
-          // Not a valid string, continue
-        }
-      }
+    let params: any[] = [];
+    try {
+      const paramsResult = readVec(data, offset, (data, offset) => {
+        return readVec(data, offset, readEngineField);
+      });
+      params = paramsResult.value;
+      offset = paramsResult.offset;
+      console.log(`[Decoder] Found ${params.length} param groups`);
+    } catch (e) {
+      console.log(`[Decoder] Error parsing params at offset ${offset}: ${e}`);
+      console.log(`[Decoder] Continuing without params data`);
     }
     
-    // Try to identify metadata from found strings
-    let name = 'Unnamed Vault';
-    let symbol = '';
-    let description = '';
-    
-    console.log(`[Decoder] Found ${strings.length} strings total`);
-    
-    // Look for specific patterns
-    for (let i = 0; i < strings.length; i++) {
-      const str = strings[i];
-      
-      // Likely a name if it's capitalized or has spaces
-      if (!name || name === 'Unnamed Vault') {
-        if (/^[A-Z]/.test(str) || str.includes(' ')) {
-          name = str;
-        }
-      }
-      
-      // Symbol is usually short, uppercase, and may include numbers
-      if (!symbol && str.length >= 2 && str.length <= 10 && /^[A-Z0-9]+$/.test(str)) {
-        symbol = str;
-      }
-      
-      // Also check if a string looks like a ticker symbol (e.g., "SOL", "USDC")
-      if (!symbol && str.length >= 2 && str.length <= 6 && /^[A-Z]{2,6}$/.test(str)) {
-        symbol = str;
-      }
-      
-      // Longer strings might be descriptions
-      if (!description && str.length > 20) {
-        description = str;
-      }
-      
-      // Store all found strings
-      metadata[`string_${i}`] = str;
-    }
-    
-    // Try to find params data by looking for known patterns
+    // Extract fees from params array
     let baseAsset = '';
     let managementFeeBps = 0;
     let performanceFeeBps = 0;
-    let minSubscription = '';
-    let minRedemption = '';
+    let vaultSubscriptionFeeBps = 0;
+    let vaultRedemptionFeeBps = 0;
+    let managerSubscriptionFeeBps = 0;
+    let managerRedemptionFeeBps = 0;
+    let protocolBaseFeeBps = 0;
+    let protocolFlowFeeBps = 0;
+    let hurdleRateBps = 0;
+    let hurdleRateType: 'soft' | 'hard' | null = null;
     
-    // Look for USDC pubkey as base asset
-    const usdcMainnet = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
-    const usdcDevnet = '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU';
+    // Look for base asset in params[0]
+    if (params.length > 0 && params[0].length > 0) {
+      const baseAssetField = params[0].find((field: any) => field.name === 0); // BaseAsset enum value
+      if (baseAssetField && baseAssetField.value) {
+        baseAsset = baseAssetField.value.toBase58();
+        console.log(`[Decoder] Found base asset: ${baseAsset}`);
+      }
+    }
     
-    // Search for these pubkeys in the data
-    for (let i = offset; i < data.length - 32; i++) {
-      const possiblePubkey = new PublicKey(data.slice(i, i + 32));
-      const pubkeyStr = possiblePubkey.toBase58();
-      
-      if (pubkeyStr === usdcMainnet || pubkeyStr === usdcDevnet) {
-        baseAsset = pubkeyStr;
-        console.log(`[Decoder] Found base asset at offset ${i}: ${baseAsset}`);
-        break;
+    // Look for FeeStructure in params[1]
+    if (params.length > 1) {
+      console.log(`[Decoder] Checking params[1] with ${params[1].length} fields`);
+      for (let i = 0; i < params[1].length; i++) {
+        const field = params[1][i];
+        console.log(`[Decoder] params[1][${i}] - name: ${field.name}, has value: ${!!field.value}`);
+        
+        // FeeStructure is at name enum value 16
+        if (field.name === 16 && field.value) {
+          const fees = field.value;
+          console.log(`[Decoder] Found FeeStructure at params[1][${i}]`);
+          
+          // Extract all fee values
+          vaultSubscriptionFeeBps = fees.vault?.subscription_fee_bps || 0;
+          vaultRedemptionFeeBps = fees.vault?.redemption_fee_bps || 0;
+          managerSubscriptionFeeBps = fees.manager?.subscription_fee_bps || 0;
+          managerRedemptionFeeBps = fees.manager?.redemption_fee_bps || 0;
+          managementFeeBps = fees.manager?.management_fee_bps || 0;
+          performanceFeeBps = fees.manager?.performance_fee_bps || 0;
+          hurdleRateBps = fees.hurdle?.rate_bps || 0;
+          hurdleRateType = fees.hurdle?.type || null;
+          protocolBaseFeeBps = fees.protocol?.base_fee_bps || 0;
+          protocolFlowFeeBps = fees.protocol?.flow_fee_bps || 0;
+          
+          console.log(`[Decoder] Extracted fees from FeeStructure:`);
+          console.log(`  - Vault: subscription=${vaultSubscriptionFeeBps}, redemption=${vaultRedemptionFeeBps}`);
+          console.log(`  - Manager: subscription=${managerSubscriptionFeeBps}, redemption=${managerRedemptionFeeBps}`);
+          console.log(`  - Management: ${managementFeeBps}`);
+          console.log(`  - Performance: ${performanceFeeBps}`);
+          console.log(`  - Hurdle: rate=${hurdleRateBps}, type=${hurdleRateType}`);
+          console.log(`  - Protocol: base=${protocolBaseFeeBps}, flow=${protocolFlowFeeBps}`);
+          
+          break;
+        }
       }
     }
     
@@ -222,19 +574,34 @@ function decodeStateAccount(data: Uint8Array): any {
       engine,
       mints,
       name,
-      symbol,
-      description,
+      uri,
+      assets,
       createdTimestamp,
-      metadata,
-      allStrings: strings,
       baseAsset,
       managementFeeBps,
       performanceFeeBps,
-      minSubscription,
-      minRedemption
+      vaultSubscriptionFeeBps,
+      vaultRedemptionFeeBps,
+      managerSubscriptionFeeBps,
+      managerRedemptionFeeBps,
+      protocolBaseFeeBps,
+      protocolFlowFeeBps,
+      hurdleRateBps,
+      hurdleRateType,
+      params
     };
   } catch (e) {
-    return null;
+    const error = e instanceof Error ? e.message : String(e);
+    console.log(`[Decoder] Failed to decode StateAccount at stage '${partialDecode._parseProgress}':`, error);
+    console.log(`[Decoder] Partial decode results:`, {
+      progress: partialDecode._parseProgress,
+      name: partialDecode.name || 'not parsed yet',
+      owner: partialDecode.owner ? partialDecode.owner.toBase58() : 'not parsed yet',
+      mints: partialDecode.mints ? partialDecode.mints.length : 'not parsed yet',
+      account_type: partialDecode.account_type || 'not parsed yet'
+    });
+    // Return null but attach partial decode for error tracking
+    return { _error: true, _partial: partialDecode, _errorMessage: error };
   }
 }
 
@@ -373,6 +740,9 @@ export class GlamService {
             
             debugInfo.push('[RPC] Now attempting to decode StateAccount accounts...');
             
+            // Track vaults that fail to decode
+            const droppedVaults: Array<{ name: string; glamStatePubkey: string; reason: string }> = [];
+            
             // Try to find and decode the StateAccount
             let stateAccountIndex = -1;
             for (let i = 0; i < accounts.length; i++) {
@@ -394,7 +764,7 @@ export class GlamService {
                     // Use manual decoder instead of Anchor's coder
                     const decoded = decodeStateAccount(data);
                     
-                    if (decoded) {
+                    if (decoded && !decoded._error) {
                       decodedCount++;
                       debugInfo.push(`[RPC] Successfully decoded StateAccount:`);
                       debugInfo.push(`  - Name: ${decoded.name || 'No name'}`);
@@ -404,17 +774,15 @@ export class GlamService {
                       debugInfo.push(`  - Enabled: ${decoded.enabled}`);
                       debugInfo.push(`  - Account Type: ${decoded.account_type}`);
                       debugInfo.push(`  - Engine: ${decoded.engine ? decoded.engine.toBase58() : 'No engine'}`);
-                      debugInfo.push(`  - Mints: ${decoded.mints ? decoded.mints.length : 0}`);
+                      debugInfo.push(`  - Mints: ${decoded.mints && Array.isArray(decoded.mints) ? decoded.mints.length : 0}`);
                       try {
                         const timestamp = new Date(decoded.createdTimestamp * 1000);
                         debugInfo.push(`  - Created Timestamp: ${timestamp.toISOString()}`);
                       } catch (e) {
                         debugInfo.push(`  - Created Timestamp: Invalid (${decoded.createdTimestamp})`);
                       }
-                      debugInfo.push(`  - Strings found: ${decoded.allStrings.length}`);
-                      if (decoded.allStrings.length > 0) {
-                        debugInfo.push(`  - First strings: ${decoded.allStrings.slice(0, 3).join(', ')}`);
-                      }
+                      debugInfo.push(`  - Base asset: ${decoded.baseAsset || 'Not found'}`);
+                      debugInfo.push(`  - Params groups: ${decoded.params ? decoded.params.length : 0}`);
                       
                       let inceptionDate = 'N/A';
                       try {
@@ -442,22 +810,30 @@ export class GlamService {
                         console.log(`[Vault] Error parsing date:`, e);
                       }
                       
-                      const vaultData = {
+                      const vaultData: GlamVault = {
                         pubkey: account.pubkey.toBase58(),
                         name: decoded.name || `Vault ${vaults.length + 1}`,
-                        symbol: decoded.symbol || '',
+                        symbol: '', // Will be updated from mint metadata
                         productType: accountTypeNames[decoded.account_type] || `Type ${decoded.account_type}`,
                         launchDate: inceptionDate, // Using inception date for launchDate
                         inceptionDate: inceptionDate,
                         manager: decoded.owner ? decoded.owner.toBase58() : 'Unknown',
                         glamStatePubkey: account.pubkey.toBase58(), // The StateAccount itself
                         vaultPubkey: decoded.vault ? decoded.vault.toBase58() : undefined,
-                        mintPubkey: decoded.mints && decoded.mints.length > 0 ? decoded.mints[0].toBase58() : undefined,
+                        mintPubkey: (decoded.mints && Array.isArray(decoded.mints) && decoded.mints.length > 0 && decoded.mints[0]) ? decoded.mints[0].toBase58() : undefined,
                         baseAsset: decoded.baseAsset || undefined,
                         managementFeeBps: decoded.managementFeeBps || 0,
                         performanceFeeBps: decoded.performanceFeeBps || 0,
-                        minSubscription: decoded.minSubscription || undefined,
-                        minRedemption: decoded.minRedemption || undefined
+                        vaultSubscriptionFeeBps: decoded.vaultSubscriptionFeeBps || 0,
+                        vaultRedemptionFeeBps: decoded.vaultRedemptionFeeBps || 0,
+                        managerSubscriptionFeeBps: decoded.managerSubscriptionFeeBps || 0,
+                        managerRedemptionFeeBps: decoded.managerRedemptionFeeBps || 0,
+                        protocolBaseFeeBps: decoded.protocolBaseFeeBps || 0,
+                        protocolFlowFeeBps: decoded.protocolFlowFeeBps || 0,
+                        hurdleRateBps: decoded.hurdleRateBps || 0,
+                        hurdleRateType: decoded.hurdleRateType || null,
+                        minSubscription: undefined,
+                        minRedemption: undefined
                       };
                       
                       // Log parsed vault data to console
@@ -472,8 +848,24 @@ export class GlamService {
                         owner: vaultData.manager,
                         baseAsset: vaultData.baseAsset,
                         fees: {
-                          management: vaultData.managementFeeBps,
-                          performance: vaultData.performanceFeeBps
+                          vault: {
+                            subscription: vaultData.vaultSubscriptionFeeBps,
+                            redemption: vaultData.vaultRedemptionFeeBps
+                          },
+                          manager: {
+                            subscription: vaultData.managerSubscriptionFeeBps,
+                            redemption: vaultData.managerRedemptionFeeBps,
+                            management: vaultData.managementFeeBps,
+                            performance: vaultData.performanceFeeBps
+                          },
+                          protocol: {
+                            base: vaultData.protocolBaseFeeBps,
+                            flow: vaultData.protocolFlowFeeBps
+                          },
+                          hurdle: {
+                            rate: vaultData.hurdleRateBps,
+                            type: vaultData.hurdleRateType
+                          }
                         },
                         minimums: {
                           subscription: vaultData.minSubscription,
@@ -482,10 +874,24 @@ export class GlamService {
                       });
                       
                       vaults.push(vaultData);
+                    } else if (decoded && decoded._error) {
+                      // decoded with error - use partial data
+                      const partial = decoded._partial || {};
+                      droppedVaults.push({
+                        name: partial.name || `Unknown (failed at: ${partial._parseProgress})`,
+                        glamStatePubkey: account.pubkey.toBase58(),
+                        reason: `Decode failed at '${partial._parseProgress}': ${decoded._errorMessage}`
+                      });
                     }
                   } catch (decodeErr) {
                     const errMsg = decodeErr instanceof Error ? decodeErr.message : String(decodeErr);
                     debugInfo.push(`[RPC] Failed to decode StateAccount: ${errMsg}`);
+                    // Track the dropped vault
+                    droppedVaults.push({
+                      name: 'Unknown (decode error)',
+                      glamStatePubkey: account.pubkey.toBase58(),
+                      reason: errMsg
+                    });
                   }
                 } else {
                   skippedCount++;
@@ -559,10 +965,18 @@ export class GlamService {
             console.log('[GLAM Summary] Vault types found:', vaultsByType);
             
             // Filter to only show Fund type (account type 2) with mints - relevant for iVaults
-            const fundVaults = vaults.filter(v => 
-              v.productType === 'Fund' && 
-              v.mintPubkey // Only include vaults that have a mint
-            );
+            const fundVaults = vaults.filter(v => {
+              // Check if it's a Fund type
+              if (v.productType !== 'Fund') return false;
+              
+              // Check if it has a valid mint
+              if (!v.mintPubkey) {
+                console.log(`[GLAM] Skipping fund without mint: ${v.name}`);
+                return false;
+              }
+              
+              return true;
+            });
             
             // Return the fund vaults
             debugInfo.push(`[RPC] Found ${vaults.length} total vaults, returning ${fundVaults.length} funds`);
@@ -578,7 +992,8 @@ export class GlamService {
             
             return {
               vaults: fundVaults, // Return only Fund type vaults
-              debugInfo
+              debugInfo,
+              droppedVaults
             };
           } catch (coderError) {
             const errorMsg = coderError instanceof Error ? coderError.message : String(coderError);

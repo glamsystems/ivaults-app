@@ -8,7 +8,7 @@ import { NetworkType } from '../solana/providers/ConnectionProvider';
 import { DEBUG, DEBUGLOAD, NETWORK, DEVNET_RPC, SOLANA_RPC } from '@env';
 
 export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { setVaults, setIsLoading } = useVaultStore();
+  const { setVaults, setIsLoading, setDroppedVaults } = useVaultStore();
   const { setActivities } = useActivityStore();
   const { setPositions, setTotalValue } = usePortfolioStore();
 
@@ -43,11 +43,15 @@ export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ child
         
         // Fetch real vault data
         const vaultService = new VaultDataService(connection, network);
-        const { vaults } = await vaultService.fetchVaults();
+        const { vaults, droppedVaults } = await vaultService.fetchVaults();
         
-        // Set the vaults
+        // Set the vaults and dropped vaults
         setVaults(vaults);
+        setDroppedVaults(droppedVaults);
         console.log('[DataInitializer] Vaults loaded:', vaults.length);
+        if (droppedVaults && droppedVaults.length > 0) {
+          console.log('[DataInitializer] Dropped vaults:', droppedVaults);
+        }
       } catch (error) {
         console.error('[DataInitializer] Error fetching vaults:', error);
       } finally {
