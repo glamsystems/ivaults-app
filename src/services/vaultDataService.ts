@@ -84,6 +84,9 @@ function mapGlamVaultToVault(glamVault: GlamVault, index: number): Vault {
     capacity: 10000000,
     inception: glamVault.inceptionDate || new Date().toISOString().split('T')[0],
     redemptionWindow: '7 days',
+    // Hurdle rate - mock data for now, will be from GLAM later
+    hurdleRateBps: index % 3 === 0 ? 0 : (index % 3 === 1 ? 500 : 1000), // 0%, 5%, or 10%
+    hurdleRateType: index % 3 === 0 ? null : (index % 2 === 0 ? 'soft' : 'hard'),
   };
 }
 
@@ -150,5 +153,7 @@ function createErrorVault(): Vault {
     capacity: 0,
     inception: '',
     redemptionWindow: '',
+    hurdleRateBps: 0,
+    hurdleRateType: null,
   };
 }

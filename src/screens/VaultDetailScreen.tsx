@@ -120,7 +120,7 @@ export const VaultDetailScreen: React.FC = () => {
             {selectedTab === 'Overview' ? (
               <VaultOverview />
             ) : (
-              <VaultFees />
+              <VaultFees vault={vault} />
             )}
           </ScrollView>
           

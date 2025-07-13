@@ -23,6 +23,9 @@ export interface Vault {
   capacity: number; // Vault capacity
   inception: string; // Inception date (YYYY-MM-DD)
   redemptionWindow: string; // Redemption window (e.g., "7 days")
+  // Hurdle rate fields
+  hurdleRateBps?: number; // Hurdle rate in basis points
+  hurdleRateType?: 'soft' | 'hard' | null; // Type of hurdle rate
 }
 
 interface VaultStore {

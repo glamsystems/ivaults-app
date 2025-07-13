@@ -3,39 +3,72 @@ import { View, ScrollView, StyleSheet } from 'react-native';
 import { Text } from '../common';
 import { FontSizes } from '../../constants/fonts';
 import { useTheme } from '../../theme';
+import { Vault } from '../../store/vaultStore';
 
 interface FeeRow {
   label: string;
-  value: string;
+  value: string | React.ReactNode;
 }
 
 interface VaultFeesProps {
-  vaultFees?: FeeRow[];
-  managerFees?: FeeRow[];
+  vault: Vault;
 }
 
-const defaultVaultFees: FeeRow[] = [
-  { label: 'Entry', value: '0.00%' },
-  { label: 'Exit', value: '0.00%' },
-];
-
-const defaultManagerFees: FeeRow[] = [
-  { label: 'Entry', value: '0.00%' },
-  { label: 'Exit', value: '0.00%' },
-  { label: 'Management', value: '0.01%' },
-  { label: 'Performance', value: '0.00%' },
-  { label: 'High-water Mark', value: 'Yes' },
-];
-
-export const VaultFees: React.FC<VaultFeesProps> = ({ 
-  vaultFees = defaultVaultFees,
-  managerFees = defaultManagerFees,
-}) => {
+export const VaultFees: React.FC<VaultFeesProps> = ({ vault }) => {
   const { colors } = useTheme();
-  const isZeroFee = (value: string): boolean => {
+  
+  // Convert basis points to percentage string
+  const bpsToPercentage = (bps?: number): string => {
+    if (bps === undefined || bps === null) return '0.00%';
+    return `${(bps / 100).toFixed(2)}%`;
+  };
+  
+  // Format hurdle rate value
+  const formatHurdleRate = (): React.ReactNode => {
+    if (!vault.hurdleRateType || vault.hurdleRateBps === 0) {
+      return 'No';
+    }
+    
+    const typeLabel = vault.hurdleRateType.charAt(0).toUpperCase() + vault.hurdleRateType.slice(1);
+    const percentage = bpsToPercentage(vault.hurdleRateBps);
+    
+    return (
+      <View style={styles.hurdleValue}>
+        <Text variant="regular" style={{ color: colors.text.primary }}>
+          {typeLabel}
+        </Text>
+        <Text variant="regular" style={[styles.separator, { color: colors.text.subtle }]}>
+          {' | '}
+        </Text>
+        <Text variant="regular" style={{ color: colors.text.primary }}>
+          {percentage}
+        </Text>
+      </View>
+    );
+  };
+  
+  const vaultFees: FeeRow[] = [
+    { label: 'Entry', value: '0.00%' },
+    { label: 'Exit', value: '0.00%' },
+  ];
+
+  const managerFees: FeeRow[] = [
+    { label: 'Entry', value: '0.00%' },
+    { label: 'Exit', value: '0.00%' },
+    { label: 'Management', value: '0.01%' },
+    { label: 'Performance', value: '0.00%' },
+    { label: 'Hurdle Rate', value: formatHurdleRate() },
+    { label: 'High-water Mark', value: 'Yes' },
+  ];
+  const isZeroFee = (value: string | React.ReactNode): boolean => {
+    if (typeof value !== 'string') return false;
     // Check if the fee value is 0 (handles "0%", "0.00%", "0.0%", etc.)
     const numericValue = parseFloat(value.replace(/[^0-9.-]/g, ''));
     return numericValue === 0;
+  };
+  
+  const isNoValue = (value: string | React.ReactNode): boolean => {
+    return value === 'No';
   };
 
   const renderFeeSection = (title: string, fees: FeeRow[]) => (
@@ -48,12 +81,18 @@ export const VaultFees: React.FC<VaultFeesProps> = ({
           <Text variant="regular" style={[styles.feeLabel, { color: colors.text.secondary }]}>
             {fee.label}
           </Text>
-          <Text variant="regular" style={[
-            styles.feeValue,
-            { color: isZeroFee(fee.value) ? colors.text.disabled : colors.text.primary }
-          ]}>
-            {fee.value}
-          </Text>
+          {typeof fee.value === 'string' ? (
+            <Text variant="regular" style={[
+              styles.feeValue,
+              { color: isZeroFee(fee.value) || isNoValue(fee.value) ? colors.text.disabled : colors.text.primary }
+            ]}>
+              {fee.value}
+            </Text>
+          ) : (
+            <View style={styles.feeValue}>
+              {fee.value}
+            </View>
+          )}
         </View>
       ))}
     </View>
@@ -88,6 +127,13 @@ const styles = StyleSheet.create({
     fontSize: FontSizes.medium,
   },
   feeValue: {
+    fontSize: FontSizes.medium,
+  },
+  hurdleValue: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  separator: {
     fontSize: FontSizes.medium,
   },
 });
