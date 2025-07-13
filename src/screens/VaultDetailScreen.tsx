@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { View, StyleSheet, ScrollView, Platform } from 'react-native';
 import { SecondaryHeader } from '../components/headers';
-import { PageWrapper, Text } from '../components/common';
+import { PageWrapper, Text, DisplayPubkey } from '../components/common';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useTheme } from '../theme';
 import { Vault } from '../store/vaultStore';
@@ -41,7 +41,7 @@ export const VaultDetailScreen: React.FC = () => {
     { 
       label: 'TVL', 
       value: vault.tvl.toFixed(1), 
-      unit: vault.baseAsset, 
+      unit: DisplayPubkey({ pubkey: vault.baseAsset }), 
       suffix: 'M' 
     },
     { 
@@ -53,7 +53,7 @@ export const VaultDetailScreen: React.FC = () => {
     },
     { 
       label: 'Manager', 
-      value: vault.manager 
+      value: DisplayPubkey({ pubkey: vault.manager })
     },
     { 
       label: 'Category', 
@@ -62,7 +62,7 @@ export const VaultDetailScreen: React.FC = () => {
     { 
       label: 'Capacity', 
       value: formatNumber(vault.capacity, { decimals: 0 }), 
-      unit: 'USDC' 
+      unit: DisplayPubkey({ pubkey: vault.baseAsset })
     },
     { 
       label: 'Performance', 

@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Text } from '../common';
+import { Text, DisplayPubkey } from '../common';
 import { Vault } from '../../store/vaultStore';
 import { FontSizes, Spacing } from '../../constants';
 import { useTheme } from '../../theme';
@@ -35,7 +35,7 @@ export const VaultDetailHeader: React.FC<VaultDetailHeaderProps> = ({ vault }) =
             Base Asset
           </Text>
           <Text variant="regular" style={[styles.value, { color: colors.text.secondary }]}>
-            {vault.baseAsset}
+            <DisplayPubkey pubkey={vault.baseAsset} />
           </Text>
         </View>
         <View style={styles.row}>

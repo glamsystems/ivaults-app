@@ -6,8 +6,8 @@ import { useTheme } from '../../theme';
 
 interface HighlightItem {
   label: string;
-  value: string;
-  unit?: string;
+  value: string | React.ReactNode; // Allow custom components
+  unit?: string | React.ReactNode; // Allow custom components
   colorFormat?: boolean; // Optional: format positive/negative values with colors
   showSign?: boolean; // Optional: show + for positive values
   prefix?: string; // Optional: prefix like $
@@ -32,7 +32,7 @@ export const HighlightsCarousel: React.FC<HighlightsCarouselProps> = ({ items })
   
   // Get color for value based on positive/negative
   const getValueColor = (item: HighlightItem): string => {
-    if (!item.colorFormat) return colors.text.primary;
+    if (!item.colorFormat || typeof item.value !== 'string') return colors.text.primary;
     
     // Parse the value to check if it's positive or negative
     const numericValue = parseFloat(item.value.replace(/[^-\d.]/g, ''));
@@ -43,6 +43,8 @@ export const HighlightsCarousel: React.FC<HighlightsCarouselProps> = ({ items })
   
   // Format the display value with prefix, suffix, and sign
   const formatValue = (item: HighlightItem): string => {
+    if (typeof item.value !== 'string') return '';
+    
     let displayValue = item.value;
     
     // Add sign if requested
@@ -90,13 +92,25 @@ export const HighlightsCarousel: React.FC<HighlightsCarouselProps> = ({ items })
                   <Text mono variant="regular" style={[styles.label, { color: colors.text.tertiary }]}>
                     {item.label}
                   </Text>
-                  <Text variant="regular" style={[styles.value, { color: getValueColor(item) }]}>
-                    {formatValue(item)}
-                  </Text>
-                  {item.unit ? (
-                    <Text mono variant="regular" style={[styles.unit, { color: colors.text.tertiary }]}>
-                      {item.unit}
+                  {typeof item.value === 'string' ? (
+                    <Text variant="regular" style={[styles.value, { color: getValueColor(item) }]}>
+                      {formatValue(item)}
                     </Text>
+                  ) : (
+                    <View style={styles.value}>
+                      {item.value}
+                    </View>
+                  )}
+                  {item.unit ? (
+                    typeof item.unit === 'string' ? (
+                      <Text mono variant="regular" style={[styles.unit, { color: colors.text.tertiary }]}>
+                        {item.unit}
+                      </Text>
+                    ) : (
+                      <View style={styles.unit}>
+                        {item.unit}
+                      </View>
+                    )
                   ) : (
                     <View style={styles.unitPlaceholder} />
                   )}
