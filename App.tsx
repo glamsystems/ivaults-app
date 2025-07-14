@@ -11,6 +11,8 @@ import { ThemeProvider } from './src/theme';
 import { RootNavigator } from './src/components/navigation';
 import { useFonts } from './src/hooks/useFonts';
 import { DataInitializer } from './src/components/DataInitializer';
+import { ConnectionProvider, NETWORK_ENDPOINTS } from './src/solana/providers/ConnectionProvider';
+import { AuthorizationProvider } from './src/solana/providers/AuthorizationProvider';
 
 // Android font rendering fix
 if (Platform.OS === 'android' && RNText.defaultProps == null) {
@@ -41,12 +43,19 @@ export default function App() {
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
           <ThemeProvider>
-            <DataInitializer>
-              <BottomSheetModalProvider>
-                <StatusBar style="auto" />
-                <RootNavigator />
-              </BottomSheetModalProvider>
-            </DataInitializer>
+            <ConnectionProvider 
+              endpoint={NETWORK_ENDPOINTS.mainnet} 
+              config={{ commitment: 'confirmed' }}
+            >
+              <AuthorizationProvider network="mainnet">
+                <DataInitializer>
+                  <BottomSheetModalProvider>
+                    <StatusBar style="auto" />
+                    <RootNavigator />
+                  </BottomSheetModalProvider>
+                </DataInitializer>
+              </AuthorizationProvider>
+            </ConnectionProvider>
           </ThemeProvider>
         </QueryClientProvider>
       </SafeAreaProvider>

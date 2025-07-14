@@ -56,6 +56,7 @@ type AuthorizationProviderContext = {
   selectedAccount: Account | null;
   authorizeSession: (wallet: AuthorizeAPI & ReauthorizeAPI) => Promise<Account>;
   deauthorizeSession: (wallet: DeauthorizeAPI) => Promise<void>;
+  disconnectLocally: () => void;
   onChangeAccount: (nextSelectedAccount: Account) => void;
 };
 
@@ -67,6 +68,9 @@ const AuthorizationContext = createContext<AuthorizationProviderContext>({
     throw new Error('AuthorizationProvider not initialized');
   },
   deauthorizeSession: (_wallet: DeauthorizeAPI) => {
+    throw new Error('AuthorizationProvider not initialized');
+  },
+  disconnectLocally: () => {
     throw new Error('AuthorizationProvider not initialized');
   },
   onChangeAccount: (_nextSelectedAccount: Account) => {
@@ -146,8 +150,14 @@ export function AuthorizationProvider({ children, network = 'devnet' }: { childr
         clearWallet();
       }
     },
-    [authorization, network],
+    [authorization, clearWallet],
   );
+
+  // Local disconnect without wallet interaction
+  const disconnectLocally = useCallback(() => {
+    setAuthorization(null);
+    clearWallet();
+  }, [clearWallet]);
 
   const onChangeAccount = useCallback(
     (nextSelectedAccount: Account) => {
@@ -177,9 +187,10 @@ export function AuthorizationProvider({ children, network = 'devnet' }: { childr
       selectedAccount: authorization?.selectedAccount ?? null,
       authorizeSession,
       deauthorizeSession,
+      disconnectLocally,
       onChangeAccount,
     }),
-    [authorization, authorizeSession, deauthorizeSession, onChangeAccount],
+    [authorization, authorizeSession, deauthorizeSession, disconnectLocally, onChangeAccount],
   );
 
   return (

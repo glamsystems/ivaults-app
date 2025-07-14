@@ -6,7 +6,7 @@ import {
 import { DEVNET_RPC, SOLANA_RPC } from '@env';
 
 // Default RPC endpoints
-export const RPC_ENDPOINT = DEVNET_RPC || 'https://api.devnet.solana.com';
+export const RPC_ENDPOINT = SOLANA_RPC || DEVNET_RPC || 'https://api.mainnet-beta.solana.com';
 
 export const NETWORK_ENDPOINTS = {
   devnet: DEVNET_RPC || 'https://api.devnet.solana.com',

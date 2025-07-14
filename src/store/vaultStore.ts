@@ -12,6 +12,7 @@ export interface Vault {
   totalValue?: number;
   gradientColors?: [string, string];
   glam_state?: string;
+  mintPubkey?: string; // SPL token mint address for the vault
   // Additional detail fields
   tvl: number; // Total Value Locked in millions
   volume24h: number; // 24h volume in millions

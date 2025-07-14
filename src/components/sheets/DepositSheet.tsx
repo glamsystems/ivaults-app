@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
 import { Text, DisplayPubkey } from '../common';
 import { Vault } from '../../store/vaultStore';
 import { FontSizes, Spacing } from '../../constants';
 import { fonts, useTheme } from '../../theme';
+import { useWalletStore } from '../../store/walletStore';
+import { useConnection } from '../../solana/providers/ConnectionProvider';
+import { PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
 
 interface DepositSheetProps {
   vault: Vault;
@@ -12,23 +15,84 @@ interface DepositSheetProps {
 
 export const DepositSheet: React.FC<DepositSheetProps> = ({ vault }) => {
   const { colors } = useTheme();
+  const { connection } = useConnection();
+  const account = useWalletStore((state) => state.account);
+  
   const [amount, setAmount] = useState('');
-  const [selectedUnit, setSelectedUnit] = useState<'baseAsset' | 'symbol'>('baseAsset');
+  const [walletBalance, setWalletBalance] = useState<number>(0);
+  const [isLoadingBalance, setIsLoadingBalance] = useState(false);
   
-  // Mock wallet balance - in real app this would come from wallet connection
-  const walletBalance = 456.78;
+  // Fetch user's base asset balance
+  useEffect(() => {
+    const fetchBaseAssetBalance = async () => {
+      if (!account || !vault.baseAsset || !connection) return;
+      
+      setIsLoadingBalance(true);
+      try {
+        // Special handling for SOL
+        if (vault.baseAsset === 'So11111111111111111111111111111111111111112') {
+          const balance = await connection.getBalance(account.publicKey);
+          setWalletBalance(balance / LAMPORTS_PER_SOL);
+        } else {
+          // SPL token balance
+          const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
+            account.publicKey,
+            { mint: new PublicKey(vault.baseAsset) }
+          );
+          
+          if (tokenAccounts.value.length > 0) {
+            const balance = tokenAccounts.value[0].account.data.parsed.info.tokenAmount.uiAmount;
+            setWalletBalance(balance || 0);
+          } else {
+            setWalletBalance(0);
+          }
+        }
+      } catch (error) {
+        console.error('[DepositSheet] Error fetching base asset balance:', error);
+        setWalletBalance(0);
+      } finally {
+        setIsLoadingBalance(false);
+      }
+    };
+    
+    fetchBaseAssetBalance();
+  }, [account, vault.baseAsset, connection]);
   
-  const handleUnitToggle = () => {
-    setSelectedUnit(selectedUnit === 'baseAsset' ? 'symbol' : 'baseAsset');
-    setAmount(''); // Reset input when toggling
+  // Calculate redemption window (Notice + Settlement periods)
+  const calculateRedemptionWindow = (): string => {
+    const noticePeriod = vault.redemptionNoticePeriod || 0;
+    const settlementPeriod = vault.redemptionSettlementPeriod || 0;
+    const totalDays = Math.ceil((noticePeriod + settlementPeriod) / 86400); // Convert seconds to days
+    
+    if (totalDays === 0) return 'Instant';
+    return `${totalDays} ${totalDays === 1 ? 'day' : 'days'}`;
   };
   
   const handleConfirm = () => {
-    console.log('Deposit confirmed:', amount, selectedUnit);
+    console.log('Deposit confirmed:', amount);
   };
+  
+  // Validation function
+  const isValidAmount = (): boolean => {
+    if (!account) return false; // No wallet connected
+    if (walletBalance === 0) return false; // No base asset balance
+    if (!amount || amount === '') return false; // No amount entered
+    
+    const numAmount = parseFloat(amount);
+    if (isNaN(numAmount) || numAmount <= 0) return false; // Invalid amount
+    if (numAmount > walletBalance) return false; // Exceeds balance
+    
+    return true;
+  };
+  
+  const isDisabled = !isValidAmount();
   
   const handleBalanceClick = () => {
     setAmount(walletBalance.toString());
+  };
+  
+  const handle50PercentClick = () => {
+    setAmount((walletBalance * 0.5).toFixed(6).replace(/\.?0+$/, '')); // Remove trailing zeros
   };
   
   // Format fee values with color based on whether they're zero
@@ -43,13 +107,16 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault }) => {
     return { value, color };
   };
   
-  // Mock fee data - in real app these would come from vault object
-  const entryFee = formatFeeValue('0.00%');
-  const exitFee = formatFeeValue('0.00%');
-  const mgmtFee = formatFeeValue(vault.id === '1' ? '0.01%' : '0.00%'); // Only DYO has mgmt fee
-  const perfFee = formatFeeValue('0.00%');
-  const hwm = formatBooleanValue('Yes');
-  const hurdle = formatBooleanValue('No');
+  // Calculate fees from vault data
+  const entryFeeBps = (vault.vaultSubscriptionFeeBps || 0) + (vault.managerSubscriptionFeeBps || 0);
+  const exitFeeBps = (vault.vaultRedemptionFeeBps || 0) + (vault.managerRedemptionFeeBps || 0);
+  
+  const entryFee = formatFeeValue(`${(entryFeeBps / 100).toFixed(2)}%`);
+  const exitFee = formatFeeValue(`${(exitFeeBps / 100).toFixed(2)}%`);
+  const mgmtFee = formatFeeValue(`${(((vault.managementFeeBps || 0) + (vault.protocolBaseFeeBps || 0)) / 100).toFixed(2)}%`);
+  const perfFee = formatFeeValue(`${((vault.performanceFeeBps || 0) / 100).toFixed(2)}%`);
+  const hwm = formatBooleanValue('Yes'); // Always Yes for GLAM vaults
+  const hurdle = formatBooleanValue(vault.hurdleRateBps && vault.hurdleRateBps > 0 ? 'Yes' : 'No');
 
   return (
     <View style={styles.container}>
@@ -71,7 +138,7 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault }) => {
             Redemption Window
           </Text>
           <Text variant="regular" style={[styles.value, { color: colors.text.primary }]}>
-            {vault.redemptionWindow}
+            {calculateRedemptionWindow()}
           </Text>
         </View>
         
@@ -160,25 +227,25 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault }) => {
         {/* Unit and Balance Row */}
         <View style={styles.balanceRow}>
           <View style={styles.balanceSection}>
-            <TouchableOpacity onPress={handleUnitToggle} activeOpacity={0.7}>
-              <Text variant="regular" style={[styles.unit, { color: colors.text.disabled }]}>
-                {selectedUnit === 'baseAsset' ? <DisplayPubkey pubkey={vault.baseAsset} type="hardcoded" /> : vault.symbol}
-              </Text>
-            </TouchableOpacity>
+            <Text variant="regular" style={[styles.unit, { color: colors.text.disabled }]}>
+              <DisplayPubkey pubkey={vault.baseAsset} type="hardcoded" />
+            </Text>
           </View>
           
           <View style={[styles.balanceSection, styles.centerSection]}>
-            <Text mono variant="regular" style={[styles.balanceLabel, { color: colors.text.disabled }]}>
-              50%
-            </Text>
+            <TouchableOpacity onPress={handle50PercentClick} activeOpacity={0.7}>
+              <Text mono variant="regular" style={[styles.balanceLabel, { color: colors.text.disabled }]}>
+                50%
+              </Text>
+            </TouchableOpacity>
           </View>
           
           <View style={[styles.balanceSection, styles.rightSection]}>
             <TouchableOpacity onPress={handleBalanceClick} activeOpacity={0.7}>
               <Text variant="regular" style={[styles.balanceValue, { color: colors.text.disabled }]}>
-                {walletBalance.toLocaleString('en-US', {
+                {isLoadingBalance ? 'Loading...' : walletBalance.toLocaleString('en-US', {
                   minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
+                  maximumFractionDigits: 6,
                 })}
               </Text>
             </TouchableOpacity>
@@ -188,9 +255,14 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault }) => {
       
       {/* Confirm Button */}
       <TouchableOpacity 
-        style={[styles.confirmButton, { backgroundColor: colors.button.primary }]}
+        style={[
+          styles.confirmButton, 
+          { backgroundColor: colors.button.primary },
+          isDisabled && { opacity: 0.5 }
+        ]}
         onPress={handleConfirm}
         activeOpacity={0.7}
+        disabled={isDisabled}
       >
         <Text variant="regular" style={[styles.confirmButtonText, { color: colors.button.primaryText }]}>
           Confirm Deposit

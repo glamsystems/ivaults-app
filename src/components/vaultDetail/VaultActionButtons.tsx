@@ -6,20 +6,33 @@ import { FontSizes } from '../../constants/fonts';
 interface VaultActionButtonsProps {
   onWithdraw: () => void;
   onDeposit: () => void;
+  hasBalance?: boolean;
+  isWalletConnected?: boolean;
 }
 
 export const VaultActionButtons: React.FC<VaultActionButtonsProps> = ({ 
   onWithdraw, 
-  onDeposit 
+  onDeposit,
+  hasBalance = false,
+  isWalletConnected = false
 }) => {
+  const withdrawDisabled = !isWalletConnected || !hasBalance;
   return (
     <View style={styles.container}>
       <TouchableOpacity 
-        style={[styles.button, styles.withdrawButton]}
+        style={[
+          styles.button, 
+          styles.withdrawButton,
+          withdrawDisabled && styles.disabledButton
+        ]}
         onPress={onWithdraw}
         activeOpacity={0.7}
+        disabled={withdrawDisabled}
       >
-        <Text variant="regular" style={styles.withdrawText}>
+        <Text variant="regular" style={[
+          styles.withdrawText,
+          withdrawDisabled && styles.disabledText
+        ]}>
           Withdraw
         </Text>
       </TouchableOpacity>
@@ -70,5 +83,11 @@ const styles = StyleSheet.create({
     color: '#FEFEFE',
     textAlign: 'center',
     lineHeight: 24,
+  },
+  disabledButton: {
+    opacity: 0.5,
+  },
+  disabledText: {
+    color: '#4A4A4A',
   },
 });

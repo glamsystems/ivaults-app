@@ -74,6 +74,7 @@ function mapGlamVaultToVault(glamVault: GlamVault, index: number): Vault {
     performance24h: Math.round(performance24h * 100) / 100,
     gradientColors: generateGradientColors(index),
     glam_state: glamVault.glamStatePubkey || glamVault.pubkey,
+    mintPubkey: glamVault.mintPubkey,
     tvl: Math.round(tvl * 10) / 10,
     volume24h: Math.round(volume24h * 10) / 10,
     userCount: Math.round(userCount * 10) / 10,
@@ -157,6 +158,7 @@ function createErrorVault(): Vault {
     performance24h: 0,
     gradientColors: ['#FF4757', '#FF6348'], // Red to orange gradient
     glam_state: 'error',
+    mintPubkey: undefined,
     tvl: 0,
     volume24h: 0,
     userCount: 0,

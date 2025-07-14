@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
 import { Text, DisplayPubkey } from '../common';
 import { Vault } from '../../store/vaultStore';
 import { FontSizes, Spacing } from '../../constants';
 import { fonts, useTheme } from '../../theme';
+import { useWalletStore } from '../../store/walletStore';
+import { useConnection } from '../../solana/providers/ConnectionProvider';
+import { PublicKey } from '@solana/web3.js';
 
 interface WithdrawSheetProps {
   vault: Vault;
@@ -12,12 +15,52 @@ interface WithdrawSheetProps {
 
 export const WithdrawSheet: React.FC<WithdrawSheetProps> = ({ vault }) => {
   const { colors } = useTheme();
+  const { connection } = useConnection();
+  const account = useWalletStore((state) => state.account);
+  
   const [amount, setAmount] = useState('');
   const [selectedUnit, setSelectedUnit] = useState<'baseAsset' | 'symbol'>('symbol'); // Start with symbol
+  const [userBalance, setUserBalance] = useState<number>(0);
+  const [isLoadingBalance, setIsLoadingBalance] = useState(false);
   
-  // Mock position data - in real app this would come from user's portfolio
-  const userBalance = 123.45; // User's balance in vault tokens
-  const positionValue = 146.90; // Calculated value based on NAV
+  // Fetch user's vault token balance
+  useEffect(() => {
+    const fetchTokenBalance = async () => {
+      if (!account || !vault.mintPubkey) return;
+      
+      setIsLoadingBalance(true);
+      try {
+        const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
+          account.publicKey,
+          { mint: new PublicKey(vault.mintPubkey) }
+        );
+        
+        if (tokenAccounts.value.length > 0) {
+          const balance = tokenAccounts.value[0].account.data.parsed.info.tokenAmount.uiAmount;
+          setUserBalance(balance || 0);
+        } else {
+          setUserBalance(0);
+        }
+      } catch (error) {
+        console.error('[WithdrawSheet] Error fetching token balance:', error);
+        setUserBalance(0);
+      } finally {
+        setIsLoadingBalance(false);
+      }
+    };
+    
+    fetchTokenBalance();
+  }, [account, vault.mintPubkey, connection]);
+  
+  // Calculate redemption window (Notice + Settlement periods)
+  const calculateRedemptionWindow = (): string => {
+    const noticePeriod = vault.redemptionNoticePeriod || 0;
+    const settlementPeriod = vault.redemptionSettlementPeriod || 0;
+    const totalDays = Math.ceil((noticePeriod + settlementPeriod) / 86400); // Convert seconds to days
+    
+    if (totalDays === 0) return 'Instant';
+    return `${totalDays} ${totalDays === 1 ? 'day' : 'days'}`;
+  };
   
   const handleUnitToggle = () => {
     setSelectedUnit(selectedUnit === 'baseAsset' ? 'symbol' : 'baseAsset');
@@ -31,6 +74,25 @@ export const WithdrawSheet: React.FC<WithdrawSheetProps> = ({ vault }) => {
   const handleBalanceClick = () => {
     setAmount(userBalance.toString());
   };
+  
+  const handle50PercentClick = () => {
+    setAmount((userBalance * 0.5).toFixed(6).replace(/\.?0+$/, '')); // Remove trailing zeros
+  };
+  
+  // Validation function
+  const isValidAmount = (): boolean => {
+    if (!account) return false; // No wallet connected
+    if (userBalance === 0) return false; // No balance
+    if (!amount || amount === '') return false; // No amount entered
+    
+    const numAmount = parseFloat(amount);
+    if (isNaN(numAmount) || numAmount <= 0) return false; // Invalid amount
+    if (numAmount > userBalance) return false; // Exceeds balance
+    
+    return true;
+  };
+  
+  const isDisabled = !isValidAmount();
 
   return (
     <View style={styles.container}>
@@ -42,7 +104,7 @@ export const WithdrawSheet: React.FC<WithdrawSheetProps> = ({ vault }) => {
             Redemption Window
           </Text>
           <Text variant="regular" style={[styles.value, { color: colors.text.primary }]}>
-            {vault.redemptionWindow}
+            {calculateRedemptionWindow()}
           </Text>
         </View>
         
@@ -52,15 +114,15 @@ export const WithdrawSheet: React.FC<WithdrawSheetProps> = ({ vault }) => {
             Balance
           </Text>
           <Text variant="regular" style={[styles.value, { color: colors.text.primary }]}>
-            {userBalance.toLocaleString('en-US', {
+            {isLoadingBalance ? 'Loading...' : `${userBalance.toLocaleString('en-US', {
               minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}
+              maximumFractionDigits: 6,
+            })} ${vault.symbol}`}
           </Text>
         </View>
         
-        {/* Row 3: Value */}
-        <View style={styles.row}>
+        {/* Row 3: Value - Commented out for now */}
+        {/* <View style={styles.row}>
           <Text mono variant="regular" style={[styles.label, { color: colors.text.tertiary }]}>
             Value
           </Text>
@@ -70,7 +132,7 @@ export const WithdrawSheet: React.FC<WithdrawSheetProps> = ({ vault }) => {
               maximumFractionDigits: 2,
             })}
           </Text>
-        </View>
+        </View> */}
       </View>
       
       {/* Amount Input Section */}
@@ -99,9 +161,11 @@ export const WithdrawSheet: React.FC<WithdrawSheetProps> = ({ vault }) => {
           </View>
           
           <View style={[styles.balanceSection, styles.centerSection]}>
-            <Text mono variant="regular" style={[styles.balanceLabel, { color: colors.text.disabled }]}>
-              50%
-            </Text>
+            <TouchableOpacity onPress={handle50PercentClick} activeOpacity={0.7}>
+              <Text mono variant="regular" style={[styles.balanceLabel, { color: colors.text.disabled }]}>
+                50%
+              </Text>
+            </TouchableOpacity>
           </View>
           
           <View style={[styles.balanceSection, styles.rightSection]}>
@@ -109,7 +173,7 @@ export const WithdrawSheet: React.FC<WithdrawSheetProps> = ({ vault }) => {
               <Text variant="regular" style={[styles.balanceValue, { color: colors.text.disabled }]}>
                 {userBalance.toLocaleString('en-US', {
                   minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
+                  maximumFractionDigits: 6,
                 })}
               </Text>
             </TouchableOpacity>
@@ -119,9 +183,14 @@ export const WithdrawSheet: React.FC<WithdrawSheetProps> = ({ vault }) => {
       
       {/* Confirm Button */}
       <TouchableOpacity 
-        style={[styles.confirmButton, { backgroundColor: colors.button.primary }]}
+        style={[
+          styles.confirmButton, 
+          { backgroundColor: colors.button.primary },
+          isDisabled && { opacity: 0.5 }
+        ]}
         onPress={handleConfirm}
         activeOpacity={0.7}
+        disabled={isDisabled}
       >
         <Text variant="regular" style={[styles.confirmButtonText, { color: colors.button.primaryText }]}>
           Request Withdraw

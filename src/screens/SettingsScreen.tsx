@@ -1,17 +1,71 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Linking, Platform } from 'react-native';
+import React, { useState, useCallback, useEffect } from 'react';
+import { View, StyleSheet, TouchableOpacity, Linking, Platform, ActivityIndicator } from 'react-native';
 import { Ionicons as Icon } from '@expo/vector-icons';
 import { useTheme } from '../theme';
 import { Text, PageWrapper } from '../components/common';
 import { FontSizes, Spacing } from '../constants';
+import { useConnection } from '../solana/providers/ConnectionProvider';
+import { useAuthorization } from '../solana/providers/AuthorizationProvider';
+import { useWalletStore } from '../store/walletStore';
+import { transact, Web3MobileWallet } from '@solana-mobile/mobile-wallet-adapter-protocol-web3js';
+import { alertAndLog } from '../solana/utils';
 
 export const SettingsScreen: React.FC = () => {
   const { colors, themeMode, setThemeMode } = useTheme();
-  const [isConnected, setIsConnected] = useState(false);
+  const { connection } = useConnection();
+  const { selectedAccount, authorizeSession, disconnectLocally } = useAuthorization();
+  const { 
+    balance, 
+    balanceInSol, 
+    isLoadingBalance, 
+    startBalancePolling, 
+    stopBalancePolling, 
+    updateBalance,
+    clearWallet 
+  } = useWalletStore();
+  
+  const [connectLoading, setConnectLoading] = useState(false);
+  const [disconnectLoading, setDisconnectLoading] = useState(false);
 
-  const handleConnect = () => {
-    setIsConnected(!isConnected);
-  };
+  const handleConnect = useCallback(async () => {
+    try {
+      setConnectLoading(true);
+      await transact(async (wallet: Web3MobileWallet) => {
+        await authorizeSession(wallet);
+      });
+    } catch (error) {
+      alertAndLog('Error connecting wallet', error instanceof Error ? error.message : error);
+    } finally {
+      setConnectLoading(false);
+    }
+  }, [authorizeSession]);
+
+  const handleDisconnect = useCallback(() => {
+    setDisconnectLoading(true);
+    // Simply clear the local authorization state without calling the wallet
+    // The wallet will remain authorized but our app will forget the connection
+    disconnectLocally();
+    setDisconnectLoading(false);
+  }, [disconnectLocally]);
+
+  // Start balance polling when account is connected
+  useEffect(() => {
+    if (!selectedAccount || !connection) {
+      stopBalancePolling();
+      return;
+    }
+    
+    // Initial balance fetch
+    updateBalance(connection);
+    
+    // Start polling
+    startBalancePolling(connection);
+    
+    // Cleanup on unmount or account change
+    return () => {
+      stopBalancePolling();
+    };
+  }, [selectedAccount, connection, startBalancePolling, stopBalancePolling, updateBalance]);
 
   const handleLinkPress = (url: string) => {
     Linking.openURL(url);
@@ -103,37 +157,48 @@ export const SettingsScreen: React.FC = () => {
 
         {/* Connect/Disconnect Section */}
         <View style={styles.connectSection}>
-          {!isConnected ? (
+          {!selectedAccount ? (
             <>
               <TouchableOpacity 
                 style={[styles.button, { backgroundColor: colors.button.primary, borderColor: colors.button.primary }]}
                 onPress={handleConnect}
+                disabled={connectLoading}
               >
-                <Text variant="regular" style={[styles.buttonText, { color: colors.button.primaryText }]}>
-                  Connect
-                </Text>
+                {connectLoading ? (
+                  <ActivityIndicator color={colors.button.primaryText} />
+                ) : (
+                  <Text variant="regular" style={[styles.buttonText, { color: colors.button.primaryText }]}>
+                    Connect
+                  </Text>
+                )}
               </TouchableOpacity>
             </>
           ) : (
             <>
+              <View 
+                style={[styles.button, { backgroundColor: colors.button.primary, borderColor: colors.button.primary, marginBottom: 10 }]}
+              >
+                <Text variant="regular" style={[styles.buttonText, { color: colors.button.primaryText }]}>
+                  {selectedAccount.publicKey.toBase58().slice(0, 4)}...
+                  {selectedAccount.publicKey.toBase58().slice(-4)}
+                </Text>
+              </View>
+              
               <TouchableOpacity 
                 style={[styles.buttonOutline, { 
                   borderColor: colors.button.secondaryBorder,
                   backgroundColor: colors.button.secondary 
                 }]}
-                onPress={handleConnect}
+                onPress={handleDisconnect}
+                disabled={disconnectLoading}
               >
-                <Text variant="regular" style={[styles.buttonText, { color: colors.button.secondaryText }]}>
-                  Disconnect
-                </Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={[styles.button, { backgroundColor: colors.button.primary, borderColor: colors.button.primary }]}
-              >
-                <Text variant="regular" style={[styles.buttonText, { color: colors.button.primaryText }]}>
-                  0x3c46...ec4b
-                </Text>
+                {disconnectLoading ? (
+                  <ActivityIndicator color={colors.button.secondaryText} />
+                ) : (
+                  <Text variant="regular" style={[styles.buttonText, { color: colors.button.secondaryText }]}>
+                    Disconnect
+                  </Text>
+                )}
               </TouchableOpacity>
             </>
           )}

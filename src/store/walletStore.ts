@@ -35,7 +35,7 @@ export const useWalletStore = create<WalletState>((set, get) => ({
   balanceInSol: 0,
   isLoadingBalance: false,
   balanceError: null,
-  network: 'devnet',
+  network: 'mainnet',
   pollingInterval: null,
   retryCount: 0,
   

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Platform } from 'react-native';
 import { SecondaryHeader } from '../components/headers';
 import { PageWrapper, Text } from '../components/common';
@@ -21,6 +21,8 @@ import { formatNumber, calculateTrackRecord, formatDate } from '../utils/formatt
 import { getDisplayPubkey } from '../utils/displayPubkey';
 import { useWalletStore } from '../store/walletStore';
 import { useVaultStore } from '../store/vaultStore';
+import { useConnection } from '../solana/providers/ConnectionProvider';
+import { PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
 
 type RootStackParamList = {
   VaultDetail: { vault: Vault };
@@ -42,6 +44,41 @@ export const VaultDetailScreen: React.FC = () => {
   // Get network and vaults for display pubkey
   const network = useWalletStore((state) => state.network);
   const vaults = useVaultStore((state) => state.vaults);
+  const account = useWalletStore((state) => state.account);
+  const { connection } = useConnection();
+  
+  // State for user's vault balance
+  const [userVaultBalance, setUserVaultBalance] = useState<number>(0);
+  const [isLoadingBalance, setIsLoadingBalance] = useState(false);
+  
+  // Fetch user's vault token balance
+  useEffect(() => {
+    const fetchTokenBalance = async () => {
+      if (!account || !vault.mintPubkey) return;
+      
+      setIsLoadingBalance(true);
+      try {
+        const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
+          account.publicKey,
+          { mint: new PublicKey(vault.mintPubkey) }
+        );
+        
+        if (tokenAccounts.value.length > 0) {
+          const balance = tokenAccounts.value[0].account.data.parsed.info.tokenAmount.uiAmount;
+          setUserVaultBalance(balance || 0);
+        } else {
+          setUserVaultBalance(0);
+        }
+      } catch (error) {
+        console.error('[VaultDetailScreen] Error fetching token balance:', error);
+        setUserVaultBalance(0);
+      } finally {
+        setIsLoadingBalance(false);
+      }
+    };
+    
+    fetchTokenBalance();
+  }, [account, vault.mintPubkey, connection]);
 
   // Create highlights from vault data
   const highlights = [
@@ -85,6 +122,12 @@ export const VaultDetailScreen: React.FC = () => {
   ];
 
   const handleWithdraw = () => {
+    // Don't open sheet if no balance or wallet not connected
+    if (!account || userVaultBalance === 0) {
+      console.log('Withdraw blocked: no wallet or zero balance');
+      return;
+    }
+    
     console.log('Withdraw pressed');
     withdrawSheetRef.current?.present();
     // Ensure it snaps to index 0
@@ -145,6 +188,8 @@ export const VaultDetailScreen: React.FC = () => {
           <VaultActionButtons 
             onWithdraw={handleWithdraw}
             onDeposit={handleDeposit}
+            hasBalance={userVaultBalance > 0}
+            isWalletConnected={!!account}
           />
         </View>
       </View>
