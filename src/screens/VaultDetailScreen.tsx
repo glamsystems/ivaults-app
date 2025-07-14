@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { View, StyleSheet, ScrollView, Platform } from 'react-native';
 import { SecondaryHeader } from '../components/headers';
-import { PageWrapper, Text, DisplayPubkey } from '../components/common';
+import { PageWrapper, Text } from '../components/common';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useTheme } from '../theme';
 import { Vault } from '../store/vaultStore';
@@ -18,6 +18,9 @@ import {
   VaultDetailTab,
 } from '../components/vaultDetail';
 import { formatNumber, calculateTrackRecord, formatDate } from '../utils/formatters';
+import { getDisplayPubkey } from '../utils/displayPubkey';
+import { useWalletStore } from '../store/walletStore';
+import { useVaultStore } from '../store/vaultStore';
 
 type RootStackParamList = {
   VaultDetail: { vault: Vault };
@@ -36,12 +39,16 @@ export const VaultDetailScreen: React.FC = () => {
   const depositSheetRef = useRef<BottomSheetModal>(null);
   const withdrawSheetRef = useRef<BottomSheetModal>(null);
 
+  // Get network and vaults for display pubkey
+  const network = useWalletStore((state) => state.network);
+  const vaults = useVaultStore((state) => state.vaults);
+
   // Create highlights from vault data
   const highlights = [
     { 
       label: 'TVL', 
       value: vault.tvl.toFixed(1), 
-      unit: DisplayPubkey({ pubkey: vault.baseAsset, type: 'hardcoded' }), 
+      unit: getDisplayPubkey(vault.baseAsset, 'hardcoded', { network }), 
       suffix: 'M' 
     },
     { 
@@ -53,7 +60,7 @@ export const VaultDetailScreen: React.FC = () => {
     },
     { 
       label: 'Manager', 
-      value: DisplayPubkey({ pubkey: vault.manager })
+      value: getDisplayPubkey(vault.manager, 'default')
     },
     { 
       label: 'Category', 
@@ -62,7 +69,7 @@ export const VaultDetailScreen: React.FC = () => {
     { 
       label: 'Capacity', 
       value: formatNumber(vault.capacity, { decimals: 0 }), 
-      unit: DisplayPubkey({ pubkey: vault.baseAsset, type: 'hardcoded' })
+      unit: getDisplayPubkey(vault.baseAsset, 'hardcoded', { network })
     },
     { 
       label: 'Performance', 
@@ -118,7 +125,7 @@ export const VaultDetailScreen: React.FC = () => {
             ]}
           >
             {selectedTab === 'Overview' ? (
-              <VaultOverview />
+              <VaultOverview vault={vault} />
             ) : (
               <VaultFees vault={vault} />
             )}

@@ -25,8 +25,8 @@ export const DisplayPubkey: React.FC<DisplayPubkeyProps> = ({ pubkey, type = 'de
   
   switch (type) {
     case 'hardcoded':
-      // Check hardcoded token list
-      const symbol = getTokenSymbol(pubkey, network);
+      // Check hardcoded token list - always use mainnet
+      const symbol = getTokenSymbol(pubkey, 'mainnet');
       if (symbol) {
         return symbol;
       }

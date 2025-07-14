@@ -35,6 +35,14 @@ export interface Vault {
   // Hurdle rate fields
   hurdleRateBps?: number; // Hurdle rate in basis points
   hurdleRateType?: 'soft' | 'hard' | null; // Type of hurdle rate
+  // Redemption terms
+  redemptionNoticePeriod?: number;
+  redemptionNoticePeriodType?: string;
+  redemptionSettlementPeriod?: number;
+  redemptionCancellationWindow?: number;
+  // Minimum amounts
+  minSubscription?: string;
+  minRedemption?: string;
 }
 
 interface VaultStore {

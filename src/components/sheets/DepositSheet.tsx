@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
-import { Text } from '../common';
+import { Text, DisplayPubkey } from '../common';
 import { Vault } from '../../store/vaultStore';
 import { FontSizes, Spacing } from '../../constants';
 import { fonts, useTheme } from '../../theme';
@@ -162,7 +162,7 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault }) => {
           <View style={styles.balanceSection}>
             <TouchableOpacity onPress={handleUnitToggle} activeOpacity={0.7}>
               <Text variant="regular" style={[styles.unit, { color: colors.text.disabled }]}>
-                {selectedUnit === 'baseAsset' ? vault.baseAsset : vault.symbol}
+                {selectedUnit === 'baseAsset' ? <DisplayPubkey pubkey={vault.baseAsset} type="hardcoded" /> : vault.symbol}
               </Text>
             </TouchableOpacity>
           </View>

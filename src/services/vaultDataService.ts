@@ -95,6 +95,12 @@ function mapGlamVaultToVault(glamVault: GlamVault, index: number): Vault {
     protocolFlowFeeBps: glamVault.protocolFlowFeeBps || 0,
     hurdleRateBps: glamVault.hurdleRateBps || 0,
     hurdleRateType: glamVault.hurdleRateType || null,
+    redemptionNoticePeriod: glamVault.redemptionNoticePeriod || 0,
+    redemptionNoticePeriodType: glamVault.redemptionNoticePeriodType || '',
+    redemptionSettlementPeriod: glamVault.redemptionSettlementPeriod || 0,
+    redemptionCancellationWindow: glamVault.redemptionCancellationWindow || 0,
+    minSubscription: glamVault.minSubscription,
+    minRedemption: glamVault.minRedemption,
   };
 }
 
@@ -171,5 +177,11 @@ function createErrorVault(): Vault {
     protocolFlowFeeBps: 0,
     hurdleRateBps: 0,
     hurdleRateType: null,
+    redemptionNoticePeriod: 0,
+    redemptionNoticePeriodType: '',
+    redemptionSettlementPeriod: 0,
+    redemptionCancellationWindow: 0,
+    minSubscription: undefined,
+    minRedemption: undefined,
   };
 }
