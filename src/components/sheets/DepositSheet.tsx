@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { View, StyleSheet, TouchableOpacity, ActivityIndicator, AppState } from 'react-native';
 import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
 import { Text, DisplayPubkey } from '../common';
 import { Vault } from '../../store/vaultStore';
@@ -11,6 +11,8 @@ import { PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { transact, Web3MobileWallet } from '@solana-mobile/mobile-wallet-adapter-protocol-web3js';
 import { useAuthorization } from '../../solana/providers/AuthorizationProvider';
 import { alertAndLog } from '../../solana/utils';
+import { formatTokenAmount } from '../../utils/tokenFormatting';
+import { getTokenDecimals } from '../../constants/tokens';
 
 interface DepositSheetProps {
   vault: Vault;
@@ -31,9 +33,27 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault }) => {
   useEffect(() => {
     if (!account || !vault.baseAsset || !connection) return;
     
-    // Update token balance in the store
-    updateTokenBalance(connection, vault.baseAsset);
+    // Add delay to ensure wallet connection is fully established
+    const timer = setTimeout(() => {
+      // Update token balance in the store
+      updateTokenBalance(connection, vault.baseAsset);
+    }, 500);
+    
+    return () => clearTimeout(timer);
   }, [account, vault.baseAsset, connection, updateTokenBalance]);
+  
+  // Add AppState listener to detect when app comes to foreground
+  useEffect(() => {
+    const handleAppStateChange = (nextAppState: string) => {
+      if (nextAppState === 'active' && account && connection && vault.baseAsset) {
+        // App has come to foreground, refresh balance
+        updateTokenBalance(connection, vault.baseAsset);
+      }
+    };
+    
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    return () => subscription.remove();
+  }, [account, connection, vault.baseAsset, updateTokenBalance]);
   
   // Calculate redemption window (Notice + Settlement periods)
   const calculateRedemptionWindow = (): string => {
@@ -55,16 +75,59 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault }) => {
       await transact(async (wallet: Web3MobileWallet) => {
         await authorizeSession(wallet);
       });
+      
+      // Wait longer and force a balance refresh
+      setTimeout(async () => {
+        if (connection && vault.baseAsset) {
+          // Force update the balance
+          await updateTokenBalance(connection, vault.baseAsset);
+        }
+      }, 2000); // Increased delay to ensure wallet is fully connected
     } catch (error) {
       alertAndLog('Error connecting wallet', error instanceof Error ? error.message : error);
     } finally {
       setConnectLoading(false);
     }
-  }, [authorizeSession]);
+  }, [authorizeSession, connection, vault.baseAsset, updateTokenBalance]);
   
   // Get balance from store
   const walletBalance = tokenBalance?.uiAmount || 0;
   const isLoadingBalance = tokenBalance?.isLoading || false;
+  
+  // Format minimum deposit
+  const formatMinDeposit = (): string => {
+    if (!vault.minSubscription || vault.minSubscription === '0') return 'None';
+    return formatTokenAmount(vault.minSubscription, vault.baseAsset, {
+      showSymbol: true,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 6
+    });
+  };
+  
+  // Check if amount is below minimum
+  const isBelowMinimum = useMemo(() => {
+    if (!amount || !vault.minSubscription || vault.minSubscription === '0') return false;
+    const numAmount = parseFloat(amount);
+    if (isNaN(numAmount)) return false;
+    
+    const decimals = getTokenDecimals(vault.baseAsset, 'mainnet') || 9;
+    const minDepositInSmallestUnit = parseFloat(vault.minSubscription);
+    const minDepositInUiAmount = minDepositInSmallestUnit / Math.pow(10, decimals);
+    
+    return numAmount < minDepositInUiAmount && numAmount > 0;
+  }, [amount, vault.minSubscription, vault.baseAsset]);
+  
+  // Check if wallet balance is insufficient for minimum deposit
+  const hasInsufficientBalance = useMemo(() => {
+    if (!vault.minSubscription || vault.minSubscription === '0') return false;
+    if (!tokenBalance) return true;
+    
+    const decimals = getTokenDecimals(vault.baseAsset, 'mainnet') || 9;
+    const minDepositInSmallestUnit = parseFloat(vault.minSubscription);
+    const minDepositInUiAmount = minDepositInSmallestUnit / Math.pow(10, decimals);
+    
+    return tokenBalance.uiAmount < minDepositInUiAmount;
+  }, [vault.minSubscription, vault.baseAsset, tokenBalance]);
   
   // Validation function
   const isValidAmount = (): boolean => {
@@ -75,6 +138,14 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault }) => {
     const numAmount = parseFloat(amount);
     if (isNaN(numAmount) || numAmount <= 0) return false; // Invalid amount
     if (numAmount > tokenBalance.uiAmount) return false; // Exceeds balance
+    
+    // Check minimum deposit requirement
+    if (vault.minSubscription && vault.minSubscription !== '0') {
+      const decimals = getTokenDecimals(vault.baseAsset, 'mainnet') || 9;
+      const minDepositInSmallestUnit = parseFloat(vault.minSubscription);
+      const minDepositInUiAmount = minDepositInSmallestUnit / Math.pow(10, decimals);
+      if (numAmount < minDepositInUiAmount) return false;
+    }
     
     return true;
   };
@@ -91,6 +162,18 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault }) => {
     if (tokenBalance && tokenBalance.uiAmount > 0) {
       setAmount((tokenBalance.uiAmount * 0.5).toFixed(6).replace(/\.?0+$/, '')); // Remove trailing zeros
     }
+  };
+  
+  const handleMinDepositClick = () => {
+    if (!vault.minSubscription || vault.minSubscription === '0') return;
+    if (!tokenBalance || hasInsufficientBalance) return;
+    
+    const decimals = getTokenDecimals(vault.baseAsset, 'mainnet') || 9;
+    const minDepositInSmallestUnit = parseFloat(vault.minSubscription);
+    const minDepositInUiAmount = minDepositInSmallestUnit / Math.pow(10, decimals);
+    
+    // Format with appropriate decimal places
+    setAmount(minDepositInUiAmount.toFixed(6).replace(/\.?0+$/, ''));
   };
   
   // Format fee values with color based on whether they're zero
@@ -140,7 +223,26 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault }) => {
           </Text>
         </View>
         
-        {/* Row 3: Entry | Exit Fees */}
+        {/* Row 3: Min Deposit */}
+        <View style={styles.row}>
+          <Text mono variant="regular" style={[styles.label, { color: colors.text.tertiary }]}>
+            Min Deposit
+          </Text>
+          <TouchableOpacity 
+            onPress={handleMinDepositClick}
+            activeOpacity={0.7}
+            disabled={!account || hasInsufficientBalance || !vault.minSubscription || vault.minSubscription === '0'}
+          >
+            <Text variant="regular" style={[
+              styles.value, 
+              { color: isBelowMinimum ? colors.status.error : colors.text.primary }
+            ]}>
+              {formatMinDeposit()}
+            </Text>
+          </TouchableOpacity>
+        </View>
+        
+        {/* Row 4: Entry | Exit Fees */}
         <View style={styles.row}>
           <View style={styles.splitLabel}>
             <Text mono variant="regular" style={[styles.label, { color: colors.text.tertiary }]}>
@@ -162,7 +264,7 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault }) => {
           </View>
         </View>
         
-        {/* Row 4: Mgmt | Perf Fees */}
+        {/* Row 5: Mgmt | Perf Fees */}
         <View style={styles.row}>
           <View style={styles.splitLabel}>
             <Text mono variant="regular" style={[styles.label, { color: colors.text.tertiary }]}>
@@ -184,7 +286,7 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault }) => {
           </View>
         </View>
         
-        {/* Row 5: HWM | Hurdle */}
+        {/* Row 6: HWM | Hurdle */}
         <View style={styles.row}>
           <View style={styles.splitLabel}>
             <Text mono variant="regular" style={[styles.label, { color: colors.text.tertiary }]}>
@@ -220,6 +322,7 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault }) => {
           importantForAutofill="no"
           textContentType="none"
           inputMode="numeric"
+          editable={!!account && !hasInsufficientBalance}
         />
         
         {/* Unit and Balance Row */}
@@ -234,8 +337,8 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault }) => {
             <TouchableOpacity 
               onPress={handle50PercentClick} 
               activeOpacity={0.7}
-              disabled={walletBalance === 0}
-              style={walletBalance === 0 ? { opacity: 0.5 } : {}}
+              disabled={!account || walletBalance === 0 || hasInsufficientBalance}
+              style={!account || walletBalance === 0 || hasInsufficientBalance ? { opacity: 0.5 } : {}}
             >
               <Text mono variant="regular" style={[styles.balanceLabel, { color: colors.text.disabled }]}>
                 50%
@@ -247,8 +350,8 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault }) => {
             <TouchableOpacity 
               onPress={handleBalanceClick} 
               activeOpacity={0.7}
-              disabled={walletBalance === 0}
-              style={walletBalance === 0 ? { opacity: 0.5 } : {}}
+              disabled={!account || walletBalance === 0 || hasInsufficientBalance}
+              style={!account || walletBalance === 0 || hasInsufficientBalance ? { opacity: 0.5 } : {}}
             >
               <Text variant="regular" style={[styles.balanceValue, { color: colors.text.disabled }]}>
                 {walletBalance.toLocaleString('en-US', {
