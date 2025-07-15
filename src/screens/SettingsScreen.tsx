@@ -1,14 +1,14 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { View, StyleSheet, TouchableOpacity, Linking, Platform, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Linking, Platform } from 'react-native';
 import { Ionicons as Icon } from '@expo/vector-icons';
 import { useTheme } from '../theme';
-import { Text, PageWrapper } from '../components/common';
+import { Text, PageWrapper, PulsatingText } from '../components/common';
 import { FontSizes, Spacing } from '../constants';
 import { useConnection } from '../solana/providers/ConnectionProvider';
 import { useAuthorization } from '../solana/providers/AuthorizationProvider';
 import { useWalletStore } from '../store/walletStore';
 import { transact, Web3MobileWallet } from '@solana-mobile/mobile-wallet-adapter-protocol-web3js';
-import { alertAndLog } from '../solana/utils';
+import { getWalletErrorInfo, showStyledAlert } from '../utils/walletErrorHandler';
 import { DEBUG, DEBUGLOAD } from '@env';
 
 export const SettingsScreen: React.FC = () => {
@@ -36,7 +36,9 @@ export const SettingsScreen: React.FC = () => {
         await authorizeSession(wallet);
       });
     } catch (error) {
-      alertAndLog('Error connecting wallet', error instanceof Error ? error.message : error);
+      console.error('[SettingsScreen] Connect error:', error);
+      const errorInfo = getWalletErrorInfo(error);
+      showStyledAlert(errorInfo);
     } finally {
       setConnectLoading(false);
     }
@@ -167,7 +169,11 @@ export const SettingsScreen: React.FC = () => {
                 disabled={connectLoading}
               >
                 {(connectLoading || (DEBUG === 'true' && DEBUGLOAD === 'true')) ? (
-                  <ActivityIndicator size="small" color={colors.button.primaryText} />
+                  <PulsatingText 
+                    text="Loading..."
+                    variant="regular"
+                    style={[styles.buttonText, { color: colors.button.primaryText }]}
+                  />
                 ) : (
                   <Text variant="regular" style={[styles.buttonText, { color: colors.button.primaryText }]}>
                     Connect Account
@@ -195,7 +201,11 @@ export const SettingsScreen: React.FC = () => {
                 disabled={disconnectLoading}
               >
                 {(disconnectLoading || (DEBUG === 'true' && DEBUGLOAD === 'true')) ? (
-                  <ActivityIndicator size="small" color={colors.button.secondaryText} />
+                  <PulsatingText 
+                    text="Loading..."
+                    variant="regular"
+                    style={[styles.buttonText, { color: colors.button.secondaryText }]}
+                  />
                 ) : (
                   <Text variant="regular" style={[styles.buttonText, { color: colors.button.secondaryText }]}>
                     Disconnect

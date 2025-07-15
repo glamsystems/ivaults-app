@@ -1,11 +1,11 @@
 import React, { useState, useCallback } from 'react';
-import { View, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { useTheme } from '../../theme';
-import { Text } from '../common';
+import { Text, PulsatingText } from '../common';
 import { FontSizes, Spacing } from '../../constants';
 import { transact, Web3MobileWallet } from '@solana-mobile/mobile-wallet-adapter-protocol-web3js';
 import { useAuthorization } from '../../solana/providers/AuthorizationProvider';
-import { alertAndLog } from '../../solana/utils';
+import { getWalletErrorInfo, showStyledAlert } from '../../utils/walletErrorHandler';
 import { DEBUG, DEBUGLOAD } from '@env';
 
 export const ConnectAccountState: React.FC = () => {
@@ -20,7 +20,9 @@ export const ConnectAccountState: React.FC = () => {
         await authorizeSession(wallet);
       });
     } catch (error) {
-      alertAndLog('Error connecting wallet', error instanceof Error ? error.message : error);
+      console.error('[ConnectAccountState] Connect error:', error);
+      const errorInfo = getWalletErrorInfo(error);
+      showStyledAlert(errorInfo);
     } finally {
       setConnectLoading(false);
     }
@@ -39,7 +41,11 @@ export const ConnectAccountState: React.FC = () => {
         disabled={connectLoading}
       >
         {(connectLoading || (DEBUG === 'true' && DEBUGLOAD === 'true')) ? (
-          <ActivityIndicator size="small" color={colors.button.primaryText} />
+          <PulsatingText 
+            text="Loading..."
+            variant="regular"
+            style={[styles.buttonText, { color: colors.button.primaryText }]}
+          />
         ) : (
           <Text variant="regular" style={[styles.buttonText, { color: colors.button.primaryText }]}>
             Connect Account

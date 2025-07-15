@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, StyleSheet, TouchableOpacity, ActivityIndicator, AppState } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, AppState } from 'react-native';
 import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
-import { Text, DisplayPubkey } from '../common';
+import { Text, DisplayPubkey, PulsatingText } from '../common';
 import { Vault } from '../../store/vaultStore';
 import { FontSizes, Spacing } from '../../constants';
 import { fonts, useTheme } from '../../theme';
@@ -10,8 +10,8 @@ import { useConnection } from '../../solana/providers/ConnectionProvider';
 import { PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { transact, Web3MobileWallet } from '@solana-mobile/mobile-wallet-adapter-protocol-web3js';
 import { useAuthorization } from '../../solana/providers/AuthorizationProvider';
-import { alertAndLog } from '../../solana/utils';
 import { formatTokenAmount } from '../../utils/tokenFormatting';
+import { getWalletErrorInfo, getTransactionErrorInfo, showStyledAlert } from '../../utils/walletErrorHandler';
 import { getTokenDecimals } from '../../constants/tokens';
 import { GlamVaultService } from '../../services/glamVaultService';
 import { NETWORK, DEBUG, DEBUGLOAD } from '@env';
@@ -72,7 +72,8 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault, onClose }) =>
   
   const handleConfirm = async () => {
     if (!account || !connection || !vault.glam_state || !vault.mintPubkey) {
-      alertAndLog('Error', 'Missing required data for deposit');
+      // This shouldn't happen in normal flow as button is disabled
+      console.error('[DepositSheet] Missing required data for deposit');
       return;
     }
     
@@ -99,17 +100,59 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault, onClose }) =>
       const vaultService = new GlamVaultService();
       const network = NETWORK === 'devnet' ? 'devnet' : 'mainnet';
       
+      console.log('[DepositSheet] About to prepare subscription with:', {
+        walletPubkey: account.publicKey.toBase58(),
+        vaultState: vault.glam_state,
+        baseAsset: vault.baseAsset,
+        mintPubkey: vault.mintPubkey,
+        amount: amountNum,
+        decimals: decimals,
+        network: network
+      });
+      
       // Prepare subscription transaction
-      const { transaction, blockhash, lastValidBlockHeight } = await vaultService.prepareSubscription(
-        connection,
-        account.publicKey,
-        vault.glam_state,
-        vault.baseAsset,
-        vault.mintPubkey,
-        amountNum,
-        decimals,
-        network
-      );
+      let transactionData;
+      try {
+        console.log('[DepositSheet] Calling prepareSubscription...');
+        transactionData = await vaultService.prepareSubscription(
+          connection,
+          account.publicKey,
+          vault.glam_state,
+          vault.baseAsset,
+          vault.mintPubkey,
+          amountNum,
+          decimals,
+          network
+        );
+        console.log('[DepositSheet] prepareSubscription completed successfully');
+      } catch (prepError) {
+        console.error('[DepositSheet] prepareSubscription failed:', prepError);
+        throw prepError;
+      }
+      
+      const { transaction, blockhash, lastValidBlockHeight } = transactionData;
+      
+      // Log transaction details before sending
+      console.log('[DepositSheet] Transaction details:', {
+        feePayer: transaction.feePayer?.toBase58(),
+        instructions: transaction.instructions.length,
+        signatures: transaction.signatures.length,
+        recentBlockhash: transaction.recentBlockhash
+      });
+      
+      // Log each instruction
+      transaction.instructions.forEach((ix, index) => {
+        console.log(`[DepositSheet] Instruction ${index}:`, {
+          programId: ix.programId.toBase58(),
+          keys: ix.keys.map(k => ({
+            pubkey: k.pubkey.toBase58(),
+            isSigner: k.isSigner,
+            isWritable: k.isWritable
+          })),
+          dataLength: ix.data.length,
+          dataHex: ix.data.toString('hex')
+        });
+      });
       
       // Execute transaction through mobile wallet
       const signature = await transact(async (wallet: Web3MobileWallet) => {
@@ -142,9 +185,7 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault, onClose }) =>
         return signatures[0];
       });
       
-      // Success handling
-      alertAndLog('Success', 'Deposit successful!');
-      
+      // Success - no alert needed, UI will update
       // Clear form immediately
       setAmount('');
       
@@ -189,7 +230,8 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault, onClose }) =>
       
     } catch (error) {
       console.error('[DepositSheet] Deposit error:', error);
-      alertAndLog('Deposit Failed', error instanceof Error ? error.message : 'Unknown error occurred');
+      const errorInfo = getTransactionErrorInfo(error);
+      showStyledAlert(errorInfo);
     } finally {
       setDepositLoading(false);
     }
@@ -210,7 +252,9 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault, onClose }) =>
         }
       }, 2000); // Increased delay to ensure wallet is fully connected
     } catch (error) {
-      alertAndLog('Error connecting wallet', error instanceof Error ? error.message : error);
+      console.error('[DepositSheet] Connect error:', error);
+      const errorInfo = getWalletErrorInfo(error);
+      showStyledAlert(errorInfo);
     } finally {
       setConnectLoading(false);
     }
@@ -499,7 +543,11 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault, onClose }) =>
           disabled={connectLoading}
         >
           {(connectLoading || (DEBUG === 'true' && DEBUGLOAD === 'true')) ? (
-            <ActivityIndicator size="small" color={colors.button.primaryText} />
+            <PulsatingText 
+              text="Loading..."
+              variant="regular"
+              style={[styles.confirmButtonText, { color: colors.button.primaryText }]}
+            />
           ) : (
             <Text variant="regular" style={[styles.confirmButtonText, { color: colors.button.primaryText }]}>
               Connect Account
@@ -518,7 +566,11 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault, onClose }) =>
           disabled={isDisabled || depositLoading}
         >
           {(depositLoading || (DEBUG === 'true' && DEBUGLOAD === 'true')) ? (
-            <ActivityIndicator size="small" color={colors.button.primaryText} />
+            <PulsatingText 
+              text="Loading..."
+              variant="regular"
+              style={[styles.confirmButtonText, { color: colors.button.primaryText }]}
+            />
           ) : (
             <Text variant="regular" style={[styles.confirmButtonText, { color: colors.button.primaryText }]}>
               Confirm Deposit

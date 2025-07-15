@@ -9,4 +9,6 @@ declare module '@env' {
   export const HELIUS_API_KEY: string;
   export const GLAM_PROGRAM_MAINNET: string;
   export const GLAM_PROGRAM_DEVNET: string;
+  export const GLAM_CONFIG: string;
+  export const GLAM_POLICIES: string;
 }

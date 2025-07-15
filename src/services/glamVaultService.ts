@@ -20,6 +20,16 @@ export class GlamVaultService {
     decimals: number,
     network: 'mainnet' | 'devnet' = 'mainnet'
   ) {
+    console.log('[GlamVaultService] prepareSubscription called with:', {
+      wallet: walletPublicKey.toBase58(),
+      vaultState: vaultStatePubkey,
+      baseAsset,
+      glamMint,
+      amount: amountInUiUnits,
+      decimals,
+      network
+    });
+    
     try {
       console.log('[GlamVaultService] Preparing subscription with native implementation');
       
@@ -37,6 +47,15 @@ export class GlamVaultService {
         decimals
       });
       
+      // Build price vault instruction first
+      const priceVaultIx = await GlamInstructions.buildPriceVaultInstruction(
+        connection,
+        vaultState,
+        walletPublicKey,
+        baseAssetPubkey,
+        network
+      );
+      
       // Build subscribe instruction using native implementation
       const subscribeIx = await GlamInstructions.buildSubscribeInstruction(
         vaultState,
@@ -51,13 +70,26 @@ export class GlamVaultService {
       // Get recent blockhash
       const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
       
-      // Create transaction
+      // Create transaction with both instructions
       const transaction = new Transaction({
         recentBlockhash: blockhash,
         feePayer: walletPublicKey
-      }).add(subscribeIx);
+      }).add(priceVaultIx).add(subscribeIx);
       
-      console.log('[GlamVaultService] Transaction prepared');
+      // Serialize to base64 for inspection
+      try {
+        const serialized = transaction.serialize({
+          requireAllSignatures: false,
+          verifySignatures: false
+        });
+        const base64 = serialized.toString('base64');
+        console.log('[GlamVaultService] Transaction base64:', base64);
+        console.log('[GlamVaultService] Transaction size:', serialized.length, 'bytes');
+      } catch (serializeError) {
+        console.error('[GlamVaultService] Error serializing transaction:', serializeError);
+      }
+      
+      console.log('[GlamVaultService] Transaction prepared with 2 instructions (price_vault + subscribe)');
       
       return {
         transaction,
