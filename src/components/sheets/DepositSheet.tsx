@@ -99,7 +99,7 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault }) => {
     if (!vault.minSubscription || vault.minSubscription === '0') return 'None';
     return formatTokenAmount(vault.minSubscription, vault.baseAsset, {
       showSymbol: true,
-      minimumFractionDigits: 2,
+      minimumFractionDigits: 0,
       maximumFractionDigits: 6
     });
   };
@@ -213,17 +213,7 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault }) => {
           </Text>
         </View>
         
-        {/* Row 2: Redemption Window */}
-        <View style={styles.row}>
-          <Text mono variant="regular" style={[styles.label, { color: colors.text.tertiary }]}>
-            Redemption Window
-          </Text>
-          <Text variant="regular" style={[styles.value, { color: colors.text.primary }]}>
-            {calculateRedemptionWindow()}
-          </Text>
-        </View>
-        
-        {/* Row 3: Min Deposit */}
+        {/* Row 2: Min Deposit */}
         <View style={styles.row}>
           <Text mono variant="regular" style={[styles.label, { color: colors.text.tertiary }]}>
             Min Deposit
@@ -240,6 +230,16 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault }) => {
               {formatMinDeposit()}
             </Text>
           </TouchableOpacity>
+        </View>
+        
+        {/* Row 3: Redemption Window */}
+        <View style={styles.row}>
+          <Text mono variant="regular" style={[styles.label, { color: colors.text.tertiary }]}>
+            Redemption Window
+          </Text>
+          <Text variant="regular" style={[styles.value, { color: colors.text.primary }]}>
+            {calculateRedemptionWindow()}
+          </Text>
         </View>
         
         {/* Row 4: Entry | Exit Fees */}

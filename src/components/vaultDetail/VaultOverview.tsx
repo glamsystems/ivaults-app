@@ -68,7 +68,7 @@ export const VaultOverview: React.FC<VaultOverviewProps> = ({
     
     return formatTokenAmount(amount, vault.baseAsset, {
       showSymbol: true,
-      minimumFractionDigits: 2,
+      minimumFractionDigits: 0,
       maximumFractionDigits: 2
     });
   };
