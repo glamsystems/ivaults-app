@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
 import { Text, DisplayPubkey } from '../common';
 import { Vault } from '../../store/vaultStore';
@@ -8,6 +8,9 @@ import { fonts, useTheme } from '../../theme';
 import { useWalletStore } from '../../store/walletStore';
 import { useConnection } from '../../solana/providers/ConnectionProvider';
 import { PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { transact, Web3MobileWallet } from '@solana-mobile/mobile-wallet-adapter-protocol-web3js';
+import { useAuthorization } from '../../solana/providers/AuthorizationProvider';
+import { alertAndLog } from '../../solana/utils';
 
 interface DepositSheetProps {
   vault: Vault;
@@ -16,11 +19,13 @@ interface DepositSheetProps {
 export const DepositSheet: React.FC<DepositSheetProps> = ({ vault }) => {
   const { colors } = useTheme();
   const { connection } = useConnection();
+  const { authorizeSession } = useAuthorization();
   const account = useWalletStore((state) => state.account);
   const updateTokenBalance = useWalletStore((state) => state.updateTokenBalance);
   const tokenBalance = useWalletStore((state) => state.getTokenBalance(vault.baseAsset));
   
   const [amount, setAmount] = useState('');
+  const [connectLoading, setConnectLoading] = useState(false);
   
   // Fetch user's base asset balance
   useEffect(() => {
@@ -43,6 +48,19 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault }) => {
   const handleConfirm = () => {
     console.log('Deposit confirmed:', amount);
   };
+
+  const handleConnect = useCallback(async () => {
+    try {
+      setConnectLoading(true);
+      await transact(async (wallet: Web3MobileWallet) => {
+        await authorizeSession(wallet);
+      });
+    } catch (error) {
+      alertAndLog('Error connecting wallet', error instanceof Error ? error.message : error);
+    } finally {
+      setConnectLoading(false);
+    }
+  }, [authorizeSession]);
   
   // Get balance from store
   const walletBalance = tokenBalance?.uiAmount || 0;
@@ -243,21 +261,38 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault }) => {
         </View>
       </View>
       
-      {/* Confirm Button */}
-      <TouchableOpacity 
-        style={[
-          styles.confirmButton, 
-          { backgroundColor: colors.button.primary },
-          isDisabled && { opacity: 0.5 }
-        ]}
-        onPress={handleConfirm}
-        activeOpacity={0.7}
-        disabled={isDisabled}
-      >
-        <Text variant="regular" style={[styles.confirmButtonText, { color: colors.button.primaryText }]}>
-          Confirm Deposit
-        </Text>
-      </TouchableOpacity>
+      {/* Confirm Button or Connect Button */}
+      {!account ? (
+        <TouchableOpacity 
+          style={[styles.confirmButton, { backgroundColor: colors.button.primary }]}
+          onPress={handleConnect}
+          activeOpacity={0.7}
+          disabled={connectLoading}
+        >
+          {connectLoading ? (
+            <ActivityIndicator color={colors.button.primaryText} />
+          ) : (
+            <Text variant="regular" style={[styles.confirmButtonText, { color: colors.button.primaryText }]}>
+              Connect Account
+            </Text>
+          )}
+        </TouchableOpacity>
+      ) : (
+        <TouchableOpacity 
+          style={[
+            styles.confirmButton, 
+            { backgroundColor: colors.button.primary },
+            isDisabled && { opacity: 0.5 }
+          ]}
+          onPress={handleConfirm}
+          activeOpacity={0.7}
+          disabled={isDisabled}
+        >
+          <Text variant="regular" style={[styles.confirmButtonText, { color: colors.button.primaryText }]}>
+            Confirm Deposit
+          </Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 };

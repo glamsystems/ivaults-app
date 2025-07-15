@@ -19,6 +19,7 @@ import {
 import { toUint8Array } from 'js-base64';
 import { RPC_ENDPOINT, NetworkType } from './ConnectionProvider';
 import { useWalletStore } from '../../store/walletStore';
+import { usePortfolioStore } from '../../store/portfolioStore';
 
 export type Account = Readonly<{
   address: Base64EncodedAddress;
@@ -81,6 +82,7 @@ const AuthorizationContext = createContext<AuthorizationProviderContext>({
 export function AuthorizationProvider({ children, network = 'devnet' }: { children: ReactNode; network?: NetworkType }) {
   const [authorization, setAuthorization] = useState<Authorization | null>(null);
   const { setAccount, clearWallet, setNetwork } = useWalletStore();
+  const { setPositions, setTotalValue } = usePortfolioStore();
 
   const handleAuthorizationResult = useCallback(
     async (
@@ -148,16 +150,22 @@ export function AuthorizationProvider({ children, network = 'devnet' }: { childr
         setAuthorization(null);
         // Clear wallet store
         clearWallet();
+        // Clear portfolio data
+        setPositions([]);
+        setTotalValue(0);
       }
     },
-    [authorization, clearWallet],
+    [authorization, clearWallet, setPositions, setTotalValue],
   );
 
   // Local disconnect without wallet interaction
   const disconnectLocally = useCallback(() => {
     setAuthorization(null);
     clearWallet();
-  }, [clearWallet]);
+    // Clear portfolio data
+    setPositions([]);
+    setTotalValue(0);
+  }, [clearWallet, setPositions, setTotalValue]);
 
   const onChangeAccount = useCallback(
     (nextSelectedAccount: Account) => {

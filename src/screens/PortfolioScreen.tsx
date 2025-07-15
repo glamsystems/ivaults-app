@@ -8,12 +8,16 @@ import {
   PortfolioHeader, 
   PortfolioTabs, 
   PositionCard, 
-  RequestCard 
+  RequestCard,
+  EmptyState,
+  ConnectAccountState
 } from '../components/portfolio';
 import { BottomGradient, FadeOverlay } from '../components/screener';
 import { usePortfolioStore } from '../store/portfolioStore';
 import { useActivityStore } from '../store/activityStore';
 import { useVaultStore } from '../store/vaultStore';
+import { useWalletStore } from '../store/walletStore';
+import { DEBUG } from '@env';
 
 export const PortfolioScreen: React.FC = () => {
   const { colors } = useTheme();
@@ -25,6 +29,7 @@ export const PortfolioScreen: React.FC = () => {
   } = usePortfolioStore();
   const { activities } = useActivityStore();
   const { vaults } = useVaultStore();
+  const account = useWalletStore((state) => state.account);
   
   // Filter only request activities
   const requestActivities = activities.filter(activity => activity.type === 'request');
@@ -32,6 +37,12 @@ export const PortfolioScreen: React.FC = () => {
   // Data is now initialized globally in DataInitializer
 
   const handlePositionPress = (vaultId: string) => {
+    // Only navigate if it's a vault position (not a regular token)
+    if (!vaultId) {
+      console.log('[PortfolioScreen] Non-vault token clicked, navigation disabled');
+      return;
+    }
+    
     const vault = vaults.find(v => v.id === vaultId);
     if (vault) {
       navigation.navigate('VaultDetail', { vault });
@@ -67,6 +78,48 @@ export const PortfolioScreen: React.FC = () => {
     );
   };
 
+  const renderEmptyState = () => {
+    // Only show empty state in production mode and for positions tab
+    if (DEBUG === 'true' || selectedTab !== 'Positions') {
+      return null;
+    }
+    return <EmptyState />;
+  };
+
+  // Show connect state if no wallet connected and on positions tab
+  if (!account && selectedTab === 'Positions') {
+    return (
+      <PageWrapper>
+        <PortfolioHeader />
+        
+        <View style={styles.container}>
+          <PortfolioTabs />
+          
+          <View style={styles.listContainer}>
+            <FlatList
+              data={[]}
+              keyExtractor={(item) => ''}
+              renderItem={() => null}
+              contentContainerStyle={[
+                styles.listContent,
+                {
+                  paddingBottom: Platform.OS === 'ios' ? 120 : 140,
+                }
+              ]}
+              showsVerticalScrollIndicator={false}
+              ListEmptyComponent={() => <ConnectAccountState />}
+            />
+          </View>
+          
+          {/* Bottom gradient */}
+          <View style={styles.bottomGradientWrapper}>
+            <BottomGradient height={200} />
+          </View>
+        </View>
+      </PageWrapper>
+    );
+  }
+
   return (
     <PageWrapper>
       <PortfolioHeader />
@@ -88,6 +141,7 @@ export const PortfolioScreen: React.FC = () => {
             showsVerticalScrollIndicator={false}
             ItemSeparatorComponent={() => <View style={styles.separator} />}
             ListFooterComponent={() => <View style={{ height: 60 }} />}
+            ListEmptyComponent={renderEmptyState}
           />
           
           {/* Top fade overlay */}

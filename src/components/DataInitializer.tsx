@@ -2,18 +2,33 @@ import { useEffect } from 'react';
 import { Connection } from '@solana/web3.js';
 import { useVaultStore } from '../store/vaultStore';
 import { useActivityStore } from '../store/activityStore';
-import { usePortfolioStore } from '../store/portfolioStore';
+import { usePortfolioStore, Position } from '../store/portfolioStore';
 import { VaultDataService } from '../services/vaultDataService';
 import { NetworkType } from '../solana/providers/ConnectionProvider';
 import { DEBUG, DEBUGLOAD, NETWORK, DEVNET_RPC, SOLANA_RPC } from '@env';
 import { useWalletStore } from '../store/walletStore';
 import { useConnection } from '../solana/providers/ConnectionProvider';
 
+// Generate gradient colors based on index
+const generateGradientColors = (index: number): string[] => {
+  const gradients = [
+    ['#FF6B6B', '#4ECDC4'],
+    ['#F093FB', '#F5576C'],
+    ['#4FACFE', '#00F2FE'],
+    ['#43E97B', '#38F9D7'],
+    ['#FA709A', '#FEE140'],
+    ['#30CCED', '#4C6EF5'],
+    ['#A8EDEA', '#FED6E3'],
+    ['#FFF6B7', '#F6416C'],
+  ];
+  return gradients[index % gradients.length];
+};
+
 export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { setVaults, setIsLoading, setDroppedVaults, vaults } = useVaultStore();
   const { setActivities } = useActivityStore();
   const { setPositions, setTotalValue } = usePortfolioStore();
-  const { account, updateAllTokenBalances } = useWalletStore();
+  const { account, updateAllTokenBalances, fetchAllTokenAccounts, allTokenAccounts } = useWalletStore();
   const { connection } = useConnection();
 
   useEffect(() => {
@@ -165,32 +180,9 @@ export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ child
       },
     ]);
 
-    // Initialize portfolio positions
-    setPositions([
-      {
-        id: '1',
-        vaultId: '1',
-        name: 'DeFi Yield Optimizer',
-        symbol: 'DYO',
-        category: 'SuperVault',
-        balance: 320.42,
-        performance24h: 9.87,
-        gradientColors: ['#FF6B6B', '#4ECDC4'],
-      },
-      {
-        id: '2',
-        vaultId: '3',
-        name: 'Arbitrage Alpha',
-        symbol: 'ARB',
-        category: 'xStocks',
-        balance: 100.27,
-        performance24h: 42.69,
-        gradientColors: ['#F093FB', '#F5576C'],
-      },
-    ]);
-    
-    // Calculate total value
-    setTotalValue(420.69);
+    // Initialize with empty positions - will be populated when wallet connects
+    setPositions([]);
+    setTotalValue(0);
 
     // Initialize vault data
     initializeData();
@@ -200,34 +192,103 @@ export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ child
   useEffect(() => {
     if (!account || !connection || vaults.length === 0) return;
 
-    // Collect unique token mints from all vaults
-    const tokenMints = new Set<string>();
-    
-    // Add base assets
-    vaults.forEach(vault => {
-      if (vault.baseAsset) {
-        tokenMints.add(vault.baseAsset);
-      }
-    });
-    
-    // Add vault tokens (for positions)
-    vaults.forEach(vault => {
-      if (vault.mintPubkey) {
-        tokenMints.add(vault.mintPubkey);
-      }
-    });
+    const fetchAndUpdate = async () => {
+      // Fetch all token accounts first and wait for completion
+      console.log('[DataInitializer] Fetching all token accounts...');
+      await fetchAllTokenAccounts(connection);
 
-    // Update all token balances in background
-    console.log('[DataInitializer] Updating balances for', tokenMints.size, 'tokens');
-    updateAllTokenBalances(connection, Array.from(tokenMints));
+      // Collect unique token mints from all vaults
+      const tokenMints = new Set<string>();
+      
+      // Add base assets
+      vaults.forEach(vault => {
+        if (vault.baseAsset) {
+          tokenMints.add(vault.baseAsset);
+        }
+      });
+      
+      // Add vault tokens (for positions)
+      vaults.forEach(vault => {
+        if (vault.mintPubkey) {
+          tokenMints.add(vault.mintPubkey);
+        }
+      });
+
+      // Update all token balances in background
+      console.log('[DataInitializer] Updating balances for', tokenMints.size, 'tokens');
+      updateAllTokenBalances(connection, Array.from(tokenMints));
+    };
+
+    // Initial fetch
+    fetchAndUpdate();
 
     // Set up interval to refresh balances every 30 seconds
     const interval = setInterval(() => {
-      updateAllTokenBalances(connection, Array.from(tokenMints));
+      fetchAndUpdate();
     }, 30000);
 
     return () => clearInterval(interval);
-  }, [account, connection, vaults, updateAllTokenBalances]);
+  }, [account, connection, vaults, updateAllTokenBalances, fetchAllTokenAccounts]);
+
+  // Build positions from token accounts
+  useEffect(() => {
+    if (!account || vaults.length === 0) return;
+
+    const showDebug = DEBUG === 'true';
+    console.log('[DataInitializer] Building positions - Debug mode:', showDebug, 'Token accounts:', allTokenAccounts.length);
+    
+    const positions: Position[] = [];
+    let totalValue = 0;
+
+    // Create a map of vault mints for quick lookup
+    const vaultsByMint = new Map(vaults.map(v => [v.mintPubkey, v]));
+
+    allTokenAccounts.forEach((tokenAccount, index) => {
+      const vault = vaultsByMint.get(tokenAccount.mint);
+      
+      // In production mode, only show vault positions
+      if (!showDebug && !vault) return;
+
+      // Skip tokens with 0 balance unless in debug mode
+      if (!showDebug && tokenAccount.uiAmount === 0) return;
+
+      if (vault) {
+        // This is a vault position
+        positions.push({
+          id: `vault-${vault.id}`,
+          vaultId: vault.id,
+          name: vault.name,
+          symbol: vault.symbol,
+          category: vault.category === 'glam' ? 'SuperVault' : 'xStocks',
+          balance: tokenAccount.uiAmount,
+          performance24h: vault.performance24h,
+          gradientColors: vault.gradientColors || ['#4ECDC4', '#44A08D']
+        });
+        totalValue += tokenAccount.uiAmount;
+      } else if (showDebug) {
+        // Non-vault token in debug mode
+        const colors = generateGradientColors(index);
+        positions.push({
+          id: `token-${tokenAccount.mint}`,
+          vaultId: '', // No vault ID for non-vault tokens
+          name: tokenAccount.mint,
+          symbol: tokenAccount.mint.slice(0, 4) + '...' + tokenAccount.mint.slice(-4),
+          category: 'xStocks', // Default category
+          balance: tokenAccount.uiAmount,
+          performance24h: 0,
+          gradientColors: colors
+        });
+        totalValue += tokenAccount.uiAmount;
+      }
+    });
+
+    console.log('[DataInitializer] Built', positions.length, 'positions from token accounts');
+    if (positions.length > 0) {
+      console.log('[DataInitializer] First position:', positions[0]);
+    }
+    setPositions(positions);
+    setTotalValue(totalValue);
+  }, [account, allTokenAccounts, vaults, setPositions, setTotalValue, DEBUG]);
 
   return <>{children}</>;
 };

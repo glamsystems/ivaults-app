@@ -18,8 +18,6 @@ const Tab = createBottomTabNavigator();
 export const TabNavigator: React.FC = () => {
   const { colors } = useTheme();
   const showDebugTab = DEBUG === 'true';
-  
-  console.log('[TabNavigator] DEBUG:', DEBUG, 'showDebugTab:', showDebugTab);
 
   return (
     <View style={styles.container}>

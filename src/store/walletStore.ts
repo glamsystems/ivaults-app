@@ -12,6 +12,13 @@ interface TokenBalance {
   lastUpdated: number;
 }
 
+interface TokenAccount {
+  mint: string;
+  balance: number;
+  uiAmount: number;
+  decimals: number;
+}
+
 interface WalletState {
   // Wallet data
   account: Account | null;
@@ -23,6 +30,8 @@ interface WalletState {
   
   // Token balances
   tokenBalances: Map<string, TokenBalance>;
+  allTokenAccounts: TokenAccount[];
+  isLoadingTokenAccounts: boolean;
   
   // Polling
   pollingInterval: NodeJS.Timeout | null;
@@ -35,6 +44,7 @@ interface WalletState {
   updateTokenBalance: (connection: Connection, mint: string) => Promise<void>;
   updateAllTokenBalances: (connection: Connection, mints: string[]) => Promise<void>;
   getTokenBalance: (mint: string) => TokenBalance | undefined;
+  fetchAllTokenAccounts: (connection: Connection) => Promise<void>;
   startBalancePolling: (connection: Connection) => void;
   stopBalancePolling: () => void;
   clearWallet: () => void;
@@ -52,6 +62,8 @@ export const useWalletStore = create<WalletState>((set, get) => ({
   balanceError: null,
   network: 'mainnet',
   tokenBalances: new Map(),
+  allTokenAccounts: [],
+  isLoadingTokenAccounts: false,
   pollingInterval: null,
   retryCount: 0,
   
@@ -212,6 +224,64 @@ export const useWalletStore = create<WalletState>((set, get) => ({
     const { tokenBalances } = get();
     return tokenBalances.get(mint);
   },
+
+  // Fetch all token accounts
+  fetchAllTokenAccounts: async (connection: Connection) => {
+    const { account } = get();
+    if (!account) return;
+
+    set({ isLoadingTokenAccounts: true });
+
+    try {
+      // Get all token accounts for the wallet
+      const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
+        account.publicKey,
+        { programId: new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA') }
+      );
+
+      const accounts: TokenAccount[] = [];
+      
+      // Add SOL as a token
+      const solBalance = await connection.getBalance(account.publicKey);
+      accounts.push({
+        mint: 'So11111111111111111111111111111111111111112',
+        balance: solBalance,
+        uiAmount: solBalance / LAMPORTS_PER_SOL,
+        decimals: 9
+      });
+
+      // Add all SPL tokens
+      console.log('[WalletStore] Found', tokenAccounts.value.length, 'total token accounts');
+      tokenAccounts.value.forEach(token => {
+        const tokenInfo = token.account.data.parsed.info;
+        const amount = tokenInfo.tokenAmount;
+        
+        // Only include tokens with balance > 0
+        if (amount.uiAmount > 0) {
+          console.log('[WalletStore] Token with balance:', tokenInfo.mint, 'balance:', amount.uiAmount);
+          accounts.push({
+            mint: tokenInfo.mint,
+            balance: parseInt(amount.amount),
+            uiAmount: amount.uiAmount,
+            decimals: amount.decimals
+          });
+        }
+      });
+
+      set({ 
+        allTokenAccounts: accounts,
+        isLoadingTokenAccounts: false 
+      });
+
+      console.log('[WalletStore] Found', accounts.length, 'token accounts with balance');
+    } catch (error) {
+      console.error('[WalletStore] Error fetching all token accounts:', error);
+      set({ 
+        allTokenAccounts: [],
+        isLoadingTokenAccounts: false 
+      });
+    }
+  },
   
   // Clear wallet data
   clearWallet: () => {
@@ -227,6 +297,8 @@ export const useWalletStore = create<WalletState>((set, get) => ({
       isLoadingBalance: false,
       balanceError: null,
       tokenBalances: new Map(),
+      allTokenAccounts: [],
+      isLoadingTokenAccounts: false,
       pollingInterval: null,
       retryCount: 0
     });

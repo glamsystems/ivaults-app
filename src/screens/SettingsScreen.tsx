@@ -13,8 +13,9 @@ import { alertAndLog } from '../solana/utils';
 export const SettingsScreen: React.FC = () => {
   const { colors, themeMode, setThemeMode } = useTheme();
   const { connection } = useConnection();
-  const { selectedAccount, authorizeSession, disconnectLocally } = useAuthorization();
+  const { authorizeSession, disconnectLocally } = useAuthorization();
   const { 
+    account,
     balance, 
     balanceInSol, 
     isLoadingBalance, 
@@ -50,7 +51,7 @@ export const SettingsScreen: React.FC = () => {
 
   // Start balance polling when account is connected
   useEffect(() => {
-    if (!selectedAccount || !connection) {
+    if (!account || !connection) {
       stopBalancePolling();
       return;
     }
@@ -65,7 +66,7 @@ export const SettingsScreen: React.FC = () => {
     return () => {
       stopBalancePolling();
     };
-  }, [selectedAccount, connection, startBalancePolling, stopBalancePolling, updateBalance]);
+  }, [account, connection, startBalancePolling, stopBalancePolling, updateBalance]);
 
   const handleLinkPress = (url: string) => {
     Linking.openURL(url);
@@ -157,7 +158,7 @@ export const SettingsScreen: React.FC = () => {
 
         {/* Connect/Disconnect Section */}
         <View style={styles.connectSection}>
-          {!selectedAccount ? (
+          {!account ? (
             <>
               <TouchableOpacity 
                 style={[styles.button, { backgroundColor: colors.button.primary, borderColor: colors.button.primary }]}
@@ -168,7 +169,7 @@ export const SettingsScreen: React.FC = () => {
                   <ActivityIndicator color={colors.button.primaryText} />
                 ) : (
                   <Text variant="regular" style={[styles.buttonText, { color: colors.button.primaryText }]}>
-                    Connect
+                    Connect Account
                   </Text>
                 )}
               </TouchableOpacity>
@@ -179,8 +180,8 @@ export const SettingsScreen: React.FC = () => {
                 style={[styles.button, { backgroundColor: colors.button.primary, borderColor: colors.button.primary, marginBottom: 10 }]}
               >
                 <Text variant="regular" style={[styles.buttonText, { color: colors.button.primaryText }]}>
-                  {selectedAccount.publicKey.toBase58().slice(0, 4)}...
-                  {selectedAccount.publicKey.toBase58().slice(-4)}
+                  {account.publicKey.toBase58().slice(0, 4)}...
+                  {account.publicKey.toBase58().slice(-4)}
                 </Text>
               </View>
               
