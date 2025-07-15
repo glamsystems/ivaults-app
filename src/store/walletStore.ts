@@ -3,6 +3,15 @@ import { Connection, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { Account } from '../solana/providers/AuthorizationProvider';
 import { NetworkType } from '../solana/providers/ConnectionProvider';
 
+interface TokenBalance {
+  balance: number;
+  uiAmount: number;
+  decimals: number;
+  isLoading: boolean;
+  error: string | null;
+  lastUpdated: number;
+}
+
 interface WalletState {
   // Wallet data
   account: Account | null;
@@ -12,6 +21,9 @@ interface WalletState {
   balanceError: string | null;
   network: NetworkType;
   
+  // Token balances
+  tokenBalances: Map<string, TokenBalance>;
+  
   // Polling
   pollingInterval: NodeJS.Timeout | null;
   retryCount: number;
@@ -20,6 +32,9 @@ interface WalletState {
   setAccount: (account: Account | null) => void;
   setNetwork: (network: NetworkType) => void;
   updateBalance: (connection: Connection) => Promise<void>;
+  updateTokenBalance: (connection: Connection, mint: string) => Promise<void>;
+  updateAllTokenBalances: (connection: Connection, mints: string[]) => Promise<void>;
+  getTokenBalance: (mint: string) => TokenBalance | undefined;
   startBalancePolling: (connection: Connection) => void;
   stopBalancePolling: () => void;
   clearWallet: () => void;
@@ -36,6 +51,7 @@ export const useWalletStore = create<WalletState>((set, get) => ({
   isLoadingBalance: false,
   balanceError: null,
   network: 'mainnet',
+  tokenBalances: new Map(),
   pollingInterval: null,
   retryCount: 0,
   
@@ -116,6 +132,86 @@ export const useWalletStore = create<WalletState>((set, get) => ({
       set({ pollingInterval: null });
     }
   },
+
+  // Update single token balance
+  updateTokenBalance: async (connection: Connection, mint: string) => {
+    const { account, tokenBalances } = get();
+    if (!account || !connection) return;
+
+    // Set loading state for this token
+    const currentBalance = tokenBalances.get(mint);
+    tokenBalances.set(mint, {
+      ...(currentBalance || { balance: 0, uiAmount: 0, decimals: 0, error: null }),
+      isLoading: true,
+      lastUpdated: Date.now()
+    });
+    set({ tokenBalances: new Map(tokenBalances) });
+
+    try {
+      // Special handling for SOL
+      if (mint === 'So11111111111111111111111111111111111111112') {
+        const balance = await connection.getBalance(account.publicKey);
+        tokenBalances.set(mint, {
+          balance,
+          uiAmount: balance / LAMPORTS_PER_SOL,
+          decimals: 9,
+          isLoading: false,
+          error: null,
+          lastUpdated: Date.now()
+        });
+      } else {
+        // SPL token balance
+        const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
+          account.publicKey,
+          { mint: new PublicKey(mint) }
+        );
+        
+        if (tokenAccounts.value.length > 0) {
+          const tokenInfo = tokenAccounts.value[0].account.data.parsed.info;
+          tokenBalances.set(mint, {
+            balance: parseInt(tokenInfo.tokenAmount.amount),
+            uiAmount: tokenInfo.tokenAmount.uiAmount || 0,
+            decimals: tokenInfo.tokenAmount.decimals,
+            isLoading: false,
+            error: null,
+            lastUpdated: Date.now()
+          });
+        } else {
+          tokenBalances.set(mint, {
+            balance: 0,
+            uiAmount: 0,
+            decimals: 0,
+            isLoading: false,
+            error: null,
+            lastUpdated: Date.now()
+          });
+        }
+      }
+      set({ tokenBalances: new Map(tokenBalances) });
+    } catch (error) {
+      console.error(`[WalletStore] Error fetching token balance for ${mint}:`, error);
+      tokenBalances.set(mint, {
+        ...(currentBalance || { balance: 0, uiAmount: 0, decimals: 0 }),
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Failed to fetch balance',
+        lastUpdated: Date.now()
+      });
+      set({ tokenBalances: new Map(tokenBalances) });
+    }
+  },
+
+  // Update multiple token balances
+  updateAllTokenBalances: async (connection: Connection, mints: string[]) => {
+    const { updateTokenBalance } = get();
+    // Update balances in parallel
+    await Promise.all(mints.map(mint => updateTokenBalance(connection, mint)));
+  },
+
+  // Get token balance
+  getTokenBalance: (mint: string) => {
+    const { tokenBalances } = get();
+    return tokenBalances.get(mint);
+  },
   
   // Clear wallet data
   clearWallet: () => {
@@ -130,6 +226,7 @@ export const useWalletStore = create<WalletState>((set, get) => ({
       balanceInSol: 0,
       isLoadingBalance: false,
       balanceError: null,
+      tokenBalances: new Map(),
       pollingInterval: null,
       retryCount: 0
     });

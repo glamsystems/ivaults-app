@@ -6,11 +6,15 @@ import { usePortfolioStore } from '../store/portfolioStore';
 import { VaultDataService } from '../services/vaultDataService';
 import { NetworkType } from '../solana/providers/ConnectionProvider';
 import { DEBUG, DEBUGLOAD, NETWORK, DEVNET_RPC, SOLANA_RPC } from '@env';
+import { useWalletStore } from '../store/walletStore';
+import { useConnection } from '../solana/providers/ConnectionProvider';
 
 export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { setVaults, setIsLoading, setDroppedVaults } = useVaultStore();
+  const { setVaults, setIsLoading, setDroppedVaults, vaults } = useVaultStore();
   const { setActivities } = useActivityStore();
   const { setPositions, setTotalValue } = usePortfolioStore();
+  const { account, updateAllTokenBalances } = useWalletStore();
+  const { connection } = useConnection();
 
   useEffect(() => {
     const initializeData = async () => {
@@ -190,7 +194,40 @@ export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ child
 
     // Initialize vault data
     initializeData();
-  }, [setVaults, setIsLoading, setActivities, setPositions, setTotalValue]);
+  }, [setVaults, setIsLoading, setActivities, setPositions, setTotalValue, setDroppedVaults]);
+
+  // Separate effect for updating token balances when wallet connects
+  useEffect(() => {
+    if (!account || !connection || vaults.length === 0) return;
+
+    // Collect unique token mints from all vaults
+    const tokenMints = new Set<string>();
+    
+    // Add base assets
+    vaults.forEach(vault => {
+      if (vault.baseAsset) {
+        tokenMints.add(vault.baseAsset);
+      }
+    });
+    
+    // Add vault tokens (for positions)
+    vaults.forEach(vault => {
+      if (vault.mintPubkey) {
+        tokenMints.add(vault.mintPubkey);
+      }
+    });
+
+    // Update all token balances in background
+    console.log('[DataInitializer] Updating balances for', tokenMints.size, 'tokens');
+    updateAllTokenBalances(connection, Array.from(tokenMints));
+
+    // Set up interval to refresh balances every 30 seconds
+    const interval = setInterval(() => {
+      updateAllTokenBalances(connection, Array.from(tokenMints));
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [account, connection, vaults, updateAllTokenBalances]);
 
   return <>{children}</>;
 };

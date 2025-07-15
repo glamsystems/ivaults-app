@@ -17,46 +17,18 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault }) => {
   const { colors } = useTheme();
   const { connection } = useConnection();
   const account = useWalletStore((state) => state.account);
+  const updateTokenBalance = useWalletStore((state) => state.updateTokenBalance);
+  const tokenBalance = useWalletStore((state) => state.getTokenBalance(vault.baseAsset));
   
   const [amount, setAmount] = useState('');
-  const [walletBalance, setWalletBalance] = useState<number>(0);
-  const [isLoadingBalance, setIsLoadingBalance] = useState(false);
   
   // Fetch user's base asset balance
   useEffect(() => {
-    const fetchBaseAssetBalance = async () => {
-      if (!account || !vault.baseAsset || !connection) return;
-      
-      setIsLoadingBalance(true);
-      try {
-        // Special handling for SOL
-        if (vault.baseAsset === 'So11111111111111111111111111111111111111112') {
-          const balance = await connection.getBalance(account.publicKey);
-          setWalletBalance(balance / LAMPORTS_PER_SOL);
-        } else {
-          // SPL token balance
-          const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
-            account.publicKey,
-            { mint: new PublicKey(vault.baseAsset) }
-          );
-          
-          if (tokenAccounts.value.length > 0) {
-            const balance = tokenAccounts.value[0].account.data.parsed.info.tokenAmount.uiAmount;
-            setWalletBalance(balance || 0);
-          } else {
-            setWalletBalance(0);
-          }
-        }
-      } catch (error) {
-        console.error('[DepositSheet] Error fetching base asset balance:', error);
-        setWalletBalance(0);
-      } finally {
-        setIsLoadingBalance(false);
-      }
-    };
+    if (!account || !vault.baseAsset || !connection) return;
     
-    fetchBaseAssetBalance();
-  }, [account, vault.baseAsset, connection]);
+    // Update token balance in the store
+    updateTokenBalance(connection, vault.baseAsset);
+  }, [account, vault.baseAsset, connection, updateTokenBalance]);
   
   // Calculate redemption window (Notice + Settlement periods)
   const calculateRedemptionWindow = (): string => {
@@ -72,15 +44,19 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault }) => {
     console.log('Deposit confirmed:', amount);
   };
   
+  // Get balance from store
+  const walletBalance = tokenBalance?.uiAmount || 0;
+  const isLoadingBalance = tokenBalance?.isLoading || false;
+  
   // Validation function
   const isValidAmount = (): boolean => {
     if (!account) return false; // No wallet connected
-    if (walletBalance === 0) return false; // No base asset balance
+    if (!tokenBalance || tokenBalance.uiAmount === 0) return false; // No base asset balance
     if (!amount || amount === '') return false; // No amount entered
     
     const numAmount = parseFloat(amount);
     if (isNaN(numAmount) || numAmount <= 0) return false; // Invalid amount
-    if (numAmount > walletBalance) return false; // Exceeds balance
+    if (numAmount > tokenBalance.uiAmount) return false; // Exceeds balance
     
     return true;
   };
@@ -88,11 +64,15 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault }) => {
   const isDisabled = !isValidAmount();
   
   const handleBalanceClick = () => {
-    setAmount(walletBalance.toString());
+    if (tokenBalance && tokenBalance.uiAmount > 0) {
+      setAmount(tokenBalance.uiAmount.toString());
+    }
   };
   
   const handle50PercentClick = () => {
-    setAmount((walletBalance * 0.5).toFixed(6).replace(/\.?0+$/, '')); // Remove trailing zeros
+    if (tokenBalance && tokenBalance.uiAmount > 0) {
+      setAmount((tokenBalance.uiAmount * 0.5).toFixed(6).replace(/\.?0+$/, '')); // Remove trailing zeros
+    }
   };
   
   // Format fee values with color based on whether they're zero
@@ -233,7 +213,12 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault }) => {
           </View>
           
           <View style={[styles.balanceSection, styles.centerSection]}>
-            <TouchableOpacity onPress={handle50PercentClick} activeOpacity={0.7}>
+            <TouchableOpacity 
+              onPress={handle50PercentClick} 
+              activeOpacity={0.7}
+              disabled={walletBalance === 0}
+              style={walletBalance === 0 ? { opacity: 0.5 } : {}}
+            >
               <Text mono variant="regular" style={[styles.balanceLabel, { color: colors.text.disabled }]}>
                 50%
               </Text>
@@ -241,9 +226,14 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault }) => {
           </View>
           
           <View style={[styles.balanceSection, styles.rightSection]}>
-            <TouchableOpacity onPress={handleBalanceClick} activeOpacity={0.7}>
+            <TouchableOpacity 
+              onPress={handleBalanceClick} 
+              activeOpacity={0.7}
+              disabled={walletBalance === 0}
+              style={walletBalance === 0 ? { opacity: 0.5 } : {}}
+            >
               <Text variant="regular" style={[styles.balanceValue, { color: colors.text.disabled }]}>
-                {isLoadingBalance ? 'Loading...' : walletBalance.toLocaleString('en-US', {
+                {walletBalance.toLocaleString('en-US', {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 6,
                 })}

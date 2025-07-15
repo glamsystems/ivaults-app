@@ -7,7 +7,6 @@ import { FontSizes, Spacing } from '../../constants';
 import { fonts, useTheme } from '../../theme';
 import { useWalletStore } from '../../store/walletStore';
 import { useConnection } from '../../solana/providers/ConnectionProvider';
-import { PublicKey } from '@solana/web3.js';
 
 interface WithdrawSheetProps {
   vault: Vault;
@@ -17,40 +16,19 @@ export const WithdrawSheet: React.FC<WithdrawSheetProps> = ({ vault }) => {
   const { colors } = useTheme();
   const { connection } = useConnection();
   const account = useWalletStore((state) => state.account);
+  const updateTokenBalance = useWalletStore((state) => state.updateTokenBalance);
+  const tokenBalance = useWalletStore((state) => state.getTokenBalance(vault.mintPubkey || ''));
   
   const [amount, setAmount] = useState('');
   const [selectedUnit, setSelectedUnit] = useState<'baseAsset' | 'symbol'>('symbol'); // Start with symbol
-  const [userBalance, setUserBalance] = useState<number>(0);
-  const [isLoadingBalance, setIsLoadingBalance] = useState(false);
   
   // Fetch user's vault token balance
   useEffect(() => {
-    const fetchTokenBalance = async () => {
-      if (!account || !vault.mintPubkey) return;
-      
-      setIsLoadingBalance(true);
-      try {
-        const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
-          account.publicKey,
-          { mint: new PublicKey(vault.mintPubkey) }
-        );
-        
-        if (tokenAccounts.value.length > 0) {
-          const balance = tokenAccounts.value[0].account.data.parsed.info.tokenAmount.uiAmount;
-          setUserBalance(balance || 0);
-        } else {
-          setUserBalance(0);
-        }
-      } catch (error) {
-        console.error('[WithdrawSheet] Error fetching token balance:', error);
-        setUserBalance(0);
-      } finally {
-        setIsLoadingBalance(false);
-      }
-    };
+    if (!account || !vault.mintPubkey || !connection) return;
     
-    fetchTokenBalance();
-  }, [account, vault.mintPubkey, connection]);
+    // Update token balance in the store
+    updateTokenBalance(connection, vault.mintPubkey);
+  }, [account, vault.mintPubkey, connection, updateTokenBalance]);
   
   // Calculate redemption window (Notice + Settlement periods)
   const calculateRedemptionWindow = (): string => {
@@ -71,12 +49,20 @@ export const WithdrawSheet: React.FC<WithdrawSheetProps> = ({ vault }) => {
     console.log('Withdraw requested:', amount, selectedUnit);
   };
   
+  // Get balance from store
+  const userBalance = tokenBalance?.uiAmount || 0;
+  const isLoadingBalance = tokenBalance?.isLoading || false;
+  
   const handleBalanceClick = () => {
-    setAmount(userBalance.toString());
+    if (tokenBalance) {
+      setAmount(tokenBalance.uiAmount.toString());
+    }
   };
   
   const handle50PercentClick = () => {
-    setAmount((userBalance * 0.5).toFixed(6).replace(/\.?0+$/, '')); // Remove trailing zeros
+    if (tokenBalance) {
+      setAmount((tokenBalance.uiAmount * 0.5).toFixed(6).replace(/\.?0+$/, '')); // Remove trailing zeros
+    }
   };
   
   // Validation function

@@ -22,7 +22,6 @@ import { getDisplayPubkey } from '../utils/displayPubkey';
 import { useWalletStore } from '../store/walletStore';
 import { useVaultStore } from '../store/vaultStore';
 import { useConnection } from '../solana/providers/ConnectionProvider';
-import { PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
 
 type RootStackParamList = {
   VaultDetail: { vault: Vault };
@@ -45,40 +44,20 @@ export const VaultDetailScreen: React.FC = () => {
   const network = useWalletStore((state) => state.network);
   const vaults = useVaultStore((state) => state.vaults);
   const account = useWalletStore((state) => state.account);
+  const updateTokenBalance = useWalletStore((state) => state.updateTokenBalance);
+  const tokenBalance = useWalletStore((state) => state.getTokenBalance(vault.mintPubkey || ''));
   const { connection } = useConnection();
-  
-  // State for user's vault balance
-  const [userVaultBalance, setUserVaultBalance] = useState<number>(0);
-  const [isLoadingBalance, setIsLoadingBalance] = useState(false);
   
   // Fetch user's vault token balance
   useEffect(() => {
-    const fetchTokenBalance = async () => {
-      if (!account || !vault.mintPubkey) return;
-      
-      setIsLoadingBalance(true);
-      try {
-        const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
-          account.publicKey,
-          { mint: new PublicKey(vault.mintPubkey) }
-        );
-        
-        if (tokenAccounts.value.length > 0) {
-          const balance = tokenAccounts.value[0].account.data.parsed.info.tokenAmount.uiAmount;
-          setUserVaultBalance(balance || 0);
-        } else {
-          setUserVaultBalance(0);
-        }
-      } catch (error) {
-        console.error('[VaultDetailScreen] Error fetching token balance:', error);
-        setUserVaultBalance(0);
-      } finally {
-        setIsLoadingBalance(false);
-      }
-    };
+    if (!account || !vault.mintPubkey || !connection) return;
     
-    fetchTokenBalance();
-  }, [account, vault.mintPubkey, connection]);
+    // Update token balance in the store
+    updateTokenBalance(connection, vault.mintPubkey);
+  }, [account, vault.mintPubkey, connection, updateTokenBalance]);
+  
+  // Get balance from store
+  const userVaultBalance = tokenBalance?.uiAmount || 0;
 
   // Create highlights from vault data
   const highlights = [
