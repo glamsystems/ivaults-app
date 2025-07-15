@@ -9,6 +9,7 @@ import { useAuthorization } from '../solana/providers/AuthorizationProvider';
 import { useWalletStore } from '../store/walletStore';
 import { transact, Web3MobileWallet } from '@solana-mobile/mobile-wallet-adapter-protocol-web3js';
 import { alertAndLog } from '../solana/utils';
+import { DEBUG, DEBUGLOAD } from '@env';
 
 export const SettingsScreen: React.FC = () => {
   const { colors, themeMode, setThemeMode } = useTheme();
@@ -165,8 +166,8 @@ export const SettingsScreen: React.FC = () => {
                 onPress={handleConnect}
                 disabled={connectLoading}
               >
-                {connectLoading ? (
-                  <ActivityIndicator color={colors.button.primaryText} />
+                {(connectLoading || (DEBUG === 'true' && DEBUGLOAD === 'true')) ? (
+                  <ActivityIndicator size="small" color={colors.button.primaryText} />
                 ) : (
                   <Text variant="regular" style={[styles.buttonText, { color: colors.button.primaryText }]}>
                     Connect Account
@@ -193,8 +194,8 @@ export const SettingsScreen: React.FC = () => {
                 onPress={handleDisconnect}
                 disabled={disconnectLoading}
               >
-                {disconnectLoading ? (
-                  <ActivityIndicator color={colors.button.secondaryText} />
+                {(disconnectLoading || (DEBUG === 'true' && DEBUGLOAD === 'true')) ? (
+                  <ActivityIndicator size="small" color={colors.button.secondaryText} />
                 ) : (
                   <Text variant="regular" style={[styles.buttonText, { color: colors.button.secondaryText }]}>
                     Disconnect
@@ -273,7 +274,9 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
     paddingHorizontal: 19,
     alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
+    minHeight: 40, // fontSize (18) + paddingVertical (11 * 2) = 40px
   },
   buttonText: {
     fontSize: FontSizes.large,
@@ -283,7 +286,9 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
     paddingHorizontal: 19,
     alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
     marginBottom: 12,
+    minHeight: 40, // fontSize (18) + paddingVertical (11 * 2) = 40px
   },
 });

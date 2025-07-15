@@ -65,6 +65,11 @@ function mapGlamVaultToVault(glamVault: GlamVault, index: number): Vault {
   const userCount = 0.5 + random * 15; // 0.5k to 15.5k users
   const deposits = Math.floor(100 + random * 2000); // 100 to 2100
   
+  // Log vault mint for debugging
+  if (glamVault.mintPubkey) {
+    console.log(`[VaultDataService] Vault "${glamVault.name}" mint:`, glamVault.mintPubkey);
+  }
+  
   return {
     id: glamVault.glamStatePubkey || glamVault.pubkey,
     name: glamVault.name || `Vault ${index + 1}`,

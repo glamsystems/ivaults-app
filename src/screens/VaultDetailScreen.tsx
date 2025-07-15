@@ -175,7 +175,10 @@ export const VaultDetailScreen: React.FC = () => {
       
       {/* Deposit Sheet */}
       <BasicBottomSheet ref={depositSheetRef} snapPoints={['75%', '80%']}>
-        <DepositSheet vault={vault} />
+        <DepositSheet 
+          vault={vault} 
+          onClose={() => depositSheetRef.current?.dismiss()}
+        />
       </BasicBottomSheet>
       
       {/* Withdraw Sheet */}

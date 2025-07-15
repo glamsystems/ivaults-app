@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { Connection, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID } from '@solana/spl-token';
 import { Account } from '../solana/providers/AuthorizationProvider';
 import { NetworkType } from '../solana/providers/ConnectionProvider';
 
@@ -228,15 +229,21 @@ export const useWalletStore = create<WalletState>((set, get) => ({
   // Fetch all token accounts
   fetchAllTokenAccounts: async (connection: Connection) => {
     const { account } = get();
-    if (!account) return;
+    if (!account) return [];
 
     set({ isLoadingTokenAccounts: true });
 
     try {
-      // Get all token accounts for the wallet
+      // Get regular SPL token accounts
       const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
         account.publicKey,
-        { programId: new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA') }
+        { programId: TOKEN_PROGRAM_ID }
+      );
+
+      // Get Token-2022 accounts (for vault shares)
+      const token2022Accounts = await connection.getParsedTokenAccountsByOwner(
+        account.publicKey,
+        { programId: TOKEN_2022_PROGRAM_ID }
       );
 
       const accounts: TokenAccount[] = [];
@@ -250,15 +257,33 @@ export const useWalletStore = create<WalletState>((set, get) => ({
         decimals: 9
       });
 
-      // Add all SPL tokens
-      console.log('[WalletStore] Found', tokenAccounts.value.length, 'total token accounts');
+      // Process regular SPL tokens
+      console.log('[WalletStore] Found', tokenAccounts.value.length, 'regular SPL token accounts');
       tokenAccounts.value.forEach(token => {
         const tokenInfo = token.account.data.parsed.info;
         const amount = tokenInfo.tokenAmount;
         
         // Only include tokens with balance > 0
         if (amount.uiAmount > 0) {
-          console.log('[WalletStore] Token with balance:', tokenInfo.mint, 'balance:', amount.uiAmount);
+          console.log('[WalletStore] SPL Token with balance:', tokenInfo.mint, 'balance:', amount.uiAmount);
+          accounts.push({
+            mint: tokenInfo.mint,
+            balance: parseInt(amount.amount),
+            uiAmount: amount.uiAmount,
+            decimals: amount.decimals
+          });
+        }
+      });
+
+      // Process Token-2022 tokens
+      console.log('[WalletStore] Found', token2022Accounts.value.length, 'Token-2022 accounts');
+      token2022Accounts.value.forEach(token => {
+        const tokenInfo = token.account.data.parsed.info;
+        const amount = tokenInfo.tokenAmount;
+        
+        // Only include tokens with balance > 0
+        if (amount.uiAmount > 0) {
+          console.log('[WalletStore] Token-2022 with balance:', tokenInfo.mint, 'balance:', amount.uiAmount);
           accounts.push({
             mint: tokenInfo.mint,
             balance: parseInt(amount.amount),
@@ -273,13 +298,15 @@ export const useWalletStore = create<WalletState>((set, get) => ({
         isLoadingTokenAccounts: false 
       });
 
-      console.log('[WalletStore] Found', accounts.length, 'token accounts with balance');
+      console.log('[WalletStore] Found', accounts.length, 'total token accounts with balance');
+      return accounts;
     } catch (error) {
       console.error('[WalletStore] Error fetching all token accounts:', error);
       set({ 
         allTokenAccounts: [],
         isLoadingTokenAccounts: false 
       });
+      return [];
     }
   },
   

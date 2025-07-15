@@ -6,6 +6,7 @@ import { FontSizes, Spacing } from '../../constants';
 import { transact, Web3MobileWallet } from '@solana-mobile/mobile-wallet-adapter-protocol-web3js';
 import { useAuthorization } from '../../solana/providers/AuthorizationProvider';
 import { alertAndLog } from '../../solana/utils';
+import { DEBUG, DEBUGLOAD } from '@env';
 
 export const ConnectAccountState: React.FC = () => {
   const { colors } = useTheme();
@@ -37,8 +38,8 @@ export const ConnectAccountState: React.FC = () => {
         activeOpacity={0.7}
         disabled={connectLoading}
       >
-        {connectLoading ? (
-          <ActivityIndicator color={colors.button.primaryText} />
+        {(connectLoading || (DEBUG === 'true' && DEBUGLOAD === 'true')) ? (
+          <ActivityIndicator size="small" color={colors.button.primaryText} />
         ) : (
           <Text variant="regular" style={[styles.buttonText, { color: colors.button.primaryText }]}>
             Connect Account
@@ -65,7 +66,9 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingVertical: 11,
     alignItems: 'center',
+    justifyContent: 'center',
     width: '100%',
+    minHeight: 40, // fontSize (18) + paddingVertical (11 * 2) = 40px
   },
   buttonText: {
     fontSize: FontSizes.large,

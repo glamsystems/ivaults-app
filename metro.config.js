@@ -13,6 +13,7 @@ config.resolver.extraNodeModules = {
   assert: require.resolve('assert'),
   process: path.join(__dirname, 'src', 'polyfills', 'process.js'),
   fs: path.join(__dirname, 'src', 'polyfills', 'fs.js'),
+  buffer: require.resolve('buffer'),
 };
 
 module.exports = config;

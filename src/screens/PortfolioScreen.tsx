@@ -10,7 +10,8 @@ import {
   PositionCard, 
   RequestCard,
   EmptyState,
-  ConnectAccountState
+  ConnectAccountState,
+  SkeletonPositionCard
 } from '../components/portfolio';
 import { BottomGradient, FadeOverlay } from '../components/screener';
 import { usePortfolioStore } from '../store/portfolioStore';
@@ -25,7 +26,9 @@ export const PortfolioScreen: React.FC = () => {
   const { 
     positions, 
     selectedTab,
-    totalValue
+    totalValue,
+    isLoading,
+    hasLoadedOnce
   } = usePortfolioStore();
   const { activities } = useActivityStore();
   const { vaults } = useVaultStore();
@@ -79,12 +82,24 @@ export const PortfolioScreen: React.FC = () => {
   };
 
   const renderEmptyState = () => {
+    // Don't show empty state during loading
+    if (isLoading && !hasLoadedOnce) {
+      return null;
+    }
     // Only show empty state in production mode and for positions tab
     if (DEBUG === 'true' || selectedTab !== 'Positions') {
       return null;
     }
     return <EmptyState />;
   };
+  
+  // Determine if we should show skeleton loading
+  const shouldShowSkeleton = selectedTab === 'Positions' && isLoading && !hasLoadedOnce;
+  
+  // Generate skeleton data when loading
+  const skeletonData = shouldShowSkeleton 
+    ? Array.from({ length: 5 }, (_, index) => ({ id: `skeleton-${index}` }))
+    : selectedTab === 'Positions' ? positions : requestActivities;
 
   // Show connect state if no wallet connected and on positions tab
   if (!account && selectedTab === 'Positions') {
@@ -129,9 +144,12 @@ export const PortfolioScreen: React.FC = () => {
         
         <View style={styles.listContainer}>
           <FlatList
-            data={selectedTab === 'Positions' ? positions : requestActivities}
+            data={skeletonData}
             keyExtractor={(item) => item.id}
-            renderItem={selectedTab === 'Positions' ? renderPosition : renderRequest}
+            renderItem={shouldShowSkeleton 
+              ? ({ item, index }) => <SkeletonPositionCard key={item.id} index={index} />
+              : selectedTab === 'Positions' ? renderPosition : renderRequest
+            }
             contentContainerStyle={[
               styles.listContent,
               {

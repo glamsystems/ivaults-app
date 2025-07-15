@@ -13,21 +13,26 @@ import { useAuthorization } from '../../solana/providers/AuthorizationProvider';
 import { alertAndLog } from '../../solana/utils';
 import { formatTokenAmount } from '../../utils/tokenFormatting';
 import { getTokenDecimals } from '../../constants/tokens';
+import { GlamVaultService } from '../../services/glamVaultService';
+import { NETWORK, DEBUG, DEBUGLOAD } from '@env';
 
 interface DepositSheetProps {
   vault: Vault;
+  onClose?: () => void;
 }
 
-export const DepositSheet: React.FC<DepositSheetProps> = ({ vault }) => {
+export const DepositSheet: React.FC<DepositSheetProps> = ({ vault, onClose }) => {
   const { colors } = useTheme();
   const { connection } = useConnection();
   const { authorizeSession } = useAuthorization();
   const account = useWalletStore((state) => state.account);
   const updateTokenBalance = useWalletStore((state) => state.updateTokenBalance);
+  const fetchAllTokenAccounts = useWalletStore((state) => state.fetchAllTokenAccounts);
   const tokenBalance = useWalletStore((state) => state.getTokenBalance(vault.baseAsset));
   
   const [amount, setAmount] = useState('');
   const [connectLoading, setConnectLoading] = useState(false);
+  const [depositLoading, setDepositLoading] = useState(false);
   
   // Fetch user's base asset balance
   useEffect(() => {
@@ -65,8 +70,129 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault }) => {
     return `${totalDays} ${totalDays === 1 ? 'day' : 'days'}`;
   };
   
-  const handleConfirm = () => {
-    console.log('Deposit confirmed:', amount);
+  const handleConfirm = async () => {
+    if (!account || !connection || !vault.glam_state || !vault.mintPubkey) {
+      alertAndLog('Error', 'Missing required data for deposit');
+      return;
+    }
+    
+    try {
+      setDepositLoading(true);
+      
+      const decimals = getTokenDecimals(vault.baseAsset, 'mainnet') || 9;
+      const amountNum = parseFloat(amount);
+      
+      console.log('[DepositSheet] Starting deposit:', {
+        vault: vault.name,
+        vaultId: vault.id,
+        amount: amountNum,
+        baseAsset: vault.baseAsset,
+        glam_state: vault.glam_state,
+        mintPubkey: vault.mintPubkey
+      });
+      
+      if (!vault.mintPubkey) {
+        console.warn('[DepositSheet] WARNING: Vault has no mintPubkey!');
+      }
+      
+      // Initialize service
+      const vaultService = new GlamVaultService();
+      const network = NETWORK === 'devnet' ? 'devnet' : 'mainnet';
+      
+      // Prepare subscription transaction
+      const { transaction, blockhash, lastValidBlockHeight } = await vaultService.prepareSubscription(
+        connection,
+        account.publicKey,
+        vault.glam_state,
+        vault.baseAsset,
+        vault.mintPubkey,
+        amountNum,
+        decimals,
+        network
+      );
+      
+      // Execute transaction through mobile wallet
+      const signature = await transact(async (wallet: Web3MobileWallet) => {
+        console.log('[DepositSheet] Inside transact callback');
+        
+        // Reauthorize if needed
+        const authedAccount = await authorizeSession(wallet);
+        console.log('[DepositSheet] Authorized account:', authedAccount.publicKey.toBase58());
+        
+        // Sign and send the transaction using mobile wallet adapter
+        const signatures = await wallet.signAndSendTransactions({
+          transactions: [transaction],
+          minContextSlot: 0
+        });
+        
+        console.log('[DepositSheet] Transaction sent, signature:', signatures[0]);
+        
+        // Wait for confirmation
+        const confirmation = await connection.confirmTransaction({
+          signature: signatures[0],
+          blockhash,
+          lastValidBlockHeight
+        }, 'confirmed');
+        
+        if (confirmation.value.err) {
+          throw new Error(`Transaction failed: ${JSON.stringify(confirmation.value.err)}`);
+        }
+        
+        console.log('[DepositSheet] Subscription successful:', signatures[0]);
+        return signatures[0];
+      });
+      
+      // Success handling
+      alertAndLog('Success', 'Deposit successful!');
+      
+      // Clear form immediately
+      setAmount('');
+      
+      // Wait a bit longer for blockchain state to update
+      console.log('[DepositSheet] Waiting for blockchain state to update...');
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      
+      // Refresh balances and positions
+      console.log('[DepositSheet] Refreshing balances...');
+      try {
+        // Update base asset balance (will decrease)
+        await updateTokenBalance(connection, vault.baseAsset);
+        console.log('[DepositSheet] Base asset balance updated');
+        
+        // Fetch all token accounts to update positions
+        // This will capture the new vault share tokens
+        const tokenAccounts = await fetchAllTokenAccounts(connection);
+        console.log('[DepositSheet] All token accounts fetched:', tokenAccounts.length);
+        
+        // Log if we found the vault token
+        const vaultToken = tokenAccounts.find(ta => ta.mint === vault.mintPubkey);
+        if (vaultToken) {
+          console.log('[DepositSheet] Found vault token in wallet:', {
+            mint: vaultToken.mint,
+            balance: vaultToken.uiAmount
+          });
+        } else {
+          console.log('[DepositSheet] Vault token NOT found in wallet after deposit');
+        }
+        
+        // Also update the specific vault token if we know it
+        if (vault.mintPubkey) {
+          await updateTokenBalance(connection, vault.mintPubkey);
+          console.log('[DepositSheet] Vault token balance updated');
+        }
+      } catch (refreshError) {
+        console.error('[DepositSheet] Error refreshing balances:', refreshError);
+      }
+      
+      // Close sheet after refresh
+      onClose?.();
+      
+    } catch (error) {
+      console.error('[DepositSheet] Deposit error:', error);
+      alertAndLog('Deposit Failed', error instanceof Error ? error.message : 'Unknown error occurred');
+    } finally {
+      setDepositLoading(false);
+    }
   };
 
   const handleConnect = useCallback(async () => {
@@ -322,7 +448,7 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault }) => {
           importantForAutofill="no"
           textContentType="none"
           inputMode="numeric"
-          editable={!!account && !hasInsufficientBalance}
+          editable={!!account && !hasInsufficientBalance && !depositLoading}
         />
         
         {/* Unit and Balance Row */}
@@ -372,8 +498,8 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault }) => {
           activeOpacity={0.7}
           disabled={connectLoading}
         >
-          {connectLoading ? (
-            <ActivityIndicator color={colors.button.primaryText} />
+          {(connectLoading || (DEBUG === 'true' && DEBUGLOAD === 'true')) ? (
+            <ActivityIndicator size="small" color={colors.button.primaryText} />
           ) : (
             <Text variant="regular" style={[styles.confirmButtonText, { color: colors.button.primaryText }]}>
               Connect Account
@@ -385,15 +511,19 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault }) => {
           style={[
             styles.confirmButton, 
             { backgroundColor: colors.button.primary },
-            isDisabled && { opacity: 0.5 }
+            (isDisabled || depositLoading) && { opacity: 0.5 }
           ]}
           onPress={handleConfirm}
           activeOpacity={0.7}
-          disabled={isDisabled}
+          disabled={isDisabled || depositLoading}
         >
-          <Text variant="regular" style={[styles.confirmButtonText, { color: colors.button.primaryText }]}>
-            Confirm Deposit
-          </Text>
+          {(depositLoading || (DEBUG === 'true' && DEBUGLOAD === 'true')) ? (
+            <ActivityIndicator size="small" color={colors.button.primaryText} />
+          ) : (
+            <Text variant="regular" style={[styles.confirmButtonText, { color: colors.button.primaryText }]}>
+              Confirm Deposit
+            </Text>
+          )}
         </TouchableOpacity>
       )}
     </View>
@@ -474,7 +604,9 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
     paddingHorizontal: 19,
     alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 40,
+    minHeight: 40, // fontSize (18) + paddingVertical (11 * 2) = 40px
   },
   confirmButtonText: {
     fontSize: FontSizes.large,

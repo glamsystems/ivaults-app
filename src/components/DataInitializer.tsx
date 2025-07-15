@@ -27,7 +27,7 @@ const generateGradientColors = (index: number): string[] => {
 export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { setVaults, setIsLoading, setDroppedVaults, vaults } = useVaultStore();
   const { setActivities } = useActivityStore();
-  const { setPositions, setTotalValue } = usePortfolioStore();
+  const { setPositions, setTotalValue, setIsLoading: setPortfolioLoading } = usePortfolioStore();
   const { account, updateAllTokenBalances, fetchAllTokenAccounts, allTokenAccounts } = useWalletStore();
   const { connection } = useConnection();
 
@@ -186,7 +186,7 @@ export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ child
 
     // Initialize vault data
     initializeData();
-  }, [setVaults, setIsLoading, setActivities, setPositions, setTotalValue, setDroppedVaults]);
+  }, [setVaults, setIsLoading, setActivities, setPositions, setTotalValue, setDroppedVaults, setPortfolioLoading]);
 
   // Separate effect for updating token balances when wallet connects
   useEffect(() => {
@@ -195,28 +195,35 @@ export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ child
     const fetchAndUpdate = async () => {
       // Fetch all token accounts first and wait for completion
       console.log('[DataInitializer] Fetching all token accounts...');
-      await fetchAllTokenAccounts(connection);
+      const tokenAccounts = await fetchAllTokenAccounts(connection);
 
-      // Collect unique token mints from all vaults
-      const tokenMints = new Set<string>();
-      
-      // Add base assets
-      vaults.forEach(vault => {
-        if (vault.baseAsset) {
-          tokenMints.add(vault.baseAsset);
-        }
-      });
-      
-      // Add vault tokens (for positions)
-      vaults.forEach(vault => {
-        if (vault.mintPubkey) {
-          tokenMints.add(vault.mintPubkey);
-        }
-      });
+      // Only update balances for tokens we actually own
+      if (tokenAccounts && tokenAccounts.length > 0) {
+        const ownedMints = tokenAccounts.map(ta => ta.mint);
+        
+        // Collect unique token mints from vaults that we actually own
+        const tokenMintsToUpdate = new Set<string>();
+        
+        // Add base assets if we own them
+        vaults.forEach(vault => {
+          if (vault.baseAsset && ownedMints.includes(vault.baseAsset)) {
+            tokenMintsToUpdate.add(vault.baseAsset);
+          }
+        });
+        
+        // Add vault tokens if we own them
+        vaults.forEach(vault => {
+          if (vault.mintPubkey && ownedMints.includes(vault.mintPubkey)) {
+            tokenMintsToUpdate.add(vault.mintPubkey);
+          }
+        });
 
-      // Update all token balances in background
-      console.log('[DataInitializer] Updating balances for', tokenMints.size, 'tokens');
-      updateAllTokenBalances(connection, Array.from(tokenMints));
+        // Only update balances for tokens we actually own
+        if (tokenMintsToUpdate.size > 0) {
+          console.log('[DataInitializer] Updating balances for', tokenMintsToUpdate.size, 'owned tokens');
+          updateAllTokenBalances(connection, Array.from(tokenMintsToUpdate));
+        }
+      }
     };
 
     // Initial fetch
@@ -234,6 +241,11 @@ export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ child
   useEffect(() => {
     if (!account || vaults.length === 0) return;
 
+    // Set loading state only if we haven't loaded positions yet
+    if (allTokenAccounts.length === 0) {
+      setPortfolioLoading(true);
+    }
+
     const showDebug = DEBUG === 'true';
     console.log('[DataInitializer] Building positions - Debug mode:', showDebug, 'Token accounts:', allTokenAccounts.length);
     
@@ -242,9 +254,18 @@ export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ child
 
     // Create a map of vault mints for quick lookup
     const vaultsByMint = new Map(vaults.map(v => [v.mintPubkey, v]));
+    
+    // Debug logging (only log summary)
+    console.log('[DataInitializer] Processing', vaults.length, 'vaults and', allTokenAccounts.length, 'token accounts');
 
     allTokenAccounts.forEach((tokenAccount, index) => {
       const vault = vaultsByMint.get(tokenAccount.mint);
+      
+      if (tokenAccount.uiAmount > 0) {
+        console.log(`[DataInitializer] Checking token ${tokenAccount.mint}:`, 
+          vault ? `Matched to vault ${vault.name}` : 'No vault match'
+        );
+      }
       
       // In production mode, only show vault positions
       if (!showDebug && !vault) return;
