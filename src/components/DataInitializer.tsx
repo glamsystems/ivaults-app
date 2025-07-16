@@ -357,7 +357,18 @@ export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ child
 
         // Only update balances for tokens we actually own
         if (tokenMintsToUpdate.size > 0) {
-          updateAllTokenBalances(connection, Array.from(tokenMintsToUpdate));
+          await updateAllTokenBalances(connection, Array.from(tokenMintsToUpdate));
+        }
+        
+        // Also update all vault tokens to check if we have any balance
+        // This ensures withdraw buttons are properly enabled
+        const allVaultMints = vaults
+          .filter(v => v.mintPubkey)
+          .map(v => v.mintPubkey as string);
+        
+        if (allVaultMints.length > 0) {
+          console.log('[DataInitializer] Checking balances for all vault tokens');
+          await updateAllTokenBalances(connection, allVaultMints);
         }
       }
     };

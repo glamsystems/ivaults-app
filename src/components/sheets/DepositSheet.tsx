@@ -249,9 +249,19 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault, onClose }) =>
       
       // Wait longer and force a balance refresh
       setTimeout(async () => {
-        if (connection && vault.baseAsset) {
-          // Force update the balance
-          await updateTokenBalance(connection, vault.baseAsset);
+        if (connection) {
+          // Fetch all token accounts first
+          await fetchAllTokenAccounts(connection);
+          
+          // Update base asset balance
+          if (vault.baseAsset) {
+            await updateTokenBalance(connection, vault.baseAsset);
+          }
+          
+          // Also update vault token balance to enable withdraw button
+          if (vault.mintPubkey) {
+            await updateTokenBalance(connection, vault.mintPubkey);
+          }
         }
       }, 2000); // Increased delay to ensure wallet is fully connected
     } catch (error) {

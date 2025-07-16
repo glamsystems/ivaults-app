@@ -50,10 +50,21 @@ export const VaultDetailScreen: React.FC = () => {
   
   // Fetch user's vault token balance
   useEffect(() => {
-    if (!account || !vault.mintPubkey || !connection) return;
+    if (!vault.mintPubkey || !connection) return;
     
-    // Update token balance in the store
-    updateTokenBalance(connection, vault.mintPubkey);
+    // Always update token balance when component mounts or wallet changes
+    // This ensures we get the balance even if wallet was connected elsewhere
+    const updateBalance = async () => {
+      console.log('[VaultDetailScreen] Updating vault balance for:', vault.mintPubkey);
+      await updateTokenBalance(connection, vault.mintPubkey);
+    };
+    
+    updateBalance();
+    
+    // Also set up an interval to refresh balance periodically
+    const interval = setInterval(updateBalance, 10000); // Every 10 seconds
+    
+    return () => clearInterval(interval);
   }, [account, vault.mintPubkey, connection, updateTokenBalance]);
   
   // Get balance from store
