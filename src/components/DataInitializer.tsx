@@ -194,7 +194,6 @@ export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ child
 
     const fetchAndUpdate = async () => {
       // Fetch all token accounts first and wait for completion
-      console.log('[DataInitializer] Fetching all token accounts...');
       const tokenAccounts = await fetchAllTokenAccounts(connection);
 
       // Only update balances for tokens we actually own
@@ -220,7 +219,6 @@ export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ child
 
         // Only update balances for tokens we actually own
         if (tokenMintsToUpdate.size > 0) {
-          console.log('[DataInitializer] Updating balances for', tokenMintsToUpdate.size, 'owned tokens');
           updateAllTokenBalances(connection, Array.from(tokenMintsToUpdate));
         }
       }
@@ -247,7 +245,6 @@ export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ child
     }
 
     const showDebug = DEBUG === 'true';
-    console.log('[DataInitializer] Building positions - Debug mode:', showDebug, 'Token accounts:', allTokenAccounts.length);
     
     const positions: Position[] = [];
     let totalValue = 0;
@@ -255,17 +252,10 @@ export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ child
     // Create a map of vault mints for quick lookup
     const vaultsByMint = new Map(vaults.map(v => [v.mintPubkey, v]));
     
-    // Debug logging (only log summary)
-    console.log('[DataInitializer] Processing', vaults.length, 'vaults and', allTokenAccounts.length, 'token accounts');
 
     allTokenAccounts.forEach((tokenAccount, index) => {
       const vault = vaultsByMint.get(tokenAccount.mint);
       
-      if (tokenAccount.uiAmount > 0) {
-        console.log(`[DataInitializer] Checking token ${tokenAccount.mint}:`, 
-          vault ? `Matched to vault ${vault.name}` : 'No vault match'
-        );
-      }
       
       // In production mode, only show vault positions
       if (!showDebug && !vault) return;
@@ -303,10 +293,6 @@ export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ child
       }
     });
 
-    console.log('[DataInitializer] Built', positions.length, 'positions from token accounts');
-    if (positions.length > 0) {
-      console.log('[DataInitializer] First position:', positions[0]);
-    }
     setPositions(positions);
     setTotalValue(totalValue);
   }, [account, allTokenAccounts, vaults, setPositions, setTotalValue, DEBUG]);

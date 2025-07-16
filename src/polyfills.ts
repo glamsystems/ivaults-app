@@ -1,9 +1,23 @@
 // Polyfills for Solana Mobile
-console.log('[Polyfills] Loading polyfills...');
-
 import { Buffer } from 'buffer';
 import 'react-native-get-random-values';
 import 'react-native-url-polyfill/auto';
+
+// Add process polyfill for Anchor
+if (typeof global.process === 'undefined') {
+  global.process = {
+    env: {},
+    version: 'v16.0.0',
+    versions: { node: '16.0.0' },
+    browser: false,
+    // @ts-ignore
+    nextTick: (callback: Function, ...args: any[]) => {
+      setTimeout(() => callback(...args), 0);
+    }
+  };
+  // @ts-ignore
+  window.process = global.process;
+}
 
 // Make Buffer available globally in all possible ways
 // @ts-ignore
@@ -23,16 +37,9 @@ if (typeof global.Buffer === 'undefined') {
   });
 }
 
-// Add a check to ensure Buffer has required methods
-console.log('[Polyfills] Buffer.prototype.readUIntLE:', typeof Buffer.prototype.readUIntLE);
-console.log('[Polyfills] Buffer.prototype.readUInt8:', typeof Buffer.prototype.readUInt8);
-console.log('[Polyfills] Buffer.prototype.readUInt16LE:', typeof Buffer.prototype.readUInt16LE);
-console.log('[Polyfills] Buffer.prototype.readUInt32LE:', typeof Buffer.prototype.readUInt32LE);
-
 // Additional check for readUIntLE specifically
 if (!Buffer.prototype.readUIntLE) {
   console.error('[Polyfills] CRITICAL: Buffer is missing readUIntLE method!');
-  console.error('[Polyfills] Available Buffer methods:', Object.getOwnPropertyNames(Buffer.prototype).filter(m => m.includes('read')));
 }
 
 // These are needed for @solana/web3.js in React Native
@@ -80,9 +87,4 @@ if (typeof global.structuredClone === 'undefined') {
   globalThis.structuredClone = global.structuredClone;
 }
 
-console.log('[Polyfills] Polyfills loaded successfully');
-console.log('[Polyfills] Buffer available:', typeof Buffer !== 'undefined');
-console.log('[Polyfills] window.Buffer available:', typeof window.Buffer !== 'undefined');
-console.log('[Polyfills] global.Buffer available:', typeof global.Buffer !== 'undefined');
-console.log('[Polyfills] TextDecoder available:', typeof TextDecoder !== 'undefined');
-console.log('[Polyfills] structuredClone available:', typeof structuredClone !== 'undefined');
+// Polyfills loaded

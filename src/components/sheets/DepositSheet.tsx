@@ -83,32 +83,14 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault, onClose }) =>
       const decimals = getTokenDecimals(vault.baseAsset, 'mainnet') || 9;
       const amountNum = parseFloat(amount);
       
-      console.log('[DepositSheet] Starting deposit:', {
-        vault: vault.name,
-        vaultId: vault.id,
-        amount: amountNum,
-        baseAsset: vault.baseAsset,
-        glam_state: vault.glam_state,
-        mintPubkey: vault.mintPubkey
-      });
       
       if (!vault.mintPubkey) {
-        console.warn('[DepositSheet] WARNING: Vault has no mintPubkey!');
       }
       
       // Initialize service
       const vaultService = new GlamVaultService();
       const network = NETWORK === 'devnet' ? 'devnet' : 'mainnet';
       
-      console.log('[DepositSheet] About to prepare subscription with:', {
-        walletPubkey: account.publicKey.toBase58(),
-        vaultState: vault.glam_state,
-        baseAsset: vault.baseAsset,
-        mintPubkey: vault.mintPubkey,
-        amount: amountNum,
-        decimals: decimals,
-        network: network
-      });
       
       // Prepare subscription transaction
       let transactionData;
@@ -122,7 +104,8 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault, onClose }) =>
           vault.mintPubkey,
           amountNum,
           decimals,
-          network
+          network,
+          authorizeSession
         );
         console.log('[DepositSheet] prepareSubscription completed successfully');
       } catch (prepError) {
@@ -140,27 +123,12 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault, onClose }) =>
         recentBlockhash: transaction.recentBlockhash
       });
       
-      // Log each instruction
-      transaction.instructions.forEach((ix, index) => {
-        console.log(`[DepositSheet] Instruction ${index}:`, {
-          programId: ix.programId.toBase58(),
-          keys: ix.keys.map(k => ({
-            pubkey: k.pubkey.toBase58(),
-            isSigner: k.isSigner,
-            isWritable: k.isWritable
-          })),
-          dataLength: ix.data.length,
-          dataHex: ix.data.toString('hex')
-        });
-      });
       
       // Execute transaction through mobile wallet
       const signature = await transact(async (wallet: Web3MobileWallet) => {
-        console.log('[DepositSheet] Inside transact callback');
         
         // Reauthorize if needed
         const authedAccount = await authorizeSession(wallet);
-        console.log('[DepositSheet] Authorized account:', authedAccount.publicKey.toBase58());
         
         // Sign and send the transaction using mobile wallet adapter
         const signatures = await wallet.signAndSendTransactions({
@@ -168,7 +136,6 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault, onClose }) =>
           minContextSlot: 0
         });
         
-        console.log('[DepositSheet] Transaction sent, signature:', signatures[0]);
         
         // Wait for confirmation
         const confirmation = await connection.confirmTransaction({
@@ -181,7 +148,6 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault, onClose }) =>
           throw new Error(`Transaction failed: ${JSON.stringify(confirmation.value.err)}`);
         }
         
-        console.log('[DepositSheet] Subscription successful:', signatures[0]);
         return signatures[0];
       });
       
@@ -190,46 +156,35 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault, onClose }) =>
       setAmount('');
       
       // Wait a bit longer for blockchain state to update
-      console.log('[DepositSheet] Waiting for blockchain state to update...');
       await new Promise(resolve => setTimeout(resolve, 5000));
       
       // Refresh balances and positions
-      console.log('[DepositSheet] Refreshing balances...');
       try {
         // Update base asset balance (will decrease)
         await updateTokenBalance(connection, vault.baseAsset);
-        console.log('[DepositSheet] Base asset balance updated');
         
         // Fetch all token accounts to update positions
         // This will capture the new vault share tokens
         const tokenAccounts = await fetchAllTokenAccounts(connection);
-        console.log('[DepositSheet] All token accounts fetched:', tokenAccounts.length);
         
         // Log if we found the vault token
         const vaultToken = tokenAccounts.find(ta => ta.mint === vault.mintPubkey);
         if (vaultToken) {
-          console.log('[DepositSheet] Found vault token in wallet:', {
-            mint: vaultToken.mint,
-            balance: vaultToken.uiAmount
-          });
         } else {
-          console.log('[DepositSheet] Vault token NOT found in wallet after deposit');
         }
         
         // Also update the specific vault token if we know it
         if (vault.mintPubkey) {
           await updateTokenBalance(connection, vault.mintPubkey);
-          console.log('[DepositSheet] Vault token balance updated');
         }
       } catch (refreshError) {
-        console.error('[DepositSheet] Error refreshing balances:', refreshError);
       }
       
       // Close sheet after refresh
       onClose?.();
       
     } catch (error) {
-      console.error('[DepositSheet] Deposit error:', error);
+      console.error('[DepositSheet] Deposit error:', error?.message || error?.toString() || 'Unknown error');
       const errorInfo = getTransactionErrorInfo(error);
       showStyledAlert(errorInfo);
     } finally {

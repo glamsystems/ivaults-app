@@ -6,11 +6,15 @@ import { FontSizes, Spacing } from '../../constants';
 import { transact, Web3MobileWallet } from '@solana-mobile/mobile-wallet-adapter-protocol-web3js';
 import { useAuthorization } from '../../solana/providers/AuthorizationProvider';
 import { getWalletErrorInfo, showStyledAlert } from '../../utils/walletErrorHandler';
+import { useConnection } from '../../solana/providers/ConnectionProvider';
+import { useWalletStore } from '../../store/walletStore';
 import { DEBUG, DEBUGLOAD } from '@env';
 
 export const ConnectAccountState: React.FC = () => {
   const { colors } = useTheme();
+  const { connection } = useConnection();
   const { authorizeSession } = useAuthorization();
+  const { fetchAllTokenAccounts } = useWalletStore();
   const [connectLoading, setConnectLoading] = useState(false);
 
   const handleConnect = useCallback(async () => {
@@ -19,6 +23,13 @@ export const ConnectAccountState: React.FC = () => {
       await transact(async (wallet: Web3MobileWallet) => {
         await authorizeSession(wallet);
       });
+      
+      // Wait for wallet to be ready and fetch token accounts
+      setTimeout(async () => {
+        if (connection) {
+          await fetchAllTokenAccounts(connection);
+        }
+      }, 2000);
     } catch (error) {
       console.error('[ConnectAccountState] Connect error:', error);
       const errorInfo = getWalletErrorInfo(error);
@@ -26,7 +37,7 @@ export const ConnectAccountState: React.FC = () => {
     } finally {
       setConnectLoading(false);
     }
-  }, [authorizeSession]);
+  }, [authorizeSession, connection, fetchAllTokenAccounts]);
 
   return (
     <View style={styles.container}>

@@ -258,14 +258,12 @@ export const useWalletStore = create<WalletState>((set, get) => ({
       });
 
       // Process regular SPL tokens
-      console.log('[WalletStore] Found', tokenAccounts.value.length, 'regular SPL token accounts');
       tokenAccounts.value.forEach(token => {
         const tokenInfo = token.account.data.parsed.info;
         const amount = tokenInfo.tokenAmount;
         
         // Only include tokens with balance > 0
         if (amount.uiAmount > 0) {
-          console.log('[WalletStore] SPL Token with balance:', tokenInfo.mint, 'balance:', amount.uiAmount);
           accounts.push({
             mint: tokenInfo.mint,
             balance: parseInt(amount.amount),
@@ -276,14 +274,12 @@ export const useWalletStore = create<WalletState>((set, get) => ({
       });
 
       // Process Token-2022 tokens
-      console.log('[WalletStore] Found', token2022Accounts.value.length, 'Token-2022 accounts');
       token2022Accounts.value.forEach(token => {
         const tokenInfo = token.account.data.parsed.info;
         const amount = tokenInfo.tokenAmount;
         
         // Only include tokens with balance > 0
         if (amount.uiAmount > 0) {
-          console.log('[WalletStore] Token-2022 with balance:', tokenInfo.mint, 'balance:', amount.uiAmount);
           accounts.push({
             mint: tokenInfo.mint,
             balance: parseInt(amount.amount),
@@ -298,7 +294,6 @@ export const useWalletStore = create<WalletState>((set, get) => ({
         isLoadingTokenAccounts: false 
       });
 
-      console.log('[WalletStore] Found', accounts.length, 'total token accounts with balance');
       return accounts;
     } catch (error) {
       console.error('[WalletStore] Error fetching all token accounts:', error);

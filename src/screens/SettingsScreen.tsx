@@ -23,7 +23,8 @@ export const SettingsScreen: React.FC = () => {
     startBalancePolling, 
     stopBalancePolling, 
     updateBalance,
-    clearWallet 
+    clearWallet,
+    fetchAllTokenAccounts 
   } = useWalletStore();
   
   const [connectLoading, setConnectLoading] = useState(false);
@@ -35,6 +36,13 @@ export const SettingsScreen: React.FC = () => {
       await transact(async (wallet: Web3MobileWallet) => {
         await authorizeSession(wallet);
       });
+      
+      // Wait for wallet to be ready and fetch token accounts
+      setTimeout(async () => {
+        if (connection) {
+          await fetchAllTokenAccounts(connection);
+        }
+      }, 2000);
     } catch (error) {
       console.error('[SettingsScreen] Connect error:', error);
       const errorInfo = getWalletErrorInfo(error);
@@ -42,7 +50,7 @@ export const SettingsScreen: React.FC = () => {
     } finally {
       setConnectLoading(false);
     }
-  }, [authorizeSession]);
+  }, [authorizeSession, connection, fetchAllTokenAccounts]);
 
   const handleDisconnect = useCallback(() => {
     setDisconnectLoading(true);
