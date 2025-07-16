@@ -1,26 +1,54 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, StyleSheet, TouchableOpacity, AppState } from 'react-native';
 import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
-import { Text, DisplayPubkey } from '../common';
+import { Text, DisplayPubkey, PulsatingText } from '../common';
 import { Vault } from '../../store/vaultStore';
 import { FontSizes, Spacing } from '../../constants';
 import { fonts, useTheme } from '../../theme';
 import { useWalletStore } from '../../store/walletStore';
 import { useConnection } from '../../solana/providers/ConnectionProvider';
+import { PublicKey } from '@solana/web3.js';
+import { transact, Web3MobileWallet } from '@solana-mobile/mobile-wallet-adapter-protocol-web3js';
+import { useAuthorization } from '../../solana/providers/AuthorizationProvider';
+import { getWalletErrorInfo, getTransactionErrorInfo, showStyledAlert } from '../../utils/walletErrorHandler';
+import { getTokenDecimals } from '../../constants/tokens';
+import { GlamWithdrawService } from '../../services/glamWithdrawService';
+import { NETWORK, DEBUG, DEBUGLOAD } from '@env';
+import { ActivityModal } from '../ActivityModal';
+import { GenericNotificationModal } from '../GenericNotificationModal';
+import { useRedemptionStore } from '../../store/redemptionStore';
+import { RedemptionFetcherService } from '../../services/redemptionFetcherService';
 
 interface WithdrawSheetProps {
   vault: Vault;
+  onClose?: () => void;
 }
 
-export const WithdrawSheet: React.FC<WithdrawSheetProps> = ({ vault }) => {
+export const WithdrawSheet: React.FC<WithdrawSheetProps> = ({ vault, onClose }) => {
   const { colors } = useTheme();
   const { connection } = useConnection();
+  const { authorizeSession } = useAuthorization();
   const account = useWalletStore((state) => state.account);
   const updateTokenBalance = useWalletStore((state) => state.updateTokenBalance);
+  const fetchAllTokenAccounts = useWalletStore((state) => state.fetchAllTokenAccounts);
   const tokenBalance = useWalletStore((state) => state.getTokenBalance(vault.mintPubkey || ''));
+  const network = useWalletStore((state) => state.network);
   
   const [amount, setAmount] = useState('');
   const [selectedUnit, setSelectedUnit] = useState<'baseAsset' | 'symbol'>('symbol'); // Start with symbol
+  const [connectLoading, setConnectLoading] = useState(false);
+  const [withdrawLoading, setWithdrawLoading] = useState(false);
+  const [isConfirming, setIsConfirming] = useState(false);
+  const [withdrawService, setWithdrawService] = useState<GlamWithdrawService | null>(null);
+  const [activityModal, setActivityModal] = useState({
+    visible: false,
+    amount: '',
+    symbol: '',
+  });
+  const [errorModal, setErrorModal] = useState({
+    visible: false,
+    message: '',
+  });
   
   // Fetch user's vault token balance
   useEffect(() => {
@@ -43,6 +71,33 @@ export const WithdrawSheet: React.FC<WithdrawSheetProps> = ({ vault }) => {
     return () => subscription.remove();
   }, [account, connection, vault.mintPubkey, updateTokenBalance]);
   
+  // Initialize GLAM withdraw service once when sheet opens
+  useEffect(() => {
+    if (!account || !connection || !vault.glam_state) return;
+    
+    const initService = async () => {
+      try {
+        const service = new GlamWithdrawService();
+        const network = NETWORK === 'devnet' ? 'devnet' : 'mainnet';
+        
+        await service.initializeClient(
+          connection,
+          account.publicKey,
+          new PublicKey(vault.glam_state),
+          authorizeSession,
+          network
+        );
+        
+        setWithdrawService(service);
+        console.log('[WithdrawSheet] GLAM service initialized');
+      } catch (error) {
+        console.error('[WithdrawSheet] Failed to initialize GLAM service:', error);
+      }
+    };
+    
+    initService();
+  }, [account, connection, vault.glam_state, authorizeSession]);
+  
   // Calculate redemption window (Notice + Settlement periods)
   const calculateRedemptionWindow = (): string => {
     const noticePeriod = vault.redemptionNoticePeriod || 0;
@@ -58,9 +113,170 @@ export const WithdrawSheet: React.FC<WithdrawSheetProps> = ({ vault }) => {
     setAmount(''); // Reset input when toggling
   };
   
-  const handleConfirm = () => {
-    console.log('Withdraw requested:', amount, selectedUnit);
+  const handleConfirm = async () => {
+    if (!account || !connection || !vault.glam_state || !vault.mintPubkey) {
+      // This shouldn't happen in normal flow as button is disabled
+      console.error('[WithdrawSheet] Missing required data for withdrawal');
+      return;
+    }
+    
+    // Set confirming state immediately for instant feedback
+    setIsConfirming(true);
+    
+    try {
+      const decimals = getTokenDecimals(vault.mintPubkey, 'mainnet') || 9;
+      const amountNum = parseFloat(amount);
+      
+      // Check if service is initialized
+      if (!withdrawService) {
+        console.error('[WithdrawSheet] Withdraw service not initialized');
+        setIsConfirming(false);
+        showStyledAlert({
+          shouldShow: true,
+          title: 'Service Error',
+          message: 'Please try again in a moment.'
+        });
+        return;
+      }
+      
+      try {
+        // Phase 1: Get signed transaction (wallet will close immediately)
+        const withdrawResult = await withdrawService.requestWithdraw(
+          amountNum,
+          decimals,
+          0 // mintId - use default
+        );
+        
+        console.log('[WithdrawSheet] Transaction signed, submitting to network...');
+        
+        // Save amount before clearing
+        const withdrawAmount = amountNum.toString();
+        
+        // Clear amount immediately after signing
+        setAmount('');
+        
+        // Phase 2: Submit and wait for confirmation (while showing "Requesting...")
+        const signature = await withdrawResult.submitAndConfirm();
+        
+        console.log('[WithdrawSheet] Withdrawal confirmed:', signature);
+        
+        // Success - transaction is confirmed
+        setIsConfirming(false);
+        
+        // Add to redemption store
+        const redemptionRequest = RedemptionFetcherService.createRequestFromTransaction(
+          vault.id,
+          vault.symbol,
+          vault.name,
+          amountNum,
+          vault.baseAsset,
+          signature,
+          account.publicKey.toBase58(),
+          vault.redemptionNoticePeriod || 0,
+          vault.redemptionSettlementPeriod || 0,
+          0 // mintId
+        );
+        
+        const { addRequest } = useRedemptionStore.getState();
+        addRequest(redemptionRequest);
+        
+        // Show activity modal immediately
+        setActivityModal({
+          visible: true,
+          amount: withdrawAmount,
+          symbol: vault.symbol,
+        });
+        
+        // Close the sheet after 3 seconds to match the notification timing
+        setTimeout(() => {
+          onClose?.();
+        }, 3000);
+        
+        // Update balances in background after showing modal
+        setTimeout(async () => {
+          try {
+            if (vault.mintPubkey) {
+              await updateTokenBalance(connection, vault.mintPubkey);
+            }
+            await updateTokenBalance(connection, vault.baseAsset);
+            await fetchAllTokenAccounts(connection);
+          } catch (refreshError) {
+            console.error('[WithdrawSheet] Error refreshing balances:', refreshError);
+          }
+        }, 1000);
+        
+      } catch (withdrawError) {
+        throw withdrawError;
+      }
+      
+    } catch (error) {
+      console.error('[WithdrawSheet] Withdrawal error:', error);
+      console.error('[WithdrawSheet] Error type:', error?.constructor?.name);
+      console.error('[WithdrawSheet] Error message:', error?.message);
+      
+      // Only show error if it's not a user cancellation or network timeout
+      const errorMessage = error?.message || error?.toString() || '';
+      const isTimeout = errorMessage.toLowerCase().includes('timeout');
+      const isNetworkError = errorMessage.toLowerCase().includes('network');
+      
+      if (isTimeout || isNetworkError) {
+        console.log('[WithdrawSheet] Network/timeout error - transaction may have succeeded');
+        
+        // Show generic error notification
+        setErrorModal({
+          visible: true,
+          message: 'Network issue detected. Your transaction may still go through. We\'ll check your balance in the background.',
+        });
+        
+        // Check balances in background
+        setTimeout(async () => {
+          try {
+            if (vault.mintPubkey) {
+              await updateTokenBalance(connection, vault.mintPubkey);
+            }
+            await updateTokenBalance(connection, vault.baseAsset);
+            await fetchAllTokenAccounts(connection);
+          } catch (e) {
+            console.error('[WithdrawSheet] Error checking balances:', e);
+          }
+        }, 3000);
+      } else {
+        // Show error for real failures
+        const errorInfo = getTransactionErrorInfo(error);
+        if (errorInfo.shouldShow) {
+          showStyledAlert(errorInfo);
+        } else {
+          console.log('[WithdrawSheet] User cancelled transaction - not showing error');
+        }
+      }
+    } finally {
+      setWithdrawLoading(false);
+      setIsConfirming(false);
+    }
   };
+
+  const handleConnect = useCallback(async () => {
+    try {
+      setConnectLoading(true);
+      await transact(async (wallet: Web3MobileWallet) => {
+        await authorizeSession(wallet);
+      });
+      
+      // Wait longer and force a balance refresh
+      setTimeout(async () => {
+        if (connection && vault.mintPubkey) {
+          // Force update the balance
+          await updateTokenBalance(connection, vault.mintPubkey);
+        }
+      }, 2000); // Increased delay to ensure wallet is fully connected
+    } catch (error) {
+      console.error('[WithdrawSheet] Connect error:', error);
+      const errorInfo = getWalletErrorInfo(error);
+      showStyledAlert(errorInfo);
+    } finally {
+      setConnectLoading(false);
+    }
+  }, [authorizeSession, connection, vault.mintPubkey, updateTokenBalance]);
   
   // Get balance from store
   const userBalance = tokenBalance?.uiAmount || 0;
@@ -179,21 +395,69 @@ export const WithdrawSheet: React.FC<WithdrawSheetProps> = ({ vault }) => {
         </View>
       </View>
       
-      {/* Confirm Button */}
-      <TouchableOpacity 
-        style={[
-          styles.confirmButton, 
-          { backgroundColor: colors.button.primary },
-          isDisabled && { opacity: 0.5 }
-        ]}
-        onPress={handleConfirm}
-        activeOpacity={0.7}
-        disabled={isDisabled}
-      >
-        <Text variant="regular" style={[styles.confirmButtonText, { color: colors.button.primaryText }]}>
-          Request Withdraw
-        </Text>
-      </TouchableOpacity>
+      {/* Confirm Button or Connect Button */}
+      {!account ? (
+        <TouchableOpacity 
+          style={[styles.confirmButton, { backgroundColor: colors.button.primary }]}
+          onPress={handleConnect}
+          activeOpacity={0.7}
+          disabled={connectLoading}
+        >
+          {(connectLoading || (DEBUG === 'true' && DEBUGLOAD === 'true')) ? (
+            <PulsatingText 
+              text="Connecting..."
+              variant="regular"
+              style={[styles.confirmButtonText, { color: colors.button.primaryText }]}
+            />
+          ) : (
+            <Text variant="regular" style={[styles.confirmButtonText, { color: colors.button.primaryText }]}>
+              Connect Account
+            </Text>
+          )}
+        </TouchableOpacity>
+      ) : (
+        <TouchableOpacity 
+          style={[
+            styles.confirmButton, 
+            { backgroundColor: colors.button.primary },
+            (isDisabled || withdrawLoading || isConfirming) && { opacity: 0.5 }
+          ]}
+          onPress={handleConfirm}
+          activeOpacity={0.7}
+          disabled={isDisabled || withdrawLoading || isConfirming}
+        >
+          {(withdrawLoading || isConfirming || (DEBUG === 'true' && DEBUGLOAD === 'true')) ? (
+            <PulsatingText 
+              text={isConfirming ? "Requesting..." : "Loading..."}
+              variant="regular"
+              style={[styles.confirmButtonText, { color: colors.button.primaryText }]}
+            />
+          ) : (
+            <Text variant="regular" style={[styles.confirmButtonText, { color: colors.button.primaryText }]}>
+              Request Withdraw
+            </Text>
+          )}
+        </TouchableOpacity>
+      )}
+      
+      <ActivityModal
+        visible={activityModal.visible}
+        onClose={() => {
+          setActivityModal({ ...activityModal, visible: false });
+        }}
+        type="request"
+        amount={activityModal.amount}
+        symbol={activityModal.symbol}
+      />
+      
+      <GenericNotificationModal
+        visible={errorModal.visible}
+        onClose={() => {
+          setErrorModal({ ...errorModal, visible: false });
+        }}
+        type="error"
+        message={errorModal.message}
+      />
     </View>
   );
 };

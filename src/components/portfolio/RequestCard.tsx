@@ -3,12 +3,13 @@ import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons as Icon } from '@expo/vector-icons';
 import { ListCard } from '../common/ListCard';
 import { Text } from '../common';
+import { RedemptionRequest } from '../../store/redemptionStore';
 import { Activity } from '../../store/activityStore';
 import { FontSizes } from '../../constants/fonts';
 import { useTheme } from '../../theme';
 
 interface RequestCardProps {
-  request: Activity;
+  request: RedemptionRequest | Activity;
   canClaim?: boolean;
   canCancel?: boolean;
   daysRemaining?: string; // e.g., "7 days 3 hours"
@@ -80,8 +81,8 @@ export const RequestCard: React.FC<RequestCardProps> = ({
       <ListCard
         leftIcon={icon}
         title="Request"
-        rightText={request.symbol}
-        leftBottomText={request.date}
+        rightText={'vaultSymbol' in request ? request.vaultSymbol : request.symbol}
+        leftBottomText={'requestDate' in request ? request.requestDate.toLocaleDateString() : request.date}
         rightBottomContent={
           <Text 
             variant="regular" 

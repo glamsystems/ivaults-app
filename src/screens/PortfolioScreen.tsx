@@ -18,6 +18,8 @@ import { usePortfolioStore } from '../store/portfolioStore';
 import { useActivityStore } from '../store/activityStore';
 import { useVaultStore } from '../store/vaultStore';
 import { useWalletStore } from '../store/walletStore';
+import { useRedemptionStore } from '../store/redemptionStore';
+import { RedemptionFetcherService } from '../services/redemptionFetcherService';
 import { DEBUG } from '@env';
 
 export const PortfolioScreen: React.FC = () => {
@@ -33,9 +35,30 @@ export const PortfolioScreen: React.FC = () => {
   const { activities } = useActivityStore();
   const { vaults } = useVaultStore();
   const account = useWalletStore((state) => state.account);
+  const { 
+    redemptionRequests, 
+    getPendingRequests, 
+    getClaimableRequests 
+  } = useRedemptionStore();
   
-  // Filter only request activities
+  // Get real redemption requests from store
+  const pendingRequests = getPendingRequests();
+  const claimableRequests = getClaimableRequests();
+  const allRequests = [...claimableRequests, ...pendingRequests];
+  
+  // Debug logging
+  console.log('[PortfolioScreen] Redemption requests:', {
+    pendingCount: pendingRequests.length,
+    claimableCount: claimableRequests.length,
+    totalCount: allRequests.length,
+    allRedemptionRequests: redemptionRequests,
+    account: account?.publicKey.toBase58()
+  });
+  
+  // Fallback to mock data if no real requests (for DEBUG mode)
   const requestActivities = activities.filter(activity => activity.type === 'request');
+  // const requestsToShow = allRequests.length > 0 ? allRequests : requestActivities;
+  const requestsToShow = allRequests; // Always use real requests, no fallback
   
   // Data is now initialized globally in DataInitializer
 
@@ -61,24 +84,45 @@ export const PortfolioScreen: React.FC = () => {
     );
   };
 
-  const renderRequest = ({ item, index }: { item: any, index: number }) => {
-    // Different states for demonstration:
-    // First request: claimable
-    // Second request: cancelable with countdown
-    // Third request: not cancelable, only countdown
-    const canClaim = index === 0;
-    const canCancel = index === 1;
-    
-    return (
-      <RequestCard 
-        request={item} 
-        canClaim={canClaim}
-        canCancel={canCancel}
-        daysRemaining={canClaim ? undefined : index === 1 ? "2 days 5 hours" : "7 days 3 hours"}
-        onClaim={() => console.log('Claim pressed')}
-        onCancel={() => console.log('Cancel pressed')}
-      />
-    );
+  const renderRequest = ({ item }: { item: any }) => {
+    // Check if it's a real redemption request or mock data
+    if (item.vaultId) {
+      // Real redemption request
+      const vault = vaults.find(v => v.id === item.vaultId);
+      const canClaim = RedemptionFetcherService.canClaim(item);
+      const canCancel = vault ? RedemptionFetcherService.canCancel(
+        item, 
+        vault.redemptionCancellationWindow
+      ) : false;
+      const timeRemaining = RedemptionFetcherService.getTimeRemaining(item);
+      
+      return (
+        <RequestCard 
+          request={item} 
+          canClaim={canClaim}
+          canCancel={canCancel}
+          daysRemaining={!canClaim ? timeRemaining : undefined}
+          onClaim={() => console.log('Claim pressed for:', item.id)}
+          onCancel={() => console.log('Cancel pressed for:', item.id)}
+        />
+      );
+    } else {
+      // Mock data for demo
+      const index = requestActivities.indexOf(item);
+      const canClaim = index === 0;
+      const canCancel = index === 1;
+      
+      return (
+        <RequestCard 
+          request={item} 
+          canClaim={canClaim}
+          canCancel={canCancel}
+          daysRemaining={canClaim ? undefined : index === 1 ? "2 days 5 hours" : "7 days 3 hours"}
+          onClaim={() => console.log('Claim pressed')}
+          onCancel={() => console.log('Cancel pressed')}
+        />
+      );
+    }
   };
 
   const renderEmptyState = () => {
@@ -99,7 +143,7 @@ export const PortfolioScreen: React.FC = () => {
   // Generate skeleton data when loading
   const skeletonData = shouldShowSkeleton 
     ? Array.from({ length: 5 }, (_, index) => ({ id: `skeleton-${index}` }))
-    : selectedTab === 'Positions' ? positions : requestActivities;
+    : selectedTab === 'Positions' ? positions : requestsToShow;
 
   // Show connect state if no wallet connected and on positions tab
   if (!account && selectedTab === 'Positions') {

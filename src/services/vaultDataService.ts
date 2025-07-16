@@ -44,7 +44,7 @@ function generateGradientColors(index: number): [string, string] {
 }
 
 // Map GLAM vault to our Vault interface with mock data for missing fields
-function mapGlamVaultToVault(glamVault: GlamVault, index: number): Vault {
+function mapGlamVaultToVault(glamVault: GlamVault, index: number): Vault & { ledgerEntries?: any[] } {
   const seed = glamVault.name + glamVault.pubkey;
   const random = seededRandom(seed);
   const random2 = seededRandom(seed + '2');
@@ -107,6 +107,7 @@ function mapGlamVaultToVault(glamVault: GlamVault, index: number): Vault {
     redemptionCancellationWindow: glamVault.redemptionCancellationWindow || 0,
     minSubscription: glamVault.minSubscription,
     minRedemption: glamVault.minRedemption,
+    ledgerEntries: glamVault.ledgerEntries
   };
 }
 
@@ -127,9 +128,18 @@ export class VaultDataService {
       
       if (result.vaults.length > 0) {
         // Map GLAM vaults to our Vault interface
-        const vaults = result.vaults.map((glamVault, index) => 
-          mapGlamVaultToVault(glamVault, index)
-        );
+        const vaults = result.vaults.map((glamVault, index) => {
+          const vault = mapGlamVaultToVault(glamVault, index);
+          
+          // Debug log ledger entries
+          if (glamVault.ledgerEntries && glamVault.ledgerEntries.length > 0) {
+            console.log(`[VaultDataService] Vault "${glamVault.name}" has ${glamVault.ledgerEntries.length} ledger entries`);
+          } else {
+            console.log(`[VaultDataService] Vault "${glamVault.name}" has NO ledger entries`);
+          }
+          
+          return vault;
+        });
         
         console.log(`[VaultDataService] Mapped ${vaults.length} GLAM vaults to Vault interface`);
         return { vaults, droppedVaults: result.droppedVaults };

@@ -8,6 +8,8 @@ import { NetworkType } from '../solana/providers/ConnectionProvider';
 import { DEBUG, DEBUGLOAD, NETWORK, DEVNET_RPC, SOLANA_RPC } from '@env';
 import { useWalletStore } from '../store/walletStore';
 import { useConnection } from '../solana/providers/ConnectionProvider';
+import { useRedemptionStore } from '../store/redemptionStore';
+import { RedemptionFetcherService } from '../services/redemptionFetcherService';
 
 // Generate gradient colors based on index
 const generateGradientColors = (index: number): string[] => {
@@ -71,6 +73,142 @@ export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ child
         if (droppedVaults && droppedVaults.length > 0) {
           console.log('[DataInitializer] Dropped vaults:', droppedVaults);
         }
+        
+        // Parse redemption requests from vault ledger data
+        console.log('[DataInitializer] Parsing redemption requests from vaults...');
+        const { setRequests } = useRedemptionStore.getState();
+        const allRedemptionRequests = [];
+        
+        // Check each vault for ledger entries
+        console.log(`[DataInitializer] Checking ${vaults.length} vaults for ledger entries...`);
+        let vaultsWithLedger = 0;
+        let totalLedgerEntries = 0;
+        
+        for (const vault of vaults) {
+          const ledgerEntries = (vault as any).ledgerEntries;
+          console.log(`[DataInitializer] Vault "${vault.name}" (${vault.id}):`);
+          
+          if (ledgerEntries && ledgerEntries.length > 0) {
+            vaultsWithLedger++;
+            totalLedgerEntries += ledgerEntries.length;
+            console.log(`[DataInitializer]   - Has ${ledgerEntries.length} ledger entries`);
+            console.log(`[DataInitializer]   - First entry user: ${ledgerEntries[0].user}`);
+            if (ledgerEntries.length > 1) {
+              console.log(`[DataInitializer]   - Second entry user: ${ledgerEntries[1].user}`);
+            }
+            
+            // Parse redemption requests from ledger entries
+            const redemptionRequests = RedemptionFetcherService.parseRedemptionRequestsFromLedger(
+              vault, 
+              ledgerEntries
+            );
+            
+            console.log(`[DataInitializer]   - Parsed ${redemptionRequests.length} redemption requests`);
+            allRedemptionRequests.push(...redemptionRequests);
+          } else {
+            console.log(`[DataInitializer]   - No ledger entries`);
+          }
+        }
+        
+        console.log(`[DataInitializer] Summary: ${vaultsWithLedger}/${vaults.length} vaults have ledger data`);
+        console.log(`[DataInitializer] Total ledger entries across all vaults: ${totalLedgerEntries}`);
+        console.log(`[DataInitializer] Total redemption requests parsed: ${allRedemptionRequests.length}`);
+        
+        // Filter by current user if account is connected
+        let userRedemptionRequests = allRedemptionRequests;
+        if (account) {
+          const userAddress = account.publicKey.toBase58();
+          console.log(`[DataInitializer] ========== WALLET FILTERING ==========`);
+          console.log(`[DataInitializer] Connected wallet: ${userAddress}`);
+          console.log(`[DataInitializer] All redemption requests (${allRedemptionRequests.length} total):`);
+          
+          allRedemptionRequests.forEach((req, idx) => {
+            console.log(`[DataInitializer]   ${idx + 1}. Wallet: ${req.walletAddress}, Amount: ${req.amount}, Vault: ${req.vaultName}`);
+          });
+          
+          userRedemptionRequests = allRedemptionRequests.filter(req => {
+            const matches = req.walletAddress === userAddress;
+            if (matches) {
+              console.log(`[DataInitializer] ✓ MATCH: ${req.walletAddress} === ${userAddress}`);
+            }
+            return matches;
+          });
+          
+          console.log(`[DataInitializer] Result: ${userRedemptionRequests.length} requests match connected wallet`);
+          console.log(`[DataInitializer] ====================================`);
+        } else {
+          console.log(`[DataInitializer] No account connected, showing all ${allRedemptionRequests.length} requests`);
+        }
+        
+        // Set the requests in the store
+        setRequests(userRedemptionRequests);
+        
+        // // For demo purposes, add some mock redemption requests
+        // // In production, these would be parsed from the vault ledger data
+        // const { setRequests } = useRedemptionStore.getState();
+        // const mockRequests = [];
+        // 
+        // // Add mock requests for GLAM USD vault if it exists
+        // const glamUsdVault = vaults.find(v => v.name === 'GLAM USD');
+        // if (glamUsdVault && account) {
+        //   const now = new Date();
+        //   
+        //   // Claimable request (past settlement period)
+        //   mockRequests.push({
+        //     id: `${glamUsdVault.id}-claim-1`,
+        //     vaultId: glamUsdVault.id,
+        //     vaultSymbol: glamUsdVault.symbol,
+        //     vaultName: glamUsdVault.name,
+        //     amount: 100,
+        //     baseAsset: glamUsdVault.baseAsset,
+        //     requestDate: new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
+        //     noticePeriodEnd: new Date(now.getTime() - 4 * 24 * 60 * 60 * 1000), // 4 days ago
+        //     settlementPeriodEnd: new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000), // 3 days ago - claimable
+        //     status: 'pending' as const,
+        //     transactionSignature: 'mock-sig-1',
+        //     mintId: 0,
+        //     walletAddress: account.publicKey.toBase58()
+        //   });
+        //   
+        //   // Pending request with cancel option
+        //   mockRequests.push({
+        //     id: `${glamUsdVault.id}-pending-1`,
+        //     vaultId: glamUsdVault.id,
+        //     vaultSymbol: glamUsdVault.symbol,
+        //     vaultName: glamUsdVault.name,
+        //     amount: 150,
+        //     baseAsset: glamUsdVault.baseAsset,
+        //     requestDate: new Date(now.getTime() - 1 * 60 * 60 * 1000), // 1 hour ago
+        //     noticePeriodEnd: new Date(now.getTime() + 1 * 24 * 60 * 60 * 1000), // 1 day from now
+        //     settlementPeriodEnd: new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000), // 2 days from now
+        //     status: 'pending' as const,
+        //     transactionSignature: 'mock-sig-2',
+        //     mintId: 0,
+        //     walletAddress: account.publicKey.toBase58()
+        //   });
+        //   
+        //   // Pending request without cancel option
+        //   mockRequests.push({
+        //     id: `${glamUsdVault.id}-pending-2`,
+        //     vaultId: glamUsdVault.id,
+        //     vaultSymbol: glamUsdVault.symbol,
+        //     vaultName: glamUsdVault.name,
+        //     amount: 200,
+        //     baseAsset: glamUsdVault.baseAsset,
+        //     requestDate: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
+        //     noticePeriodEnd: new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000), // 5 days from now
+        //     settlementPeriodEnd: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+        //     status: 'pending' as const,
+        //     transactionSignature: 'mock-sig-3',
+        //     mintId: 0,
+        //     walletAddress: account.publicKey.toBase58()
+        //   });
+        // }
+        // 
+        // if (mockRequests.length > 0) {
+        //   setRequests(mockRequests);
+        //   console.log('[DataInitializer] Mock redemption requests added:', mockRequests.length);
+        // }
       } catch (error) {
         console.error('[DataInitializer] Error fetching vaults:', error);
       } finally {
@@ -234,6 +372,55 @@ export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ child
 
     return () => clearInterval(interval);
   }, [account, connection, vaults, updateAllTokenBalances, fetchAllTokenAccounts]);
+
+  // Separate effect for filtering redemption requests when account changes
+  useEffect(() => {
+    if (vaults.length === 0) return;
+
+    // Re-parse redemption requests when account changes
+    console.log('[DataInitializer] Re-filtering redemption requests for account change');
+    const { setRequests } = useRedemptionStore.getState();
+    const allRedemptionRequests = [];
+    
+    // Check each vault for ledger entries
+    let totalParsed = 0;
+    for (const vault of vaults) {
+      const ledgerEntries = (vault as any).ledgerEntries;
+      if (ledgerEntries && ledgerEntries.length > 0) {
+        // Parse redemption requests from ledger entries
+        const redemptionRequests = RedemptionFetcherService.parseRedemptionRequestsFromLedger(
+          vault, 
+          ledgerEntries
+        );
+        totalParsed += redemptionRequests.length;
+        allRedemptionRequests.push(...redemptionRequests);
+      }
+    }
+    console.log(`[DataInitializer] Re-filter: Parsed ${totalParsed} total redemption requests`);
+    
+    // Filter by current user if account is connected
+    let userRedemptionRequests = allRedemptionRequests;
+    if (account) {
+      const userAddress = account.publicKey.toBase58();
+      console.log(`[DataInitializer] RE-FILTER: Connected wallet changed to ${userAddress}`);
+      console.log(`[DataInitializer] Checking ${totalParsed} redemption requests for matches`);
+      
+      userRedemptionRequests = allRedemptionRequests.filter(req => {
+        const matches = req.walletAddress === userAddress;
+        if (matches) {
+          console.log(`[DataInitializer] ✓ MATCH found for ${req.vaultName}`);
+        }
+        return matches;
+      });
+      
+      console.log(`[DataInitializer] RE-FILTER Result: ${userRedemptionRequests.length} requests for connected wallet`);
+    } else {
+      console.log(`[DataInitializer] No account connected in re-filter`);
+    }
+    
+    // Set the requests in the store
+    setRequests(userRedemptionRequests);
+  }, [account, vaults]);
 
   // Build positions from token accounts
   useEffect(() => {

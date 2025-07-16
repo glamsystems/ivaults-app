@@ -44,6 +44,11 @@ export interface Vault {
   // Minimum amounts
   minSubscription?: string;
   minRedemption?: string;
+  // Redemption queue info
+  redemptionQueue?: {
+    totalPending: number; // Total value pending redemption
+    activeRequests: number; // Number of active redemption requests
+  };
 }
 
 interface VaultStore {

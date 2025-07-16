@@ -38,6 +38,8 @@ export interface GlamVault {
   redemptionNoticePeriodType?: string;
   redemptionSettlementPeriod?: number;
   redemptionCancellationWindow?: number;
+  // Ledger data
+  ledgerEntries?: any[];
 }
 
 // Engine Field Name enum mapping based on IDL
@@ -460,11 +462,173 @@ function decodeStateAccount(data: Uint8Array): any {
           break;
           
         case EngineFieldValueType.Ledger: // 15
-          // Skip Ledger for now
+          // Parse Ledger entries
+          console.log('[GlamService] Parsing Ledger at offset:', offset);
+          console.log('[GlamService] Data length:', data.length);
+          console.log('[GlamService] Remaining bytes:', data.length - offset);
           const ledgerLengthResult = readU32(data, offset);
           offset = ledgerLengthResult.offset;
-          // Skip ledger entries
-          offset += ledgerLengthResult.value * 100; // Rough estimate
+          const ledgerEntries = [];
+          
+          console.log('[GlamService] Ledger entries count:', ledgerLengthResult.value);
+          
+          console.log(`[GlamService] Starting to parse ${ledgerLengthResult.value} ledger entries`);
+          
+          for (let i = 0; i < ledgerLengthResult.value; i++) {
+            try {
+              const startOffset = offset;
+              console.log(`[GlamService] ===== Parsing ledger entry ${i + 1}/${ledgerLengthResult.value} =====`);
+              console.log(`[GlamService] Start offset:`, startOffset);
+              
+              // Parse each ledger entry
+              // user: Pubkey
+              const userResult = readPubkey(data, offset);
+              offset = userResult.offset;
+              console.log(`[GlamService] After user pubkey, offset:`, offset, `(+${offset - startOffset} bytes)`);
+              
+              // created_at: i64
+              const createdAtResult = readU64(data, offset);
+              offset = createdAtResult.offset;
+              console.log(`[GlamService] After created_at, offset:`, offset, `(+${offset - startOffset} bytes)`);
+              
+              // fulfilled_at: i64
+              const fulfilledAtResult = readU64(data, offset);
+              offset = fulfilledAtResult.offset;
+              console.log(`[GlamService] After fulfilled_at, offset:`, offset, `(+${offset - startOffset} bytes)`);
+              
+              // time_unit: enum 
+              // This is an enum that might be: Second = 0, Slot = 1
+              const timeUnitByte = data[offset];
+              offset += 1;
+              
+              // The enum might have associated data depending on the variant
+              // For now, let's see what byte value we get
+              console.log(`[GlamService] Time unit byte value: ${timeUnitByte}`);
+              console.log(`[GlamService] After time_unit, offset:`, offset, `(+${offset - startOffset} bytes)`);
+              
+              // kind: enum (1 byte)
+              const kindByte = data[offset];
+              offset += 1;
+              const kind = kindByte === 0 ? 'Subscription' : 'Redemption';
+              console.log(`[GlamService] After kind (${kind}), offset:`, offset, `(+${offset - startOffset} bytes)`);
+              
+              // incoming: PubkeyAmount (NOT an Option!)
+              console.log(`[GlamService] Reading incoming PubkeyAmount at offset ${offset}`);
+              
+              // pubkey
+              const incomingPubkeyResult = readPubkey(data, offset);
+              offset = incomingPubkeyResult.offset;
+              console.log(`[GlamService] After incoming pubkey, offset:`, offset);
+              
+              // amount: u64
+              const incomingAmountResult = readU64(data, offset);
+              offset = incomingAmountResult.offset;
+              console.log(`[GlamService] After incoming amount, offset:`, offset);
+              
+              // decimals: u8
+              const incomingDecimals = data[offset];
+              offset += 1;
+              console.log(`[GlamService] After incoming decimals, offset:`, offset, `(+${offset - startOffset} bytes)`);
+              
+              const incoming = {
+                pubkey: incomingPubkeyResult.value.toBase58(),
+                amount: incomingAmountResult.value.toString(),
+                decimals: incomingDecimals
+              };
+              console.log(`[GlamService] Incoming asset:`, incoming);
+              
+              // value: u64
+              const valueResult = readU64(data, offset);
+              offset = valueResult.offset;
+              console.log(`[GlamService] After value, offset:`, offset, `(+${offset - startOffset} bytes)`);
+              
+              // outgoing: Option<PubkeyAmount>
+              console.log(`[GlamService] Reading outgoing option at offset ${offset}, byte value: ${data[offset]}`);
+              const hasOutgoing = data[offset] === 1;
+              offset += 1;
+              
+              let outgoing = null;
+              if (hasOutgoing) {
+                // Parse single PubkeyAmount
+                const outgoingPubkeyResult = readPubkey(data, offset);
+                offset = outgoingPubkeyResult.offset;
+                
+                const outgoingAmountResult = readU64(data, offset);
+                offset = outgoingAmountResult.offset;
+                
+                const outgoingDecimals = data[offset];
+                offset += 1;
+                
+                outgoing = {
+                  pubkey: outgoingPubkeyResult.value.toBase58(),
+                  amount: outgoingAmountResult.value.toString(),
+                  decimals: outgoingDecimals
+                };
+                console.log(`[GlamService] Outgoing asset:`, outgoing);
+              } else {
+                console.log(`[GlamService] No outgoing asset (None)`);
+              }
+              
+              const entry = {
+                user: userResult.value.toBase58(),
+                created_at: createdAtResult.value.toString(),
+                fulfilled_at: fulfilledAtResult.value.toString(),
+                kind: { [kind]: {} },
+                incoming,
+                value: valueResult.value.toString(),
+                outgoing
+              };
+              
+              ledgerEntries.push(entry);
+              console.log(`[GlamService] Successfully parsed ledger entry ${i + 1}:`, entry);
+              console.log(`[GlamService] Total bytes consumed:`, offset - startOffset);
+              console.log(`[GlamService] End offset:`, offset);
+              
+              // If there are more entries, show the next few bytes
+              if (i + 1 < ledgerLengthResult.value) {
+                console.log(`[GlamService] Next 64 bytes for entry ${i + 2}:`);
+                const hexBytes = [];
+                for (let j = 0; j < 64 && offset + j < data.length; j++) {
+                  hexBytes.push(data[offset + j].toString(16).padStart(2, '0'));
+                }
+                console.log(`[GlamService] Hex: ${hexBytes.join(' ')}`);
+              }
+            } catch (e) {
+              console.error(`[GlamService] Error parsing ledger entry ${i + 1}:`, e);
+              console.error(`[GlamService] Error message:`, e instanceof Error ? e.message : String(e));
+              console.error(`[GlamService] Current offset:`, offset);
+              console.error(`[GlamService] Remaining bytes:`, data.length - offset);
+              
+              // Show hex dump at error location
+              console.error(`[GlamService] Hex dump at error offset ${offset}:`);
+              const errorHexBytes = [];
+              for (let j = -16; j < 48 && offset + j >= 0 && offset + j < data.length; j++) {
+                errorHexBytes.push(data[offset + j].toString(16).padStart(2, '0'));
+              }
+              console.error(`[GlamService] Hex: ${errorHexBytes.join(' ')}`);
+              
+              // Simple recovery - skip ahead and try next entry
+              // Correct size: user(32) + created_at(8) + fulfilled_at(8) + time_unit(1) + kind(1) + 
+              // incoming(32+8+1=41) + value(8) + outgoing(1) = 100 bytes for None outgoing
+              const expectedEntrySize = 100; 
+              const nextOffset = startOffset + expectedEntrySize;
+              
+              if (nextOffset < data.length && i + 1 < ledgerLengthResult.value) {
+                console.error(`[GlamService] Skipping to next entry at offset ${nextOffset}`);
+                offset = nextOffset;
+              } else {
+                console.error(`[GlamService] Cannot continue, stopping`);
+                break;
+              }
+            }
+          }
+          
+          value = { val: ledgerEntries };
+          console.log('[GlamService] Total ledger entries parsed:', ledgerEntries.length);
+          
+          if (ledgerEntries.length < ledgerLengthResult.value) {
+            console.warn(`[GlamService] WARNING: Only parsed ${ledgerEntries.length}/${ledgerLengthResult.value} entries!`);
+          }
           break;
           
         case EngineFieldValueType.FeeStructure: // 16
@@ -608,12 +772,20 @@ function decodeStateAccount(data: Uint8Array): any {
     
     let params: any[] = [];
     try {
+      console.log(`[Params] Starting to parse params for ${name} at offset:`, offset);
+      console.log(`[Params] Data length:`, data.length);
+      console.log(`[Params] Remaining bytes before params:`, data.length - offset);
+      
       const paramsResult = readVec(data, offset, (data, offset) => {
         return readVec(data, offset, readEngineField);
       });
       params = paramsResult.value;
       offset = paramsResult.offset;
+      
+      console.log(`[Params] Successfully parsed ${params.length} param groups`);
+      console.log(`[Params] Offset after params:`, offset);
     } catch (e) {
+      console.log(`[Params] Error parsing params:`, e);
       // Continue without params data
     }
     
@@ -635,6 +807,7 @@ function decodeStateAccount(data: Uint8Array): any {
     let redemptionCancellationWindow = 0;
     let minSubscription = '';
     let minRedemption = '';
+    let ledgerEntries = [];
     
     // Search all param groups for our fields
     for (let i = 0; i < params.length; i++) {
@@ -645,6 +818,14 @@ function decodeStateAccount(data: Uint8Array): any {
           // Check for BaseAsset (enum value 10)
           if (field.name === EngineFieldName.BaseAsset && field.value) {
             baseAsset = field.value.toBase58();
+          }
+          
+          // Check for Ledger (enum value 15)
+          if (field.name === EngineFieldName.Ledger && field.value && field.value.val) {
+            ledgerEntries = field.value.val;
+            console.log(`[Params] Found Ledger entries for ${name}:`, ledgerEntries.length);
+            console.log(`[Params] First ledger entry:`, ledgerEntries[0]);
+            console.log(`[Params] All ledger entries:`, JSON.stringify(ledgerEntries, null, 2));
           }
           
           // Check for FeeStructure (enum value 16)
@@ -711,6 +892,8 @@ function decodeStateAccount(data: Uint8Array): any {
     console.log(`  - Fields found: ${foundFields.join(', ')}`);
     console.log(`  - Has FeeStructure: ${foundFields.includes('FeeStructure')}`);
     console.log(`  - Has NotifyAndSettle: ${foundFields.includes('NotifyAndSettle')}`);
+    console.log(`  - Has Ledger: ${foundFields.includes('Ledger')}`);
+    console.log(`  - Ledger entries found: ${ledgerEntries.length}`);
     if (!foundFields.includes('NotifyAndSettle')) {
       console.log(`  - WARNING: ${name} is missing NotifyAndSettle data!`);
     }
@@ -743,7 +926,8 @@ function decodeStateAccount(data: Uint8Array): any {
       redemptionCancellationWindow,
       minSubscription,
       minRedemption,
-      params
+      params,
+      ledgerEntries
     };
   } catch (e) {
     const error = e instanceof Error ? e.message : String(e);
@@ -921,6 +1105,7 @@ export class GlamService {
                   stateAccountIndex = i;
                   debugInfo.push(`[RPC] Found StateAccount at index ${i}`);
                   console.log(`[GLAM] Found StateAccount at index ${i}, pubkey: ${account.pubkey.toBase58()}`);
+                  console.log(`[GLAM] StateAccount data size: ${data.length} bytes`);
                   
                   try {
                     // Debug buffer methods
@@ -1010,7 +1195,8 @@ export class GlamService {
                         redemptionSettlementPeriod: decoded.redemptionSettlementPeriod || 0,
                         redemptionCancellationWindow: decoded.redemptionCancellationWindow || 0,
                         minSubscription: decoded.minSubscription || undefined,
-                        minRedemption: decoded.minRedemption || undefined
+                        minRedemption: decoded.minRedemption || undefined,
+                        ledgerEntries: decoded.ledgerEntries || []
                       };
                       
                       
