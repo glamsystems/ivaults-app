@@ -13,8 +13,9 @@ import { useAuthorization } from '../../solana/providers/AuthorizationProvider';
 import { formatTokenAmount } from '../../utils/tokenFormatting';
 import { getWalletErrorInfo, getTransactionErrorInfo, showStyledAlert } from '../../utils/walletErrorHandler';
 import { getTokenDecimals } from '../../constants/tokens';
-// import { GlamVaultService } from '../../services/glamVaultService'; // TODO: Implement new deposit service
+import { GlamDepositService } from '../../services/glamDepositService';
 import { NETWORK, DEBUG, DEBUGLOAD } from '@env';
+import { SuccessModal } from '../SuccessModal';
 
 interface DepositSheetProps {
   vault: Vault;
@@ -29,10 +30,19 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault, onClose }) =>
   const updateTokenBalance = useWalletStore((state) => state.updateTokenBalance);
   const fetchAllTokenAccounts = useWalletStore((state) => state.fetchAllTokenAccounts);
   const tokenBalance = useWalletStore((state) => state.getTokenBalance(vault.baseAsset));
+  const network = useWalletStore((state) => state.network);
   
   const [amount, setAmount] = useState('');
   const [connectLoading, setConnectLoading] = useState(false);
   const [depositLoading, setDepositLoading] = useState(false);
+  const [isConfirming, setIsConfirming] = useState(false);
+  const [depositService, setDepositService] = useState<GlamDepositService | null>(null);
+  const [successModal, setSuccessModal] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    details: [] as any[],
+  });
   
   // Fetch user's base asset balance
   useEffect(() => {
@@ -60,6 +70,33 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault, onClose }) =>
     return () => subscription.remove();
   }, [account, connection, vault.baseAsset, updateTokenBalance]);
   
+  // Initialize GLAM deposit service once when sheet opens
+  useEffect(() => {
+    if (!account || !connection || !vault.glam_state) return;
+    
+    const initService = async () => {
+      try {
+        const service = new GlamDepositService();
+        const network = NETWORK === 'devnet' ? 'devnet' : 'mainnet';
+        
+        await service.initializeClient(
+          connection,
+          account.publicKey,
+          new PublicKey(vault.glam_state),
+          authorizeSession,
+          network
+        );
+        
+        setDepositService(service);
+        console.log('[DepositSheet] GLAM service initialized');
+      } catch (error) {
+        console.error('[DepositSheet] Failed to initialize GLAM service:', error);
+      }
+    };
+    
+    initService();
+  }, [account, connection, vault.glam_state, authorizeSession]);
+  
   // Calculate redemption window (Notice + Settlement periods)
   const calculateRedemptionWindow = (): string => {
     const noticePeriod = vault.redemptionNoticePeriod || 0;
@@ -77,8 +114,10 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault, onClose }) =>
       return;
     }
     
+    // Set confirming state immediately for instant feedback
+    setIsConfirming(true);
+    
     try {
-      setDepositLoading(true);
       
       const decimals = getTokenDecimals(vault.baseAsset, 'mainnet') || 9;
       const amountNum = parseFloat(amount);
@@ -87,115 +126,113 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault, onClose }) =>
       if (!vault.mintPubkey) {
       }
       
-      // TODO: Implement new deposit transaction builder
-      showStyledAlert({
-        title: 'Coming Soon',
-        message: 'Deposit functionality is being rebuilt for better reliability.',
-        type: 'info'
-      });
-      return;
+      // Check if service is initialized
+      if (!depositService) {
+        console.error('[DepositSheet] Deposit service not initialized');
+        setIsConfirming(false);
+        showStyledAlert({
+          title: 'Service Error',
+          message: 'Please try again in a moment.',
+          type: 'error'
+        });
+        return;
+      }
       
-      // Temporary disabled - will be replaced with new implementation
-      /*
-      const vaultService = new GlamVaultService();
-      const network = NETWORK === 'devnet' ? 'devnet' : 'mainnet';
-      
-      let transactionData;
       try {
-        transactionData = await vaultService.prepareSubscription(
-          connection,
-          account.publicKey,
-          vault.glam_state,
-          vault.baseAsset,
-          vault.mintPubkey,
+        // Execute deposit (this includes confirmation)
+        const result = await depositService.deposit(
           amountNum,
           decimals,
-          network,
-          authorizeSession
+          new PublicKey(vault.baseAsset),
+          false // instant subscription
         );
-      } catch (prepError) {
-        throw prepError;
-      }
-      */
-      
-      /* Rest of deposit implementation temporarily disabled
-      const { transaction, blockhash, lastValidBlockHeight } = transactionData;
-      
-      // Log transaction details before sending
-      console.log('[DepositSheet] Transaction details:', {
-        feePayer: transaction.feePayer?.toBase58(),
-        instructions: transaction.instructions.length,
-        signatures: transaction.signatures.length,
-        recentBlockhash: transaction.recentBlockhash
-      });
-      
-      
-      // Execute transaction through mobile wallet
-      const signature = await transact(async (wallet: Web3MobileWallet) => {
         
-        // Reauthorize if needed
-        const authedAccount = await authorizeSession(wallet);
+        console.log('[DepositSheet] Deposit confirmed:', result.signature);
         
-        // Sign and send the transaction using mobile wallet adapter
-        const signatures = await wallet.signAndSendTransactions({
-          transactions: [transaction],
-          minContextSlot: 0
+        // Success - clear form and show modal immediately
+        setAmount('');
+        setIsConfirming(false);
+        
+        // Show success modal immediately
+        setSuccessModal({
+          visible: true,
+          title: 'Deposit Successful!',
+          message: `Your deposit to ${vault.name} has been confirmed.`,
+          details: [
+            {
+              label: 'Transaction Signature',
+              value: result.signature,
+              copyable: true,
+            },
+            {
+              label: 'Amount',
+              value: formatTokenAmount(
+                (amountNum * Math.pow(10, decimals)).toString(),
+                vault.baseAsset,
+                { showSymbol: true }
+              ),
+            },
+            {
+              label: 'Vault',
+              value: vault.name,
+            },
+            {
+              label: 'Network',
+              value: network === 'mainnet' ? 'Mainnet' : 'Devnet',
+            },
+          ],
         });
         
+        // Update balances in background after showing modal
+        setTimeout(async () => {
+          try {
+            await updateTokenBalance(connection, vault.baseAsset);
+            await fetchAllTokenAccounts(connection);
+            if (vault.mintPubkey) {
+              await updateTokenBalance(connection, vault.mintPubkey);
+            }
+          } catch (refreshError) {
+            console.error('[DepositSheet] Error refreshing balances:', refreshError);
+          }
+        }, 1000);
         
-        // Wait for confirmation
-        const confirmation = await connection.confirmTransaction({
-          signature: signatures[0],
-          blockhash,
-          lastValidBlockHeight
-        }, 'confirmed');
-        
-        if (confirmation.value.err) {
-          throw new Error(`Transaction failed: ${JSON.stringify(confirmation.value.err)}`);
-        }
-        
-        return signatures[0];
-      });
-      
-      // Success - no alert needed, UI will update
-      // Clear form immediately
-      setAmount('');
-      
-      // Wait a bit longer for blockchain state to update
-      await new Promise(resolve => setTimeout(resolve, 5000));
-      
-      // Refresh balances and positions
-      try {
-        // Update base asset balance (will decrease)
-        await updateTokenBalance(connection, vault.baseAsset);
-        
-        // Fetch all token accounts to update positions
-        // This will capture the new vault share tokens
-        const tokenAccounts = await fetchAllTokenAccounts(connection);
-        
-        // Log if we found the vault token
-        const vaultToken = tokenAccounts.find(ta => ta.mint === vault.mintPubkey);
-        if (vaultToken) {
-        } else {
-        }
-        
-        // Also update the specific vault token if we know it
-        if (vault.mintPubkey) {
-          await updateTokenBalance(connection, vault.mintPubkey);
-        }
-      } catch (refreshError) {
+      } catch (depositError) {
+        throw depositError;
       }
       
-      // Close sheet after refresh
-      onClose?.();
-      */ // End of temporarily disabled code
-      
     } catch (error) {
-      console.error('[DepositSheet] Deposit error:', error?.message || error?.toString() || 'Unknown error');
-      const errorInfo = getTransactionErrorInfo(error);
-      showStyledAlert(errorInfo);
+      console.error('[DepositSheet] Deposit error:', error);
+      console.error('[DepositSheet] Error type:', error?.constructor?.name);
+      console.error('[DepositSheet] Error message:', error?.message);
+      
+      // Only show error if it's not a user cancellation or network timeout
+      const errorMessage = error?.message || error?.toString() || '';
+      const isTimeout = errorMessage.toLowerCase().includes('timeout');
+      const isNetworkError = errorMessage.toLowerCase().includes('network');
+      
+      if (isTimeout || isNetworkError) {
+        console.log('[DepositSheet] Network/timeout error - transaction may have succeeded');
+        // Don't show error, just check balances
+        setTimeout(async () => {
+          try {
+            await updateTokenBalance(connection, vault.baseAsset);
+            await fetchAllTokenAccounts(connection);
+          } catch (e) {
+            console.error('[DepositSheet] Error checking balances:', e);
+          }
+        }, 3000);
+      } else {
+        // Only show error for real failures
+        const errorInfo = getTransactionErrorInfo(error);
+        if (errorInfo.shouldShow) {
+          showStyledAlert(errorInfo);
+        } else {
+          console.log('[DepositSheet] User cancelled transaction - not showing error');
+        }
+      }
     } finally {
       setDepositLoading(false);
+      setIsConfirming(false);
     }
   };
 
@@ -506,7 +543,7 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault, onClose }) =>
         >
           {(connectLoading || (DEBUG === 'true' && DEBUGLOAD === 'true')) ? (
             <PulsatingText 
-              text="Loading..."
+              text="Connecting..."
               variant="regular"
               style={[styles.confirmButtonText, { color: colors.button.primaryText }]}
             />
@@ -521,15 +558,15 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault, onClose }) =>
           style={[
             styles.confirmButton, 
             { backgroundColor: colors.button.primary },
-            (isDisabled || depositLoading) && { opacity: 0.5 }
+            (isDisabled || depositLoading || isConfirming) && { opacity: 0.5 }
           ]}
           onPress={handleConfirm}
           activeOpacity={0.7}
-          disabled={isDisabled || depositLoading}
+          disabled={isDisabled || depositLoading || isConfirming}
         >
-          {(depositLoading || (DEBUG === 'true' && DEBUGLOAD === 'true')) ? (
+          {(depositLoading || isConfirming || (DEBUG === 'true' && DEBUGLOAD === 'true')) ? (
             <PulsatingText 
-              text="Loading..."
+              text={isConfirming ? "Depositing..." : "Loading..."}
               variant="regular"
               style={[styles.confirmButtonText, { color: colors.button.primaryText }]}
             />
@@ -540,6 +577,18 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault, onClose }) =>
           )}
         </TouchableOpacity>
       )}
+      
+      <SuccessModal
+        visible={successModal.visible}
+        onClose={() => {
+          setSuccessModal({ ...successModal, visible: false });
+          // Close deposit sheet after modal closes
+          onClose?.();
+        }}
+        title={successModal.title}
+        message={successModal.message}
+        details={successModal.details}
+      />
     </View>
   );
 };

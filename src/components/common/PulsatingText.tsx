@@ -34,7 +34,7 @@ export const PulsatingText: React.FC<PulsatingTextProps> = ({
 
   const opacity = animatedValue.interpolate({
     inputRange: [0, 1],
-    outputRange: [0.02, 0.1], // 2% to 10% opacity - very subtle pulsating
+    outputRange: [0.5, 1.0], // 50% to 100% opacity - readable pulsating
   });
 
   return (

@@ -7,8 +7,8 @@ import {
   Clipboard,
   Animated,
   Dimensions,
+  Easing,
 } from 'react-native';
-import { BlurView } from 'expo-blur';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../theme';
 import { Text } from './common';
@@ -39,48 +39,40 @@ export const SuccessModal: React.FC<SuccessModalProps> = ({
   type = 'success',
 }) => {
   const { colors } = useTheme();
-  const [fadeAnim] = useState(new Animated.Value(0));
-  const [scaleAnim] = useState(new Animated.Value(0.8));
+  const [scaleAnim] = useState(new Animated.Value(0.9));
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (visible) {
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.spring(scaleAnim, {
-          toValue: 1,
-          friction: 8,
-          tension: 40,
-          useNativeDriver: true,
-        }),
-      ]).start();
+      // Simple scale animation for smooth appearance
+      Animated.timing(scaleAnim, {
+        toValue: 1,
+        duration: 250,
+        easing: Easing.out(Easing.back(1.2)),
+        useNativeDriver: true,
+      }).start();
 
       if (autoClose) {
-        const timer = setTimeout(() => {
+        const closeTimer = setTimeout(() => {
           handleClose();
         }, 5000);
-        return () => clearTimeout(timer);
+        return () => {
+          clearTimeout(closeTimer);
+        };
       }
+    } else {
+      // Reset scale when modal is hidden
+      scaleAnim.setValue(0.9);
     }
   }, [visible]);
 
   const handleClose = () => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-      Animated.timing(scaleAnim, {
-        toValue: 0.8,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
+    Animated.timing(scaleAnim, {
+      toValue: 0.9,
+      duration: 200,
+      easing: Easing.in(Easing.quad),
+      useNativeDriver: true,
+    }).start(() => {
       onClose();
     });
   };
@@ -102,17 +94,15 @@ export const SuccessModal: React.FC<SuccessModalProps> = ({
     <Modal
       transparent
       visible={visible}
-      animationType="none"
+      animationType="fade"
       onRequestClose={handleClose}
     >
-      <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
-        <BlurView intensity={80} style={StyleSheet.absoluteFillObject}>
-          <TouchableOpacity
-            style={styles.overlayTouch}
-            activeOpacity={1}
-            onPress={handleClose}
-          />
-        </BlurView>
+      <View style={styles.overlay}>
+        <TouchableOpacity
+          style={styles.overlayTouch}
+          activeOpacity={1}
+          onPress={handleClose}
+        />
         
         <Animated.View
           style={[
@@ -191,7 +181,7 @@ export const SuccessModal: React.FC<SuccessModalProps> = ({
             </Text>
           </TouchableOpacity>
         </Animated.View>
-      </Animated.View>
+      </View>
     </Modal>
   );
 };
@@ -201,6 +191,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   overlayTouch: {
     ...StyleSheet.absoluteFillObject,
@@ -211,14 +202,15 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 24,
     alignItems: 'center',
+    // Enhanced shadow for floating effect
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 10,
     },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 15,
   },
   iconContainer: {
     marginBottom: 16,

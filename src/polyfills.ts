@@ -37,9 +37,41 @@ if (typeof global.Buffer === 'undefined') {
   });
 }
 
+// Fix for Buffer.subarray returning Uint8Array instead of Buffer in React Native
+// This is critical for Anchor SDK compatibility
+const originalSubarray = Buffer.prototype.subarray;
+Buffer.prototype.subarray = function subarray(begin?: number, end?: number) {
+  const result = originalSubarray.call(this, begin, end);
+  // Ensure the result is a Buffer instance with all Buffer methods
+  if (!(result instanceof Buffer)) {
+    Object.setPrototypeOf(result, Buffer.prototype);
+  }
+  return result;
+};
+
+// Also patch slice method which might have similar issues
+const originalSlice = Buffer.prototype.slice;
+Buffer.prototype.slice = function slice(begin?: number, end?: number) {
+  const result = originalSlice.call(this, begin, end);
+  if (!(result instanceof Buffer)) {
+    Object.setPrototypeOf(result, Buffer.prototype);
+  }
+  return result;
+};
+
 // Additional check for readUIntLE specifically
 if (!Buffer.prototype.readUIntLE) {
   console.error('[Polyfills] CRITICAL: Buffer is missing readUIntLE method!');
+} else {
+  console.log('[Polyfills] Buffer.prototype.readUIntLE is available');
+  // Test that subarray preserves Buffer methods
+  const testBuf = Buffer.from([1, 2, 3, 4]);
+  const subBuf = testBuf.subarray(0, 2);
+  if (typeof subBuf.readUIntLE === 'function') {
+    console.log('[Polyfills] Buffer.subarray patch successful - methods preserved');
+  } else {
+    console.error('[Polyfills] Buffer.subarray patch failed - methods not preserved');
+  }
 }
 
 // These are needed for @solana/web3.js in React Native

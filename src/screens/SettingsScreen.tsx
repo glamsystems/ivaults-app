@@ -178,7 +178,7 @@ export const SettingsScreen: React.FC = () => {
               >
                 {(connectLoading || (DEBUG === 'true' && DEBUGLOAD === 'true')) ? (
                   <PulsatingText 
-                    text="Loading..."
+                    text="Connecting..."
                     variant="regular"
                     style={[styles.buttonText, { color: colors.button.primaryText }]}
                   />

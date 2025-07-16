@@ -465,7 +465,7 @@ const AccountInfo: React.FC<{
 };
 
 // Tab types
-type DebugTab = 'Solana' | 'GLAM' | 'Skipped';
+type DebugTab = 'Solana' | 'GLAM' | 'Skipped' | 'UI';
 
 // Skipped Vaults List Component
 const SkippedVaultsList: React.FC = () => {
@@ -535,6 +535,98 @@ const SkippedVaultsList: React.FC = () => {
         </Text>
       </Section>
     </View>
+  );
+};
+
+// Test Modal Buttons Component
+const TestModalButtons: React.FC = () => {
+  const { colors } = useTheme();
+  const [testModal, setTestModal] = useState({
+    visible: false,
+    type: 'success' as 'success' | 'error',
+    title: '',
+    message: '',
+    details: [] as any[],
+  });
+
+  const showSuccessModal = () => {
+    setTestModal({
+      visible: true,
+      type: 'success',
+      title: 'Test Success!',
+      message: 'This is a test success message to check styling.',
+      details: [
+        {
+          label: 'Transaction ID',
+          value: '5xJ9...abc123',
+          copyable: true,
+        },
+        {
+          label: 'Amount',
+          value: '100.50 USDC',
+        },
+        {
+          label: 'Network',
+          value: 'Mainnet',
+        },
+      ],
+    });
+  };
+
+  const showErrorModal = () => {
+    setTestModal({
+      visible: true,
+      type: 'error',
+      title: 'Test Error!',
+      message: 'This is a test error message to check styling.',
+      details: [
+        {
+          label: 'Error Code',
+          value: 'INSUFFICIENT_FUNDS',
+        },
+        {
+          label: 'Required',
+          value: '100 USDC',
+        },
+        {
+          label: 'Available',
+          value: '50 USDC',
+        },
+      ],
+    });
+  };
+
+  return (
+    <>
+      <View style={{ flexDirection: 'row', gap: 12 }}>
+        <TouchableOpacity
+          style={[styles.button, { flex: 1 }]}
+          onPress={showSuccessModal}
+        >
+          <Text variant="regular" style={styles.buttonText}>
+            Test Success
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.button, { flex: 1 }]}
+          onPress={showErrorModal}
+        >
+          <Text variant="regular" style={styles.buttonText}>
+            Test Error
+          </Text>
+        </TouchableOpacity>
+      </View>
+      
+      <SuccessModal
+        visible={testModal.visible}
+        onClose={() => setTestModal({ ...testModal, visible: false })}
+        title={testModal.title}
+        message={testModal.message}
+        details={testModal.details}
+        type={testModal.type}
+        autoClose={false} // Don't auto close for testing
+      />
+    </>
   );
 };
 
@@ -623,7 +715,7 @@ const DebugScreenContent: React.FC<{ endpoint: string; currentNetwork: NetworkTy
     };
   }, [selectedAccount, connection, startBalancePolling, stopBalancePolling]);
 
-  const tabOptions: DebugTab[] = ['Solana', 'GLAM', 'Skipped'];
+  const tabOptions: DebugTab[] = ['Solana', 'GLAM', 'Skipped', 'UI'];
 
   return (
     <PageWrapper style={styles.pageWrapper}>
@@ -675,6 +767,10 @@ const DebugScreenContent: React.FC<{ endpoint: string; currentNetwork: NetworkTy
                   <SignMessageButton />
                 </Section>
 
+                <Section title="Test Modals">
+                  <TestModalButtons />
+                </Section>
+
                 <AccountInfo
                   selectedAccount={selectedAccount}
                   balance={balance}
@@ -699,8 +795,15 @@ const DebugScreenContent: React.FC<{ endpoint: string; currentNetwork: NetworkTy
               <GlamVaultsList network={currentNetwork} />
             </Section>
           </View>
-        ) : (
+        ) : activeTab === 'Skipped' ? (
           <SkippedVaultsList />
+        ) : (
+          // UI Tab
+          <View style={styles.glamContent}>
+            <Section title="Test Modals">
+              <TestModalButtons />
+            </Section>
+          </View>
         )}
       </ScrollView>
     </PageWrapper>
