@@ -13,7 +13,7 @@ import { useAuthorization } from '../../solana/providers/AuthorizationProvider';
 import { formatTokenAmount } from '../../utils/tokenFormatting';
 import { getWalletErrorInfo, getTransactionErrorInfo, showStyledAlert } from '../../utils/walletErrorHandler';
 import { getTokenDecimals } from '../../constants/tokens';
-import { GlamVaultService } from '../../services/glamVaultService';
+// import { GlamVaultService } from '../../services/glamVaultService'; // TODO: Implement new deposit service
 import { NETWORK, DEBUG, DEBUGLOAD } from '@env';
 
 interface DepositSheetProps {
@@ -87,15 +87,21 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault, onClose }) =>
       if (!vault.mintPubkey) {
       }
       
-      // Initialize service
+      // TODO: Implement new deposit transaction builder
+      showStyledAlert({
+        title: 'Coming Soon',
+        message: 'Deposit functionality is being rebuilt for better reliability.',
+        type: 'info'
+      });
+      return;
+      
+      // Temporary disabled - will be replaced with new implementation
+      /*
       const vaultService = new GlamVaultService();
       const network = NETWORK === 'devnet' ? 'devnet' : 'mainnet';
       
-      
-      // Prepare subscription transaction
       let transactionData;
       try {
-        console.log('[DepositSheet] Calling prepareSubscription...');
         transactionData = await vaultService.prepareSubscription(
           connection,
           account.publicKey,
@@ -107,12 +113,12 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault, onClose }) =>
           network,
           authorizeSession
         );
-        console.log('[DepositSheet] prepareSubscription completed successfully');
       } catch (prepError) {
-        console.error('[DepositSheet] prepareSubscription failed:', prepError);
         throw prepError;
       }
+      */
       
+      /* Rest of deposit implementation temporarily disabled
       const { transaction, blockhash, lastValidBlockHeight } = transactionData;
       
       // Log transaction details before sending
@@ -182,6 +188,7 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault, onClose }) =>
       
       // Close sheet after refresh
       onClose?.();
+      */ // End of temporarily disabled code
       
     } catch (error) {
       console.error('[DepositSheet] Deposit error:', error?.message || error?.toString() || 'Unknown error');
