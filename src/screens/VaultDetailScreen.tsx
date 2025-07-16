@@ -22,6 +22,8 @@ import { getDisplayPubkey } from '../utils/displayPubkey';
 import { useWalletStore } from '../store/walletStore';
 import { useVaultStore } from '../store/vaultStore';
 import { useConnection } from '../solana/providers/ConnectionProvider';
+import { useRedemptionStore } from '../store/redemptionStore';
+import { GenericNotificationModal } from '../components/GenericNotificationModal';
 
 type RootStackParamList = {
   VaultDetail: { vault: Vault };
@@ -47,6 +49,15 @@ export const VaultDetailScreen: React.FC = () => {
   const updateTokenBalance = useWalletStore((state) => state.updateTokenBalance);
   const tokenBalance = useWalletStore((state) => state.getTokenBalance(vault.mintPubkey || ''));
   const { connection } = useConnection();
+  const redemptionRequests = useRedemptionStore((state) => state.redemptionRequests);
+  
+  // State for notification modal
+  const [notificationModal, setNotificationModal] = useState({
+    visible: false,
+    type: 'info' as 'success' | 'error' | 'info' | 'warning',
+    message: '',
+    title: '',
+  });
   
   // Fetch user's vault token balance
   useEffect(() => {
@@ -115,6 +126,26 @@ export const VaultDetailScreen: React.FC = () => {
     // Don't open sheet if no balance or wallet not connected
     if (!account || userVaultBalance === 0) {
       console.log('Withdraw blocked: no wallet or zero balance');
+      return;
+    }
+    
+    // Check for pending redemption requests for this vault
+    const userAddress = account.publicKey.toBase58();
+    const pendingRequests = redemptionRequests.filter(req => 
+      req.vaultId === vault.id && 
+      req.walletAddress === userAddress &&
+      req.status === 'pending'
+    );
+    
+    if (pendingRequests.length > 0) {
+      console.log('Withdraw blocked: pending redemption request exists');
+      // Show info notification
+      setNotificationModal({
+        visible: true,
+        type: 'info',
+        title: 'Pending Request',
+        message: 'Withdrawal in progress. Check your portfolio.',
+      });
       return;
     }
     
@@ -196,6 +227,15 @@ export const VaultDetailScreen: React.FC = () => {
       <BasicBottomSheet ref={withdrawSheetRef} snapPoints={['60%', '73%']}>
         <WithdrawSheet vault={vault} />
       </BasicBottomSheet>
+      
+      {/* Notification Modal for info messages */}
+      <GenericNotificationModal
+        visible={notificationModal.visible}
+        type={notificationModal.type}
+        title={notificationModal.title}
+        message={notificationModal.message}
+        onClose={() => setNotificationModal(prev => ({ ...prev, visible: false }))}
+      />
     </PageWrapper>
   );
 };

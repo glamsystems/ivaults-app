@@ -21,6 +21,7 @@ interface GenericNotificationModalProps {
   onClose: () => void;
   type: 'success' | 'error' | 'info' | 'warning';
   message: string;
+  title?: string;
   autoClose?: boolean;
 }
 
@@ -55,6 +56,7 @@ export const GenericNotificationModal: React.FC<GenericNotificationModalProps> =
   onClose,
   type,
   message,
+  title,
   autoClose = true,
 }) => {
   const { colors } = useTheme();
@@ -114,8 +116,8 @@ export const GenericNotificationModal: React.FC<GenericNotificationModalProps> =
     });
   };
 
-  // Capitalize first letter of type
-  const notificationTitle = type.charAt(0).toUpperCase() + type.slice(1);
+  // Use custom title if provided, otherwise capitalize first letter of type
+  const notificationTitle = title || type.charAt(0).toUpperCase() + type.slice(1);
 
   return (
     <Modal
