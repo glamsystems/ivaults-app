@@ -12,10 +12,10 @@ import { transact, Web3MobileWallet } from '@solana-mobile/mobile-wallet-adapter
 import { useAuthorization } from '../../solana/providers/AuthorizationProvider';
 import { formatTokenAmount } from '../../utils/tokenFormatting';
 import { getWalletErrorInfo, getTransactionErrorInfo, showStyledAlert } from '../../utils/walletErrorHandler';
-import { getTokenDecimals } from '../../constants/tokens';
+import { getTokenDecimals, getTokenSymbol } from '../../constants/tokens';
 import { GlamDepositService } from '../../services/glamDepositService';
 import { NETWORK, DEBUG, DEBUGLOAD } from '@env';
-import { SuccessModal } from '../SuccessModal';
+import { ActivityModal } from '../ActivityModal';
 
 interface DepositSheetProps {
   vault: Vault;
@@ -37,11 +37,10 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault, onClose }) =>
   const [depositLoading, setDepositLoading] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
   const [depositService, setDepositService] = useState<GlamDepositService | null>(null);
-  const [successModal, setSuccessModal] = useState({
+  const [activityModal, setActivityModal] = useState({
     visible: false,
-    title: '',
-    message: '',
-    details: [] as any[],
+    amount: '',
+    assetSymbol: '',
   });
   
   // Fetch user's base asset balance
@@ -131,9 +130,9 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault, onClose }) =>
         console.error('[DepositSheet] Deposit service not initialized');
         setIsConfirming(false);
         showStyledAlert({
+          shouldShow: true,
           title: 'Service Error',
-          message: 'Please try again in a moment.',
-          type: 'error'
+          message: 'Please try again in a moment.'
         });
         return;
       }
@@ -153,35 +152,16 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault, onClose }) =>
         setAmount('');
         setIsConfirming(false);
         
-        // Show success modal immediately
-        setSuccessModal({
+        // Show activity modal immediately
+        const baseAssetSymbol = getTokenSymbol(vault.baseAsset, 'mainnet') || 'Unknown';
+        setActivityModal({
           visible: true,
-          title: 'Deposit Successful!',
-          message: `Your deposit to ${vault.name} has been confirmed.`,
-          details: [
-            {
-              label: 'Transaction Signature',
-              value: result.signature,
-              copyable: true,
-            },
-            {
-              label: 'Amount',
-              value: formatTokenAmount(
-                (amountNum * Math.pow(10, decimals)).toString(),
-                vault.baseAsset,
-                { showSymbol: true }
-              ),
-            },
-            {
-              label: 'Vault',
-              value: vault.name,
-            },
-            {
-              label: 'Network',
-              value: network === 'mainnet' ? 'Mainnet' : 'Devnet',
-            },
-          ],
+          amount: amountNum.toString(),
+          assetSymbol: baseAssetSymbol,
         });
+        
+        // Close the sheet immediately
+        onClose?.();
         
         // Update balances in background after showing modal
         setTimeout(async () => {
@@ -578,16 +558,15 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault, onClose }) =>
         </TouchableOpacity>
       )}
       
-      <SuccessModal
-        visible={successModal.visible}
+      <ActivityModal
+        visible={activityModal.visible}
         onClose={() => {
-          setSuccessModal({ ...successModal, visible: false });
-          // Close deposit sheet after modal closes
-          onClose?.();
+          setActivityModal({ ...activityModal, visible: false });
         }}
-        title={successModal.title}
-        message={successModal.message}
-        details={successModal.details}
+        type="deposit"
+        amount={activityModal.amount}
+        symbol={vault.symbol}
+        assetSymbol={activityModal.assetSymbol}
       />
     </View>
   );

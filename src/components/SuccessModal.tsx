@@ -10,6 +10,7 @@ import {
   Easing,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../theme';
 import { Text } from './common';
 
@@ -40,17 +41,26 @@ export const SuccessModal: React.FC<SuccessModalProps> = ({
 }) => {
   const { colors } = useTheme();
   const [scaleAnim] = useState(new Animated.Value(0.9));
+  const [fadeAnim] = useState(new Animated.Value(0));
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (visible) {
-      // Simple scale animation for smooth appearance
-      Animated.timing(scaleAnim, {
-        toValue: 1,
-        duration: 250,
-        easing: Easing.out(Easing.back(1.2)),
-        useNativeDriver: true,
-      }).start();
+      // Synchronized animations for smooth appearance
+      Animated.parallel([
+        Animated.timing(scaleAnim, {
+          toValue: 1,
+          duration: 250,
+          easing: Easing.out(Easing.back(1.2)),
+          useNativeDriver: true,
+        }),
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 250,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        })
+      ]).start();
 
       if (autoClose) {
         const closeTimer = setTimeout(() => {
@@ -61,18 +71,28 @@ export const SuccessModal: React.FC<SuccessModalProps> = ({
         };
       }
     } else {
-      // Reset scale when modal is hidden
+      // Reset animations when modal is hidden
       scaleAnim.setValue(0.9);
+      fadeAnim.setValue(0);
     }
   }, [visible]);
 
   const handleClose = () => {
-    Animated.timing(scaleAnim, {
-      toValue: 0.9,
-      duration: 200,
-      easing: Easing.in(Easing.quad),
-      useNativeDriver: true,
-    }).start(() => {
+    // Synchronized closing animations
+    Animated.parallel([
+      Animated.timing(scaleAnim, {
+        toValue: 0.9,
+        duration: 200,
+        easing: Easing.in(Easing.quad),
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 200,
+        easing: Easing.in(Easing.quad),
+        useNativeDriver: true,
+      })
+    ]).start(() => {
       onClose();
     });
   };
@@ -94,10 +114,10 @@ export const SuccessModal: React.FC<SuccessModalProps> = ({
     <Modal
       transparent
       visible={visible}
-      animationType="fade"
+      animationType="none"
       onRequestClose={handleClose}
     >
-      <View style={styles.overlay}>
+      <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
         <TouchableOpacity
           style={styles.overlayTouch}
           activeOpacity={1}
@@ -108,12 +128,15 @@ export const SuccessModal: React.FC<SuccessModalProps> = ({
           style={[
             styles.modalContent,
             {
-              backgroundColor: colors.background.primary,
               transform: [{ scale: scaleAnim }],
             },
           ]}
         >
-          <View style={styles.iconContainer}>
+          <LinearGradient
+            colors={[colors.background.sheet.start, colors.background.sheet.end]}
+            style={styles.gradientContainer}
+          >
+            <View style={styles.iconContainer}>
             <View
               style={[
                 styles.iconCircle,
@@ -130,7 +153,7 @@ export const SuccessModal: React.FC<SuccessModalProps> = ({
             </View>
           </View>
 
-          <Text variant="bold" style={[styles.title, { color: colors.text.primary }]}>
+          <Text variant="regular" style={[styles.title, { color: colors.text.primary }]}>
             {title}
           </Text>
 
@@ -173,15 +196,16 @@ export const SuccessModal: React.FC<SuccessModalProps> = ({
           )}
 
           <TouchableOpacity
-            style={[styles.closeButton, { backgroundColor: colors.background.secondary }]}
+            style={[styles.closeButton, { backgroundColor: colors.button.primary }]}
             onPress={handleClose}
           >
-            <Text variant="bold" style={[styles.closeButtonText, { color: colors.text.primary }]}>
+            <Text variant="regular" style={[styles.closeButtonText, { color: colors.button.primaryText }]}>
               Close
             </Text>
           </TouchableOpacity>
+          </LinearGradient>
         </Animated.View>
-      </View>
+      </Animated.View>
     </Modal>
   );
 };
@@ -191,7 +215,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.1)',
   },
   overlayTouch: {
     ...StyleSheet.absoluteFillObject,
@@ -200,17 +224,11 @@ const styles = StyleSheet.create({
     width: SCREEN_WIDTH * 0.85,
     maxWidth: 400,
     borderRadius: 20,
+  },
+  gradientContainer: {
+    borderRadius: 20,
     padding: 24,
     alignItems: 'center',
-    // Enhanced shadow for floating effect
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 10,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 15,
   },
   iconContainer: {
     marginBottom: 16,
@@ -261,13 +279,16 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   closeButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12,
+    borderRadius: 8,
+    paddingVertical: 11,
+    paddingHorizontal: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
     minWidth: 120,
+    marginTop: 8,
   },
   closeButtonText: {
-    fontSize: 16,
+    fontSize: 18,
     textAlign: 'center',
   },
 });

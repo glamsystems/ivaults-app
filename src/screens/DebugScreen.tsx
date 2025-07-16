@@ -23,7 +23,8 @@ import { Text, PageWrapper } from '../components/common';
 import { ConnectionProvider, useConnection, RPC_ENDPOINT, NETWORK_ENDPOINTS, NetworkType } from '../solana/providers/ConnectionProvider';
 import { AuthorizationProvider, useAuthorization, Account } from '../solana/providers/AuthorizationProvider';
 import { alertAndLog } from '../solana/utils';
-import { SuccessModal } from '../components/SuccessModal';
+import { ActivityModal } from '../components/ActivityModal';
+import { GenericNotificationModal } from '../components/GenericNotificationModal';
 import { useWalletStore } from '../store/walletStore';
 import { useVaultStore } from '../store/vaultStore';
 import { GlamVaultsList } from '../components/GlamVaultsList';
@@ -541,70 +542,80 @@ const SkippedVaultsList: React.FC = () => {
 // Test Modal Buttons Component
 const TestModalButtons: React.FC = () => {
   const { colors } = useTheme();
-  const [testModal, setTestModal] = useState({
+  const [genericModal, setGenericModal] = useState({
     visible: false,
     type: 'success' as 'success' | 'error',
-    title: '',
     message: '',
-    details: [] as any[],
+  });
+
+  const [activityModal, setActivityModal] = useState({
+    visible: false,
+    type: 'deposit' as 'deposit' | 'cancel' | 'claim' | 'request',
+    amount: '',
+    symbol: '',
   });
 
   const showSuccessModal = () => {
-    setTestModal({
+    setGenericModal({
       visible: true,
       type: 'success',
-      title: 'Test Success!',
       message: 'This is a test success message to check styling.',
-      details: [
-        {
-          label: 'Transaction ID',
-          value: '5xJ9...abc123',
-          copyable: true,
-        },
-        {
-          label: 'Amount',
-          value: '100.50 USDC',
-        },
-        {
-          label: 'Network',
-          value: 'Mainnet',
-        },
-      ],
     });
   };
 
   const showErrorModal = () => {
-    setTestModal({
+    setGenericModal({
       visible: true,
       type: 'error',
-      title: 'Test Error!',
       message: 'This is a test error message to check styling.',
-      details: [
-        {
-          label: 'Error Code',
-          value: 'INSUFFICIENT_FUNDS',
-        },
-        {
-          label: 'Required',
-          value: '100 USDC',
-        },
-        {
-          label: 'Available',
-          value: '50 USDC',
-        },
-      ],
+    });
+  };
+
+  const showDepositActivity = () => {
+    setActivityModal({
+      visible: true,
+      type: 'deposit',
+      amount: '100.50',
+      symbol: 'glaSOL',
+    });
+  };
+
+  const showCancelActivity = () => {
+    setActivityModal({
+      visible: true,
+      type: 'cancel',
+      amount: '75.00',
+      symbol: 'glaUSDC',
+    });
+  };
+
+  const showRequestActivity = () => {
+    setActivityModal({
+      visible: true,
+      type: 'request',
+      amount: '50.25',
+      symbol: 'glaUSDC',
+    });
+  };
+
+  const showClaimActivity = () => {
+    setActivityModal({
+      visible: true,
+      type: 'claim',
+      amount: '200.00',
+      symbol: 'glaSOL',
     });
   };
 
   return (
     <>
-      <View style={{ flexDirection: 'row', gap: 12 }}>
+      <View style={{ flexDirection: 'row', gap: 12, marginBottom: 12 }}>
         <TouchableOpacity
           style={[styles.button, { flex: 1 }]}
           onPress={showSuccessModal}
         >
           <Text variant="regular" style={styles.buttonText}>
-            Test Success
+            Success Modal
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -612,18 +623,63 @@ const TestModalButtons: React.FC = () => {
           onPress={showErrorModal}
         >
           <Text variant="regular" style={styles.buttonText}>
-            Test Error
+            Error Modal
           </Text>
         </TouchableOpacity>
       </View>
       
-      <SuccessModal
-        visible={testModal.visible}
-        onClose={() => setTestModal({ ...testModal, visible: false })}
-        title={testModal.title}
-        message={testModal.message}
-        details={testModal.details}
-        type={testModal.type}
+      <View style={{ flexDirection: 'row', gap: 12, marginBottom: 12 }}>
+        <TouchableOpacity
+          style={[styles.button, { flex: 1 }]}
+          onPress={showDepositActivity}
+        >
+          <Text variant="regular" style={styles.buttonText}>
+            Deposit
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.button, { flex: 1 }]}
+          onPress={showCancelActivity}
+        >
+          <Text variant="regular" style={styles.buttonText}>
+            Cancel
+          </Text>
+        </TouchableOpacity>
+      </View>
+      
+      <View style={{ flexDirection: 'row', gap: 12 }}>
+        <TouchableOpacity
+          style={[styles.button, { flex: 1 }]}
+          onPress={showRequestActivity}
+        >
+          <Text variant="regular" style={styles.buttonText}>
+            Request
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.button, { flex: 1 }]}
+          onPress={showClaimActivity}
+        >
+          <Text variant="regular" style={styles.buttonText}>
+            Claim
+          </Text>
+        </TouchableOpacity>
+      </View>
+      
+      <GenericNotificationModal
+        visible={genericModal.visible}
+        onClose={() => setGenericModal({ ...genericModal, visible: false })}
+        type={genericModal.type}
+        message={genericModal.message}
+        autoClose={false} // Don't auto close for testing
+      />
+      
+      <ActivityModal
+        visible={activityModal.visible}
+        onClose={() => setActivityModal({ ...activityModal, visible: false })}
+        type={activityModal.type}
+        amount={activityModal.amount}
+        symbol={activityModal.symbol}
         autoClose={false} // Don't auto close for testing
       />
     </>

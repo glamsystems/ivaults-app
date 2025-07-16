@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, AppState } from 'react-native';
 import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
 import { Text, DisplayPubkey } from '../common';
 import { Vault } from '../../store/vaultStore';
@@ -30,6 +30,19 @@ export const WithdrawSheet: React.FC<WithdrawSheetProps> = ({ vault }) => {
     updateTokenBalance(connection, vault.mintPubkey);
   }, [account, vault.mintPubkey, connection, updateTokenBalance]);
   
+  // Add AppState listener to detect when app comes to foreground
+  useEffect(() => {
+    const handleAppStateChange = (nextAppState: string) => {
+      if (nextAppState === 'active' && account && connection && vault.mintPubkey) {
+        // App has come to foreground, refresh balance
+        updateTokenBalance(connection, vault.mintPubkey);
+      }
+    };
+    
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    return () => subscription.remove();
+  }, [account, connection, vault.mintPubkey, updateTokenBalance]);
+  
   // Calculate redemption window (Notice + Settlement periods)
   const calculateRedemptionWindow = (): string => {
     const noticePeriod = vault.redemptionNoticePeriod || 0;
@@ -51,7 +64,6 @@ export const WithdrawSheet: React.FC<WithdrawSheetProps> = ({ vault }) => {
   
   // Get balance from store
   const userBalance = tokenBalance?.uiAmount || 0;
-  const isLoadingBalance = tokenBalance?.isLoading || false;
   
   const handleBalanceClick = () => {
     if (tokenBalance) {
@@ -100,7 +112,7 @@ export const WithdrawSheet: React.FC<WithdrawSheetProps> = ({ vault }) => {
             Balance
           </Text>
           <Text variant="regular" style={[styles.value, { color: colors.text.primary }]}>
-            {isLoadingBalance ? 'Loading...' : `${userBalance.toLocaleString('en-US', {
+            {`${userBalance.toLocaleString('en-US', {
               minimumFractionDigits: 2,
               maximumFractionDigits: 6,
             })} ${vault.symbol}`}

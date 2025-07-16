@@ -84,7 +84,8 @@ export class GlamDepositService {
       amount,
       decimals,
       baseAsset: baseAsset.toBase58(),
-      queued
+      queued,
+      connectionEndpoint: this.glamClient.provider.connection.rpcEndpoint
     });
 
     try {
@@ -131,7 +132,7 @@ export class GlamDepositService {
 
       // Pre-fetch blockhash before building transaction
       console.log('[GlamDepositService] Pre-fetching blockhash...');
-      const latestBlockhash = await this.glamClient.provider.connection.getLatestBlockhash();
+      const latestBlockhash = await this.glamClient.provider.connection.getLatestBlockhash('confirmed');
       console.log('[GlamDepositService] Blockhash fetched:', latestBlockhash.blockhash);
       
       // Add blockhash to transaction options
