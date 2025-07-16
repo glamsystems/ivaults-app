@@ -544,7 +544,7 @@ const TestModalButtons: React.FC = () => {
   const { colors } = useTheme();
   const [genericModal, setGenericModal] = useState({
     visible: false,
-    type: 'success' as 'success' | 'error',
+    type: 'success' as 'success' | 'error' | 'info' | 'warning',
     message: '',
   });
 
@@ -568,6 +568,22 @@ const TestModalButtons: React.FC = () => {
       visible: true,
       type: 'error',
       message: 'This is a test error message to check styling.',
+    });
+  };
+
+  const showInfoModal = () => {
+    setGenericModal({
+      visible: true,
+      type: 'info',
+      message: 'This is a test info message to check styling.',
+    });
+  };
+
+  const showWarningModal = () => {
+    setGenericModal({
+      visible: true,
+      type: 'warning',
+      message: 'This is a test warning message to check styling.',
     });
   };
 
@@ -624,6 +640,25 @@ const TestModalButtons: React.FC = () => {
         >
           <Text variant="regular" style={styles.buttonText}>
             Error Modal
+          </Text>
+        </TouchableOpacity>
+      </View>
+      
+      <View style={{ flexDirection: 'row', gap: 12, marginBottom: 12 }}>
+        <TouchableOpacity
+          style={[styles.button, { flex: 1 }]}
+          onPress={showInfoModal}
+        >
+          <Text variant="regular" style={styles.buttonText}>
+            Info Modal
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.button, { flex: 1 }]}
+          onPress={showWarningModal}
+        >
+          <Text variant="regular" style={styles.buttonText}>
+            Warning Modal
           </Text>
         </TouchableOpacity>
       </View>

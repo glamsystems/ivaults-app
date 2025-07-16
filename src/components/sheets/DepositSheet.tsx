@@ -16,6 +16,7 @@ import { getTokenDecimals, getTokenSymbol } from '../../constants/tokens';
 import { GlamDepositService } from '../../services/glamDepositService';
 import { NETWORK, DEBUG, DEBUGLOAD } from '@env';
 import { ActivityModal } from '../ActivityModal';
+import { GenericNotificationModal } from '../GenericNotificationModal';
 
 interface DepositSheetProps {
   vault: Vault;
@@ -41,6 +42,10 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault, onClose }) =>
     visible: false,
     amount: '',
     assetSymbol: '',
+  });
+  const [errorModal, setErrorModal] = useState({
+    visible: false,
+    message: '',
   });
   
   // Fetch user's base asset balance
@@ -138,18 +143,25 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault, onClose }) =>
       }
       
       try {
-        // Execute deposit (this includes confirmation)
-        const result = await depositService.deposit(
+        // Phase 1: Get signed transaction (wallet will close immediately)
+        const depositResult = await depositService.deposit(
           amountNum,
           decimals,
           new PublicKey(vault.baseAsset),
           false // instant subscription
         );
         
-        console.log('[DepositSheet] Deposit confirmed:', result.signature);
+        console.log('[DepositSheet] Transaction signed, submitting to network...');
         
-        // Success - clear form and show modal immediately
+        // Clear amount immediately after signing
         setAmount('');
+        
+        // Phase 2: Submit and wait for confirmation (while showing "Depositing...")
+        const signature = await depositResult.submitAndConfirm();
+        
+        console.log('[DepositSheet] Deposit confirmed:', signature);
+        
+        // Success - transaction is confirmed
         setIsConfirming(false);
         
         // Show activity modal immediately
@@ -160,8 +172,10 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault, onClose }) =>
           assetSymbol: baseAssetSymbol,
         });
         
-        // Close the sheet immediately
-        onClose?.();
+        // Close the sheet after 3 seconds to match the notification timing
+        setTimeout(() => {
+          onClose?.();
+        }, 3000);
         
         // Update balances in background after showing modal
         setTimeout(async () => {
@@ -192,17 +206,27 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault, onClose }) =>
       
       if (isTimeout || isNetworkError) {
         console.log('[DepositSheet] Network/timeout error - transaction may have succeeded');
-        // Don't show error, just check balances
+        
+        // Show generic error notification
+        setErrorModal({
+          visible: true,
+          message: 'Network issue detected. Your transaction may still go through. We\'ll check your balance in the background.',
+        });
+        
+        // Check balances in background
         setTimeout(async () => {
           try {
             await updateTokenBalance(connection, vault.baseAsset);
             await fetchAllTokenAccounts(connection);
+            if (vault.mintPubkey) {
+              await updateTokenBalance(connection, vault.mintPubkey);
+            }
           } catch (e) {
             console.error('[DepositSheet] Error checking balances:', e);
           }
         }, 3000);
       } else {
-        // Only show error for real failures
+        // Show error for real failures
         const errorInfo = getTransactionErrorInfo(error);
         if (errorInfo.shouldShow) {
           showStyledAlert(errorInfo);
@@ -567,6 +591,15 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault, onClose }) =>
         amount={activityModal.amount}
         symbol={vault.symbol}
         assetSymbol={activityModal.assetSymbol}
+      />
+      
+      <GenericNotificationModal
+        visible={errorModal.visible}
+        onClose={() => {
+          setErrorModal({ ...errorModal, visible: false });
+        }}
+        type="error"
+        message={errorModal.message}
       />
     </View>
   );

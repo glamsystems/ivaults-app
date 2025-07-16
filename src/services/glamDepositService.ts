@@ -12,10 +12,12 @@ import {
 import { MobileWallet } from './mobileWalletProvider';
 import { AuthorizeAPI, ReauthorizeAPI } from '@solana-mobile/mobile-wallet-adapter-protocol';
 import { transact, Web3MobileWallet } from '@solana-mobile/mobile-wallet-adapter-protocol-web3js';
-import { GLAM_PROGRAM_MAINNET } from '@env';
+import { GLAM_PROGRAM_MAINNET, MAINNET_TX_RPC } from '@env';
 
 export interface DepositTransactionData {
-  signature: string;
+  signed: boolean;
+  signedTransaction?: Transaction | VersionedTransaction;
+  submitAndConfirm: () => Promise<string>;
 }
 
 export class GlamDepositService {
@@ -89,6 +91,23 @@ export class GlamDepositService {
     });
 
     try {
+      // First, test the RPC connection
+      console.log('[GlamDepositService] Testing RPC connection...');
+      try {
+        const testBlockhash = await this.glamClient.provider.connection.getLatestBlockhash();
+        console.log('[GlamDepositService] RPC connection test successful, blockhash:', testBlockhash.blockhash.substring(0, 10) + '...');
+      } catch (rpcError: any) {
+        console.error('[GlamDepositService] RPC connection test failed:', rpcError);
+        
+        // Check if it's a rate limit error
+        const errorMessage = rpcError?.message || String(rpcError);
+        if (errorMessage.toLowerCase().includes('429') || errorMessage.toLowerCase().includes('rate')) {
+          throw new Error('RPC rate limit reached. Please wait a moment and try again.');
+        }
+        
+        throw new Error('Unable to connect to Solana network. Please check your connection and try again.');
+      }
+      
       // Fetch vault state to ensure we have latest data
       console.log('[GlamDepositService] Fetching state model...');
       let stateModel;
@@ -98,8 +117,15 @@ export class GlamDepositService {
           baseAsset: stateModel.baseAsset?.toBase58(),
           name: stateModel.metadata?.name
         });
-      } catch (fetchError) {
+      } catch (fetchError: any) {
         console.error('[GlamDepositService] Error fetching state model:', fetchError);
+        
+        // Check if it's a network error
+        const errorMsg = fetchError?.message || String(fetchError);
+        if (errorMsg.toLowerCase().includes('network') || errorMsg.toLowerCase().includes('fetch')) {
+          throw new Error('Network error while fetching vault data. Please check your connection and try again.');
+        }
+        
         throw new Error(`Failed to fetch vault state: ${fetchError.message || fetchError}`);
       }
 
@@ -123,23 +149,21 @@ export class GlamDepositService {
       console.log('[GlamDepositService] Fetched lookup tables:', lookupTables.length);
 
       // Prepare transaction options
+      console.log('[GlamDepositService] Getting price instructions...');
+      let preInstructions;
+      try {
+        preInstructions = await this.glamClient.price.priceVaultIxs(priceDenom);
+        console.log('[GlamDepositService] Got price instructions:', preInstructions?.length || 0);
+      } catch (priceError: any) {
+        console.error('[GlamDepositService] Error getting price instructions:', priceError);
+        throw new Error(`Failed to get price instructions: ${priceError?.message || priceError}`);
+      }
+      
       const txOptions: TxOptions = {
         lookupTables,
-        preInstructions: await this.glamClient.price.priceVaultIxs(priceDenom),
+        preInstructions,
         computeUnitLimit: 400000, // Set reasonable compute limit
         skipPreflight: true, // Skip preflight for faster execution
-      };
-
-      // Pre-fetch blockhash before building transaction
-      console.log('[GlamDepositService] Pre-fetching blockhash...');
-      const latestBlockhash = await this.glamClient.provider.connection.getLatestBlockhash('confirmed');
-      console.log('[GlamDepositService] Blockhash fetched:', latestBlockhash.blockhash);
-      
-      // Add blockhash to transaction options
-      const txOptionsWithBlockhash: TxOptions = {
-        ...txOptions,
-        blockhash: latestBlockhash.blockhash,
-        lastValidBlockHeight: latestBlockhash.lastValidBlockHeight
       };
       
       console.log('[GlamDepositService] Building subscription transaction...');
@@ -147,19 +171,27 @@ export class GlamDepositService {
       // Get the transaction object (not sending it yet)
       // For instant subscription, use subscribeTx
       // For queued subscription, use queuedSubscribeTx
-      const transaction = queued 
-        ? await this.glamClient.investor.queuedSubscribeTx(
-            stateModel.baseAsset!,
-            amountBN,
-            0, // mintId - use default
-            txOptionsWithBlockhash
-          )
-        : await this.glamClient.investor.subscribeTx(
-            stateModel.baseAsset!,
-            amountBN,
-            0, // mintId - use default
-            txOptionsWithBlockhash
-          );
+      let transaction;
+      try {
+        transaction = queued 
+          ? await this.glamClient.investor.queuedSubscribeTx(
+              stateModel.baseAsset!,
+              amountBN,
+              0, // mintId - use default
+              txOptions
+            )
+          : await this.glamClient.investor.subscribeTx(
+              stateModel.baseAsset!,
+              amountBN,
+              0, // mintId - use default
+              txOptions
+            );
+        console.log('[GlamDepositService] Transaction built successfully');
+      } catch (txBuildError: any) {
+        console.error('[GlamDepositService] Error building transaction:', txBuildError);
+        console.error('[GlamDepositService] Error stack:', txBuildError?.stack);
+        throw new Error(`Failed to build transaction: ${txBuildError?.message || txBuildError}`);
+      }
       
       console.log('[GlamDepositService] Transaction built, opening wallet for signature...');
       
@@ -172,83 +204,156 @@ export class GlamDepositService {
         const isVersionedTx = transaction instanceof VersionedTransaction;
         console.log('[GlamDepositService] Is VersionedTransaction:', isVersionedTx);
         
-        // Keep transact callback minimal for fast wallet close
-        const signedTransaction = await transact(async (wallet: Web3MobileWallet) => {
-          // Reauthorize if needed
-          if (this.authorizeSession) {
-            await this.authorizeSession(wallet);
+        let signedTransaction;
+        try {
+          // Keep transact callback minimal for fast wallet close
+          signedTransaction = await transact(async (wallet: Web3MobileWallet) => {
+            // Reauthorize if needed
+            if (this.authorizeSession) {
+              await this.authorizeSession(wallet);
+            }
+            
+            // Just sign the transaction - don't send yet
+            if (isVersionedTx) {
+              // For versioned transactions
+              const signedTxs = await wallet.signTransactions({
+                transactions: [transaction as VersionedTransaction]
+              });
+              return signedTxs[0];
+            } else {
+              // For legacy transactions
+              const signedTxs = await wallet.signTransactions({
+                transactions: [transaction as Transaction]
+              });
+              return signedTxs[0];
+            }
+          });
+        } catch (transactError: any) {
+          console.error('[GlamDepositService] Transact error:', transactError);
+          const errorMessage = transactError?.message || String(transactError);
+          
+          // Check if user cancelled
+          if (errorMessage.toLowerCase().includes('user rejected') || 
+              errorMessage.toLowerCase().includes('user declined') ||
+              errorMessage.toLowerCase().includes('user cancelled') ||
+              errorMessage.toLowerCase().includes('rejected the request')) {
+            console.log('[GlamDepositService] User cancelled transaction');
           }
           
-          // Just sign the transaction - don't send yet
-          if (isVersionedTx) {
-            // For versioned transactions
-            const signedTxs = await wallet.signTransactions({
-              transactions: [transaction as VersionedTransaction]
-            });
-            return signedTxs[0];
+          // Re-throw to be handled by outer catch
+          throw transactError;
+        } finally {
+          // Ensure we've exited the transact flow
+          console.log('[GlamDepositService] Transact flow completed');
+        }
+        
+        // Wallet is now closed - return immediately with submit function
+        console.log('[GlamDepositService] Wallet closed, returning with submit function...');
+        
+        // Create submit function that will be called after wallet closes
+        const submitAndConfirm = async (): Promise<string> => {
+          console.log('[GlamDepositService] Starting transaction submission...');
+          const serializedTx = signedTransaction.serialize();
+          let signature: string;
+          
+          // Try MAINNET_TX_RPC first if available
+          if (MAINNET_TX_RPC) {
+            try {
+              const txConnection = new Connection(MAINNET_TX_RPC, 'confirmed');
+              signature = await txConnection.sendRawTransaction(
+                serializedTx,
+                {
+                  skipPreflight: true,
+                  preflightCommitment: 'confirmed'
+                }
+              );
+              console.log('[GlamDepositService] Transaction sent via MAINNET_TX_RPC, signature:', signature);
+            } catch (txError: any) {
+              console.error('[GlamDepositService] MAINNET_TX_RPC failed:', txError?.message || txError);
+              
+              // Fallback to glamClient connection
+              try {
+                signature = await this.glamClient!.provider.connection.sendRawTransaction(
+                  serializedTx,
+                  {
+                    skipPreflight: true,
+                    preflightCommitment: 'confirmed'
+                  }
+                );
+                console.log('[GlamDepositService] Transaction sent via fallback RPC, signature:', signature);
+              } catch (fallbackError: any) {
+                console.error('[GlamDepositService] Fallback RPC also failed:', fallbackError?.message || fallbackError);
+                throw new Error('Unable to send transaction. Please check your network connection and try again.');
+              }
+            }
           } else {
-            // For legacy transactions
-            const signedTxs = await wallet.signTransactions({
-              transactions: [transaction as Transaction]
-            });
-            return signedTxs[0];
+            // No MAINNET_TX_RPC configured, use glamClient connection only
+            try {
+              signature = await this.glamClient!.provider.connection.sendRawTransaction(
+                serializedTx,
+                {
+                  skipPreflight: true,
+                  preflightCommitment: 'confirmed'
+                }
+              );
+              console.log('[GlamDepositService] Transaction sent, signature:', signature);
+            } catch (sendError: any) {
+              console.error('[GlamDepositService] Send failed:', sendError?.message || sendError);
+              throw new Error('Unable to send transaction. Please check your network connection and try again.');
+            }
           }
-        });
-        
-        // Wallet is now closed - send the transaction
-        console.log('[GlamDepositService] Wallet closed, sending transaction...');
-        
-        // Send the signed transaction
-        const serializedTx = signedTransaction.serialize();
-        signature = await this.glamClient!.provider.connection.sendRawTransaction(
-          serializedTx,
-          {
-            skipPreflight: true,
-            preflightCommitment: 'confirmed'
+          
+          // Wait for confirmation
+          console.log('[GlamDepositService] Waiting for transaction confirmation...');
+          
+          try {
+            // Always use MAINNET_TX_RPC for confirmation if available
+            const confirmConnection = MAINNET_TX_RPC ? new Connection(MAINNET_TX_RPC, 'confirmed') : this.glamClient!.provider.connection;
+            const latestBlockhash = await confirmConnection.getLatestBlockhash();
+            
+            const confirmation = await confirmConnection.confirmTransaction({
+              signature,
+              blockhash: latestBlockhash.blockhash,
+              lastValidBlockHeight: latestBlockhash.lastValidBlockHeight
+            }, 'confirmed');
+            
+            if (confirmation.value.err) {
+              console.error('[GlamDepositService] Transaction failed on chain:', confirmation.value.err);
+              throw new Error('Transaction failed on chain');
+            } else {
+              console.log('[GlamDepositService] Transaction confirmed successfully');
+            }
+          } catch (confirmError) {
+            console.error('[GlamDepositService] Confirmation error:', confirmError);
+            
+            // Check if transaction exists anyway
+            try {
+              const statusConnection = MAINNET_TX_RPC ? new Connection(MAINNET_TX_RPC, 'confirmed') : this.glamClient!.provider.connection;
+              const status = await statusConnection.getSignatureStatus(signature);
+              if (status.value?.confirmationStatus === 'confirmed' || status.value?.confirmationStatus === 'finalized') {
+                console.log('[GlamDepositService] Transaction exists with status:', status.value.confirmationStatus);
+                // Transaction exists and is confirmed, so we can consider it successful
+              } else {
+                throw confirmError;
+              }
+            } catch (statusError) {
+              throw confirmError;
+            }
           }
-        );
+          
+          return signature;
+        };
         
-        console.log('[GlamDepositService] Transaction sent, signature:', signature);
+        // Return immediately with the submit function
+        return {
+          signed: true,
+          signedTransaction,
+          submitAndConfirm
+        };
       } catch (walletError) {
         console.error('[GlamDepositService] Wallet error:', walletError);
         throw walletError;
       }
-      
-      // Wait for confirmation
-      console.log('[GlamDepositService] Confirming transaction...');
-      try {
-        const latestBlockhash = await this.glamClient.provider.connection.getLatestBlockhash();
-        const confirmation = await this.glamClient.provider.connection.confirmTransaction({
-          signature,
-          blockhash: latestBlockhash.blockhash,
-          lastValidBlockHeight: latestBlockhash.lastValidBlockHeight
-        }, 'confirmed');
-        
-        if (confirmation.value.err) {
-          console.error('[GlamDepositService] Transaction failed on chain:', confirmation.value.err);
-          throw new Error('Transaction failed on chain');
-        }
-        
-        console.log('[GlamDepositService] Transaction confirmed successfully');
-      } catch (confirmError) {
-        console.error('[GlamDepositService] Confirmation error:', confirmError);
-        // Check if transaction exists anyway
-        try {
-          const status = await this.glamClient.provider.connection.getSignatureStatus(signature);
-          if (status.value?.confirmationStatus) {
-            console.log('[GlamDepositService] Transaction exists with status:', status.value.confirmationStatus);
-            // Transaction exists, so consider it successful
-          } else {
-            throw confirmError;
-          }
-        } catch (statusError) {
-          throw confirmError;
-        }
-      }
-      
-      return {
-        signature
-      };
     } catch (error) {
       console.error('[GlamDepositService] Deposit error:', error);
       throw error;

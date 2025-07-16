@@ -68,45 +68,55 @@ export const getTransactionErrorInfo = (error: any): WalletErrorInfo => {
     };
   }
   
+  // Extract the actual error message
+  let displayMessage = errorMessage;
+  
+  // Clean up common error prefixes
+  if (displayMessage.includes('Error: ')) {
+    displayMessage = displayMessage.replace(/Error:\s*/g, '');
+  }
+  
+  // Remove stack traces
+  const stackIndex = displayMessage.indexOf('\n    at ');
+  if (stackIndex > 0) {
+    displayMessage = displayMessage.substring(0, stackIndex).trim();
+  }
+  
+  // Check for specific error types and set appropriate title
+  let title = 'Transaction Failed';
+  
   // Insufficient balance
   if (errorMessageLower.includes('insufficient') || 
       errorMessageLower.includes('not enough')) {
-    return {
-      shouldShow: true,
-      title: 'Insufficient Balance',
-      message: 'You don\'t have enough funds for this transaction.',
-      buttonText: 'OK'
-    };
+    title = 'Insufficient Balance';
   }
-  
-  // Transaction simulation failed
-  if (errorMessageLower.includes('simulation failed') ||
-      errorMessageLower.includes('simulat')) {
-    return {
-      shouldShow: true,
-      title: 'Transaction Failed',
-      message: 'The transaction couldn\'t be processed. Please try again.',
-      buttonText: 'OK'
-    };
-  }
-  
   // Network/RPC errors
-  if (errorMessageLower.includes('network') || 
-      errorMessageLower.includes('rpc') ||
-      errorMessageLower.includes('fetch')) {
-    return {
-      shouldShow: true,
-      title: 'Network Error',
-      message: 'Connection issue. Please check your network and try again.',
-      buttonText: 'OK'
-    };
+  else if (errorMessageLower.includes('network') || 
+           errorMessageLower.includes('rpc') ||
+           errorMessageLower.includes('fetch')) {
+    title = 'Network Error';
+  }
+  // Connection issues
+  else if (errorMessageLower.includes('connection') ||
+           errorMessageLower.includes('unable to connect')) {
+    title = 'Connection Issue';
+  }
+  // Rate limiting
+  else if (errorMessageLower.includes('rate limit') ||
+           errorMessageLower.includes('429')) {
+    title = 'Rate Limited';
+  }
+  // Transaction simulation
+  else if (errorMessageLower.includes('simulation failed') ||
+           errorMessageLower.includes('simulat')) {
+    title = 'Transaction Failed';
   }
   
-  // Generic transaction error
+  // Return the actual error message with appropriate title
   return {
     shouldShow: true,
-    title: 'Transaction Error',
-    message: 'Something went wrong. Please try again.',
+    title,
+    message: displayMessage || 'An unexpected error occurred. Please try again.',
     buttonText: 'OK'
   };
 };

@@ -35,6 +35,8 @@ export const colors = {
     status: {
       success: '#0CC578',
       error: '#FA155A',
+      info: '#1775BD',
+      warn: '#FF9910',
     },
     border: {
       primary: 'rgba(1, 1, 1, 0.1)',
@@ -78,6 +80,8 @@ export const colors = {
     status: {
       success: '#0CC578',
       error: '#FA155A',
+      info: '#1775BD',
+      warn: '#FF9910',
     },
     border: {
       primary: 'rgba(254, 254, 254, 0.1)',

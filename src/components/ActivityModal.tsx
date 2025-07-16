@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -82,6 +82,26 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({
   const [slideAnim] = useState(new Animated.Value(-100));
   const [fadeAnim] = useState(new Animated.Value(0));
 
+  const handleClose = useCallback(() => {
+    // Slide out to top
+    Animated.parallel([
+      Animated.timing(slideAnim, {
+        toValue: -100,
+        duration: 250,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 250,
+        easing: Easing.in(Easing.quad),
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      onClose();
+    });
+  }, [onClose, slideAnim, fadeAnim]);
+
   useEffect(() => {
     if (visible) {
       // Slide in from top
@@ -110,30 +130,12 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({
       }
     } else {
       // Reset animations when modal is hidden
-      slideAnim.setValue(-100);
-      fadeAnim.setValue(0);
+      setTimeout(() => {
+        slideAnim.setValue(-100);
+        fadeAnim.setValue(0);
+      }, 0);
     }
-  }, [visible]);
-
-  const handleClose = () => {
-    // Slide out to top
-    Animated.parallel([
-      Animated.timing(slideAnim, {
-        toValue: -100,
-        duration: 250,
-        easing: Easing.in(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 250,
-        easing: Easing.in(Easing.quad),
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      onClose();
-    });
-  };
+  }, [visible, handleClose, autoClose, slideAnim, fadeAnim]);
 
   // Capitalize first letter of activity type
   const activityTitle = type.charAt(0).toUpperCase() + type.slice(1);

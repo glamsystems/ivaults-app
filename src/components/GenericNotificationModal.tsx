@@ -19,7 +19,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 interface GenericNotificationModalProps {
   visible: boolean;
   onClose: () => void;
-  type: 'success' | 'error';
+  type: 'success' | 'error' | 'info' | 'warning';
   message: string;
   autoClose?: boolean;
 }
@@ -30,6 +30,10 @@ const getNotificationIcon = (type: GenericNotificationModalProps['type']): keyof
       return 'checkmark-circle-outline';
     case 'error':
       return 'alert-circle-outline';
+    case 'info':
+      return 'information-circle-outline';
+    case 'warning':
+      return 'information-circle-outline';
   }
 };
 
@@ -39,6 +43,10 @@ const getNotificationColor = (type: GenericNotificationModalProps['type'], color
       return colors.status.success;
     case 'error':
       return colors.status.error;
+    case 'info':
+      return colors.status.info;
+    case 'warning':
+      return colors.status.warn;
   }
 };
 
