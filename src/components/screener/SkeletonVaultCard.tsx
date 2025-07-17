@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useMemo } from 'react';
-import { View, StyleSheet, Animated } from 'react-native';
+import { View, StyleSheet, Animated, InteractionManager } from 'react-native';
 import { ListCard } from '../common/ListCard';
 import { Spacing, FontSizes } from '../../constants';
 import { useTheme } from '../../theme';
@@ -22,27 +22,34 @@ export const SkeletonVaultCard: React.FC<SkeletonVaultCardProps> = ({ index = 0 
   }), []);
 
   useEffect(() => {
-    // Stagger animation start based on index
-    const delay = index * 150; // 150ms delay per row
-    
-    const timeout = setTimeout(() => {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(animatedValue, {
-            toValue: 1,
-            duration: 1500,
-            useNativeDriver: true,
-          }),
-          Animated.timing(animatedValue, {
-            toValue: 0,
-            duration: 1500,
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
-    }, delay);
+    // Use InteractionManager for better performance
+    const handle = InteractionManager.runAfterInteractions(() => {
+      // Stagger animation start based on index
+      const delay = index * 150; // 150ms delay per row
+      
+      const timeout = setTimeout(() => {
+        Animated.loop(
+          Animated.sequence([
+            Animated.timing(animatedValue, {
+              toValue: 1,
+              duration: 1500,
+              useNativeDriver: true,
+            }),
+            Animated.timing(animatedValue, {
+              toValue: 0,
+              duration: 1500,
+              useNativeDriver: true,
+            }),
+          ])
+        ).start();
+      }, delay);
 
-    return () => clearTimeout(timeout);
+      return () => clearTimeout(timeout);
+    });
+
+    return () => {
+      handle.cancel();
+    };
   }, [animatedValue, index]);
 
   const opacity = animatedValue.interpolate({
