@@ -30,6 +30,10 @@ import { GenericNotificationModal } from '../components/GenericNotificationModal
 import { getTokenSymbol } from '../constants/tokens';
 import { NETWORK, DEBUG } from '@env';
 import { usePolling } from '../hooks/usePolling';
+import { Spacing } from '../constants';
+
+// Calculate item height for getItemLayout
+const ITEM_HEIGHT = Spacing.card.vertical * 2 + 44; // Same as ScreenLayout
 
 export const PortfolioScreen: React.FC = () => {
   const { colors } = useTheme();
@@ -334,6 +338,12 @@ export const PortfolioScreen: React.FC = () => {
               ]}
               showsVerticalScrollIndicator={false}
               ListEmptyComponent={() => <ConnectAccountState />}
+              // Performance optimizations
+              initialNumToRender={10}
+              maxToRenderPerBatch={5}
+              windowSize={10}
+              removeClippedSubviews={Platform.OS === 'android'}
+              keyboardShouldPersistTaps="handled"
             />
           </View>
           
@@ -370,6 +380,22 @@ export const PortfolioScreen: React.FC = () => {
             showsVerticalScrollIndicator={false}
             ItemSeparatorComponent={() => <View style={styles.separator} />}
             ListFooterComponent={() => <View style={{ height: 60 }} />}
+            // Performance optimizations
+            initialNumToRender={10}
+            maxToRenderPerBatch={5}
+            windowSize={10}
+            removeClippedSubviews={Platform.OS === 'android'}
+            getItemLayout={(data, index) => ({
+              length: ITEM_HEIGHT,
+              offset: ITEM_HEIGHT * index + styles.listContent.paddingTop,
+              index,
+            })}
+            updateCellsBatchingPeriod={50}
+            keyboardShouldPersistTaps="handled"
+            onEndReachedThreshold={0.5}
+            maintainVisibleContentPosition={{
+              minIndexForVisible: 0,
+            }}
             ListEmptyComponent={renderEmptyState}
           />
           

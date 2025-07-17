@@ -4,6 +4,11 @@ import { PageWrapper } from '../common';
 import { SearchBar, TopGradient, BottomGradient, FadeOverlay } from '../screener';
 import { useVaultStore } from '../../store/vaultStore';
 import { useActivityStore } from '../../store/activityStore';
+import { Spacing } from '../../constants';
+
+// Calculate item height based on ListCard styling
+// paddingVertical: 30 (top and bottom = 60px) + content height
+const ITEM_HEIGHT = Spacing.card.vertical * 2 + 44; // 60px padding + ~44px content = 104px
 
 interface ScreenLayoutProps {
   type: 'vault' | 'activity';
@@ -120,6 +125,17 @@ export const ScreenLayout: React.FC<ScreenLayoutProps> = ({
             maxToRenderPerBatch={5}
             windowSize={10}
             removeClippedSubviews={Platform.OS === 'android'}
+            getItemLayout={(data, index) => ({
+              length: ITEM_HEIGHT,
+              offset: ITEM_HEIGHT * index + styles.listContent.paddingTop,
+              index,
+            })}
+            updateCellsBatchingPeriod={50}
+            keyboardShouldPersistTaps="handled"
+            onEndReachedThreshold={0.5}
+            maintainVisibleContentPosition={{
+              minIndexForVisible: 0,
+            }}
           />
           
           {/* Top fade overlay */}
