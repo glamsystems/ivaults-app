@@ -17,11 +17,13 @@ export const PortfolioTabs: React.FC = () => {
   const { selectedTab, setSelectedTab } = usePortfolioStore();
   const { colors } = useTheme();
   const account = useWalletStore((state) => state.account);
-  const { getPendingRequests, getClaimableRequests } = useRedemptionStore();
+  
+  // Subscribe to redemption requests state to trigger re-renders
+  const pendingRequests = useRedemptionStore((state) => state.getPendingRequests());
+  const claimableRequests = useRedemptionStore((state) => state.getClaimableRequests());
   
   // Check if there are any active requests
-  const activeRequests = [...getPendingRequests(), ...getClaimableRequests()];
-  const hasActiveRequests = activeRequests.length > 0;
+  const hasActiveRequests = pendingRequests.length + claimableRequests.length > 0;
   
   // If wallet disconnects or no requests while on Requests tab, switch to Positions
   useEffect(() => {
