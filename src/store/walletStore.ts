@@ -39,6 +39,7 @@ interface WalletState {
   // Polling
   pollingInterval: NodeJS.Timeout | null;
   retryCount: number;
+  lastTokenFetch: number;
   
   // Actions
   setAccount: (account: Account | null) => void;
@@ -69,6 +70,7 @@ export const useWalletStore = create<WalletState>((set, get) => ({
   isLoadingTokenAccounts: false,
   pollingInterval: null,
   retryCount: 0,
+  lastTokenFetch: 0,
   
   // Set account
   setAccount: (account) => {
@@ -82,8 +84,23 @@ export const useWalletStore = create<WalletState>((set, get) => ({
   
   // Update balance with retry logic
   updateBalance: async (connection: Connection) => {
-    const { account, retryCount } = get();
+    const { account, retryCount, lastTokenFetch, allTokenAccounts } = get();
     if (!account) return;
+    
+    // If token data is fresh (< 5 seconds), use it instead of making a new RPC call
+    if (Date.now() - lastTokenFetch < 5000) {
+      const solToken = allTokenAccounts.find(t => t.mint === 'So11111111111111111111111111111111111111112');
+      if (solToken) {
+        set({ 
+          balance: solToken.balance,
+          balanceInSol: solToken.uiAmount,
+          isLoadingBalance: false,
+          balanceError: null,
+          retryCount: 0
+        });
+        return;
+      }
+    }
     
     set({ isLoadingBalance: true, balanceError: null });
     
@@ -328,8 +345,19 @@ export const useWalletStore = create<WalletState>((set, get) => ({
 
       set({ 
         allTokenAccounts: accounts,
-        isLoadingTokenAccounts: false 
+        isLoadingTokenAccounts: false,
+        lastTokenFetch: Date.now()
       });
+      
+      // Update wallet balance from SOL token data
+      const solToken = accounts.find(t => t.mint === 'So11111111111111111111111111111111111111112');
+      if (solToken) {
+        set({ 
+          balance: solToken.balance,
+          balanceInSol: solToken.uiAmount,
+          balanceError: null
+        });
+      }
 
       return accounts;
     } catch (error) {

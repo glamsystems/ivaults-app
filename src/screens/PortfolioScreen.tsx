@@ -118,6 +118,9 @@ export const PortfolioScreen: React.FC = () => {
       return () => {
         console.log('[PortfolioScreen] Screen unfocused');
         setIsFocused(false);
+        // Reset to Positions tab when navigating away
+        const { setSelectedTab } = usePortfolioStore.getState();
+        setSelectedTab('Positions');
       };
     }, [])
   );
@@ -126,10 +129,10 @@ export const PortfolioScreen: React.FC = () => {
   usePolling(
     'portfolio-vault-refresh',
     refreshVaults,
-    60000, // Every 60 seconds (increased from 30s)
+    30000, // Every 30 seconds (reduced from 60s to match token balance polling)
     {
       enabled: isFocused && !!account, // Only poll when focused AND account connected
-      minInterval: 30000, // Don't refresh more than once per 30 seconds (increased from 10s)
+      minInterval: 20000, // Don't refresh more than once per 20 seconds
     }
   );
   

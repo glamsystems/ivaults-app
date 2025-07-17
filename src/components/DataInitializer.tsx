@@ -340,11 +340,11 @@ export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ child
   usePolling(
     'token-balances',
     fetchAndUpdate,
-    45000, // Every 45 seconds (increased from 30s)
+    30000, // Every 30 seconds (reduced from 45s for better responsiveness)
     {
       enabled: !!account && !!connection && vaults.length > 0,
       executeImmediately: false, // Already executed in useEffect
-      minInterval: 20000, // Don't refresh more than once per 20 seconds (increased from 15s)
+      minInterval: 20000, // Don't refresh more than once per 20 seconds
     }
   );
 

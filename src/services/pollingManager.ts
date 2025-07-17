@@ -23,7 +23,7 @@ class PollingManager {
       minInterval?: number;
     }
   ) {
-    console.log(`[PollingManager] Registering task: ${key} with interval ${interval}ms`);
+    // console.log(`[PollingManager] Registering task: ${key} with interval ${interval}ms`);
     
     // Stop existing task if it exists
     this.stop(key);
@@ -83,9 +83,9 @@ class PollingManager {
     
     // Check minimum interval
     if (timeSinceLastExecution < (task.minInterval || 0)) {
-      console.log(
-        `[PollingManager] Skipping ${key} - too soon since last execution (${timeSinceLastExecution}ms < ${task.minInterval}ms)`
-      );
+      // console.log(
+      //   `[PollingManager] Skipping ${key} - too soon since last execution (${timeSinceLastExecution}ms < ${task.minInterval}ms)`
+      // );
       return;
     }
     
@@ -107,9 +107,9 @@ class PollingManager {
     if (timeSinceLastExecution >= threshold) {
       await this.executeTask(key);
     } else {
-      console.log(
-        `[PollingManager] Smart refresh skipped for ${key} - only ${timeSinceLastExecution}ms since last execution`
-      );
+      // console.log(
+      //   `[PollingManager] Smart refresh skipped for ${key} - only ${timeSinceLastExecution}ms since last execution`
+      // );
     }
   }
 
@@ -117,7 +117,7 @@ class PollingManager {
    * Pause all polling (useful when app goes to background)
    */
   pauseAll() {
-    console.log('[PollingManager] Pausing all polling');
+    // console.log('[PollingManager] Pausing all polling');
     this.isActive = false;
     this.stop();
   }
@@ -126,7 +126,7 @@ class PollingManager {
    * Resume all polling
    */
   resumeAll() {
-    console.log('[PollingManager] Resuming all polling');
+    // console.log('[PollingManager] Resuming all polling');
     this.isActive = true;
     this.start();
   }
@@ -155,11 +155,11 @@ class PollingManager {
     
     // Don't start if already running
     if (this.intervals.has(key)) {
-      console.log(`[PollingManager] Task ${key} already running`);
+      // console.log(`[PollingManager] Task ${key} already running`);
       return;
     }
     
-    console.log(`[PollingManager] Starting task: ${key}`);
+    // console.log(`[PollingManager] Starting task: ${key}`);
     
     // Create interval
     const interval = setInterval(() => {
@@ -172,7 +172,7 @@ class PollingManager {
   private stopTask(key: string) {
     const interval = this.intervals.get(key);
     if (interval) {
-      console.log(`[PollingManager] Stopping task: ${key}`);
+      // console.log(`[PollingManager] Stopping task: ${key}`);
       clearInterval(interval);
       this.intervals.delete(key);
     }
@@ -183,7 +183,7 @@ class PollingManager {
     if (!task || !this.isActive) return;
     
     try {
-      console.log(`[PollingManager] Executing task: ${key}`);
+      // console.log(`[PollingManager] Executing task: ${key}`);
       this.lastExecutions.set(key, Date.now());
       await task.callback();
     } catch (error) {
