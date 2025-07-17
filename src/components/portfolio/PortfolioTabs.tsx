@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import {
   View,
   StyleSheet,
@@ -18,12 +18,16 @@ export const PortfolioTabs: React.FC = () => {
   const { colors } = useTheme();
   const account = useWalletStore((state) => state.account);
   
-  // Subscribe to redemption requests state to trigger re-renders
-  const pendingRequests = useRedemptionStore((state) => state.getPendingRequests());
-  const claimableRequests = useRedemptionStore((state) => state.getClaimableRequests());
+  // Subscribe to redemption requests state
+  const redemptionRequests = useRedemptionStore((state) => state.redemptionRequests);
   
-  // Check if there are any active requests
-  const hasActiveRequests = pendingRequests.length + claimableRequests.length > 0;
+  // Compute active requests with useMemo to avoid infinite loops
+  const hasActiveRequests = useMemo(() => {
+    const activeRequests = redemptionRequests.filter(
+      req => req.status === 'pending' || req.status === 'claimable'
+    );
+    return activeRequests.length > 0;
+  }, [redemptionRequests]);
   
   // If wallet disconnects or no requests while on Requests tab, switch to Positions
   useEffect(() => {

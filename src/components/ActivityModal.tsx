@@ -98,6 +98,9 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({
         useNativeDriver: true,
       }),
     ]).start(() => {
+      // Reset animations after slide-out completes
+      slideAnim.setValue(-100);
+      fadeAnim.setValue(0);
       onClose();
     });
   }, [onClose, slideAnim, fadeAnim]);
@@ -128,13 +131,8 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({
           clearTimeout(closeTimer);
         };
       }
-    } else {
-      // Reset animations when modal is hidden
-      setTimeout(() => {
-        slideAnim.setValue(-100);
-        fadeAnim.setValue(0);
-      }, 0);
     }
+    // Don't reset animations immediately - let the slide-out animation complete
   }, [visible, handleClose, autoClose, slideAnim, fadeAnim]);
 
   // Capitalize first letter of activity type

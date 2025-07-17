@@ -24,9 +24,10 @@ import { useVaultStore } from '../../store/vaultStore';
 interface WithdrawSheetProps {
   vault: Vault;
   onClose?: () => void;
+  onSuccess?: (amount: string) => void;
 }
 
-export const WithdrawSheet: React.FC<WithdrawSheetProps> = ({ vault, onClose }) => {
+export const WithdrawSheet: React.FC<WithdrawSheetProps> = ({ vault, onClose, onSuccess }) => {
   const { colors } = useTheme();
   const { connection } = useConnection();
   const { authorizeSession } = useAuthorization();
@@ -43,11 +44,6 @@ export const WithdrawSheet: React.FC<WithdrawSheetProps> = ({ vault, onClose }) 
   const [withdrawLoading, setWithdrawLoading] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
   const [withdrawService, setWithdrawService] = useState<GlamWithdrawService | null>(null);
-  const [activityModal, setActivityModal] = useState({
-    visible: false,
-    amount: '',
-    symbol: '',
-  });
   const [errorModal, setErrorModal] = useState({
     visible: false,
     message: '',
@@ -186,17 +182,11 @@ export const WithdrawSheet: React.FC<WithdrawSheetProps> = ({ vault, onClose }) 
         // Refresh vaults to ensure the new request appears in the UI
         await refreshVaults();
         
-        // Show activity modal immediately
-        setActivityModal({
-          visible: true,
-          amount: withdrawAmount,
-          symbol: vault.symbol,
-        });
+        // Trigger success callback
+        onSuccess?.(withdrawAmount);
         
-        // Close the sheet after 3 seconds to match the notification timing
-        setTimeout(() => {
-          onClose?.();
-        }, 3000);
+        // Close the sheet immediately - the notification banner will persist
+        onClose?.();
         
         // Update balances in background after showing modal
         setTimeout(async () => {
@@ -559,16 +549,6 @@ export const WithdrawSheet: React.FC<WithdrawSheetProps> = ({ vault, onClose }) 
           )}
         </TouchableOpacity>
       )}
-      
-      <ActivityModal
-        visible={activityModal.visible}
-        onClose={() => {
-          setActivityModal({ ...activityModal, visible: false });
-        }}
-        type="request"
-        amount={activityModal.amount}
-        symbol={activityModal.symbol}
-      />
       
       <GenericNotificationModal
         visible={errorModal.visible}

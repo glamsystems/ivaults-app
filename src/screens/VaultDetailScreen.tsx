@@ -24,6 +24,7 @@ import { useVaultStore } from '../store/vaultStore';
 import { useConnection } from '../solana/providers/ConnectionProvider';
 import { useRedemptionStore } from '../store/redemptionStore';
 import { GenericNotificationModal } from '../components/GenericNotificationModal';
+import { ActivityModal } from '../components/ActivityModal';
 
 type RootStackParamList = {
   VaultDetail: { vault: Vault };
@@ -57,6 +58,15 @@ export const VaultDetailScreen: React.FC = () => {
     type: 'info' as 'success' | 'error' | 'info' | 'warning',
     message: '',
     title: '',
+  });
+  
+  // State for activity modal
+  const [activityModal, setActivityModal] = useState({
+    visible: false,
+    type: 'deposit' as 'deposit' | 'request',
+    amount: '',
+    symbol: '',
+    assetSymbol: '',
   });
   
   // Fetch user's vault token balance
@@ -166,6 +176,27 @@ export const VaultDetailScreen: React.FC = () => {
     }, 100);
   };
 
+  // Success handlers for sheets
+  const handleDepositSuccess = (amount: string, assetSymbol: string) => {
+    setActivityModal({
+      visible: true,
+      type: 'deposit',
+      amount,
+      symbol: vault.symbol,
+      assetSymbol,
+    });
+  };
+
+  const handleWithdrawSuccess = (amount: string) => {
+    setActivityModal({
+      visible: true,
+      type: 'request',
+      amount,
+      symbol: vault.symbol,
+      assetSymbol: '',
+    });
+  };
+
   return (
     <PageWrapper>
       <SecondaryHeader onLeftPress={() => navigation.goBack()} />
@@ -220,12 +251,17 @@ export const VaultDetailScreen: React.FC = () => {
         <DepositSheet 
           vault={vault} 
           onClose={() => depositSheetRef.current?.dismiss()}
+          onSuccess={handleDepositSuccess}
         />
       </BasicBottomSheet>
       
       {/* Withdraw Sheet */}
       <BasicBottomSheet ref={withdrawSheetRef} snapPoints={['60%', '73%']}>
-        <WithdrawSheet vault={vault} onClose={() => withdrawSheetRef.current?.dismiss()} />
+        <WithdrawSheet 
+          vault={vault} 
+          onClose={() => withdrawSheetRef.current?.dismiss()} 
+          onSuccess={handleWithdrawSuccess}
+        />
       </BasicBottomSheet>
       
       {/* Notification Modal for info messages */}
@@ -235,6 +271,16 @@ export const VaultDetailScreen: React.FC = () => {
         title={notificationModal.title}
         message={notificationModal.message}
         onClose={() => setNotificationModal(prev => ({ ...prev, visible: false }))}
+      />
+      
+      {/* Activity Modal for deposit/withdraw success */}
+      <ActivityModal
+        visible={activityModal.visible}
+        onClose={() => setActivityModal({ ...activityModal, visible: false })}
+        type={activityModal.type}
+        amount={activityModal.amount}
+        symbol={activityModal.symbol}
+        assetSymbol={activityModal.assetSymbol}
       />
     </PageWrapper>
   );

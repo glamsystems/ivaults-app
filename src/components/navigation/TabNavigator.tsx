@@ -12,6 +12,7 @@ import {
 } from '../../screens';
 import { BottomGradient } from '../screener';
 import { WebTabIconOverlay } from './WebTabIconOverlay';
+import { useVaultStore } from '../../store/vaultStore';
 
 const Tab = createBottomTabNavigator();
 
@@ -82,7 +83,18 @@ export const TabNavigator: React.FC = () => {
       })}
     >
       <Tab.Screen name="Screener" component={ScreenerScreen} />
-      <Tab.Screen name="Portfolio" component={PortfolioScreen} />
+      <Tab.Screen 
+        name="Portfolio" 
+        component={PortfolioScreen}
+        listeners={{
+          tabPress: () => {
+            // Trigger vault refresh when tab is pressed
+            console.log('[TabNavigator] Portfolio tab pressed, refreshing vaults...');
+            const { refreshVaults } = useVaultStore.getState();
+            refreshVaults();
+          }
+        }}
+      />
       <Tab.Screen name="Settings" component={SettingsScreen} />
       {showDebugTab && <Tab.Screen name="Debug" component={DebugScreen} />}
     </Tab.Navigator>

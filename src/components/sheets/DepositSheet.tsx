@@ -15,15 +15,15 @@ import { getWalletErrorInfo, getTransactionErrorInfo, showStyledAlert } from '..
 import { getTokenDecimals, getTokenSymbol } from '../../constants/tokens';
 import { GlamDepositService } from '../../services/glamDepositService';
 import { NETWORK, DEBUG, DEBUGLOAD } from '@env';
-import { ActivityModal } from '../ActivityModal';
 import { GenericNotificationModal } from '../GenericNotificationModal';
 
 interface DepositSheetProps {
   vault: Vault;
   onClose?: () => void;
+  onSuccess?: (amount: string, assetSymbol: string) => void;
 }
 
-export const DepositSheet: React.FC<DepositSheetProps> = ({ vault, onClose }) => {
+export const DepositSheet: React.FC<DepositSheetProps> = ({ vault, onClose, onSuccess }) => {
   const { colors } = useTheme();
   const { connection } = useConnection();
   const { authorizeSession } = useAuthorization();
@@ -38,11 +38,6 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault, onClose }) =>
   const [depositLoading, setDepositLoading] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
   const [depositService, setDepositService] = useState<GlamDepositService | null>(null);
-  const [activityModal, setActivityModal] = useState({
-    visible: false,
-    amount: '',
-    assetSymbol: '',
-  });
   const [errorModal, setErrorModal] = useState({
     visible: false,
     message: '',
@@ -164,18 +159,12 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault, onClose }) =>
         // Success - transaction is confirmed
         setIsConfirming(false);
         
-        // Show activity modal immediately
+        // Trigger success callback
         const baseAssetSymbol = getTokenSymbol(vault.baseAsset, 'mainnet') || 'Unknown';
-        setActivityModal({
-          visible: true,
-          amount: amountNum.toString(),
-          assetSymbol: baseAssetSymbol,
-        });
+        onSuccess?.(amountNum.toString(), baseAssetSymbol);
         
-        // Close the sheet after 3 seconds to match the notification timing
-        setTimeout(() => {
-          onClose?.();
-        }, 3000);
+        // Close the sheet
+        onClose?.();
         
         // Update balances in background after showing modal
         setTimeout(async () => {
@@ -605,17 +594,6 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault, onClose }) =>
           )}
         </TouchableOpacity>
       )}
-      
-      <ActivityModal
-        visible={activityModal.visible}
-        onClose={() => {
-          setActivityModal({ ...activityModal, visible: false });
-        }}
-        type="deposit"
-        amount={activityModal.amount}
-        symbol={vault.symbol}
-        assetSymbol={activityModal.assetSymbol}
-      />
       
       <GenericNotificationModal
         visible={errorModal.visible}
