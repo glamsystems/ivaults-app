@@ -1,4 +1,8 @@
 import { create } from 'zustand';
+import { Connection } from '@solana/web3.js';
+import { VaultDataService } from '../services/vaultDataService';
+import { NetworkType } from '../solana/providers/ConnectionProvider';
+import { NETWORK, DEVNET_RPC, SOLANA_RPC } from '@env';
 
 export type VaultCategory = 'SuperVault' | 'xStocks';
 
@@ -63,6 +67,7 @@ interface VaultStore {
   setIsLoading: (loading: boolean) => void;
   setDroppedVaults: (dropped: Array<{ name: string; glamStatePubkey: string; reason: string }> | undefined) => void;
   getFilteredVaults: () => Vault[];
+  refreshVaults: () => Promise<void>;
 }
 
 export const useVaultStore = create<VaultStore>((set, get) => ({
@@ -98,5 +103,34 @@ export const useVaultStore = create<VaultStore>((set, get) => ({
     }
     
     return filtered;
+  },
+  
+  refreshVaults: async () => {
+    try {
+      console.log('[VaultStore] Refreshing vaults...');
+      
+      // Determine network from environment variable
+      const network: NetworkType = NETWORK === 'devnet' ? 'devnet' : 'mainnet';
+      const rpcEndpoint = network === 'devnet' 
+        ? (DEVNET_RPC || 'https://api.devnet.solana.com')
+        : (SOLANA_RPC || 'https://api.mainnet-beta.solana.com');
+      
+      // Create connection for fetching vault data
+      const connection = new Connection(rpcEndpoint);
+      
+      // Fetch fresh vault data
+      const vaultService = new VaultDataService(connection, network);
+      const { vaults, droppedVaults } = await vaultService.fetchVaults();
+      
+      // Update the store
+      set({ vaults, droppedVaults });
+      
+      console.log('[VaultStore] Vaults refreshed:', vaults.length);
+      
+      // Trigger redemption request re-parse in DataInitializer
+      // This will be handled by the effect watching vault changes
+    } catch (error) {
+      console.error('[VaultStore] Error refreshing vaults:', error);
+    }
   },
 }));

@@ -348,13 +348,15 @@ export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ child
     return () => clearInterval(interval);
   }, [account, connection, vaults, updateAllTokenBalances, fetchAllTokenAccounts]);
 
-  // Separate effect for filtering redemption requests when account changes
+  // Separate effect for filtering redemption requests when account or vaults change
   useEffect(() => {
     if (vaults.length === 0) return;
 
-    // Re-parse redemption requests when account changes
+    // Re-parse redemption requests when account or vaults change
     const { setRequests } = useRedemptionStore.getState();
     const allRedemptionRequests = [];
+    
+    console.log('[DataInitializer] Re-parsing redemption requests from vault data...');
     
     // Check each vault for ledger entries
     for (const vault of vaults) {
@@ -379,6 +381,8 @@ export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ child
         return matches;
       });
     }
+    
+    console.log('[DataInitializer] Found', userRedemptionRequests.length, 'redemption requests for current user');
     
     // Set the requests in the store
     setRequests(userRedemptionRequests);

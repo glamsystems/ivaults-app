@@ -1,6 +1,6 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { View, FlatList, StyleSheet, Platform } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../theme';
 import { PageWrapper } from '../components/common';
 import { ScreenLayout } from '../components/layout';
@@ -43,7 +43,7 @@ export const PortfolioScreen: React.FC = () => {
     hasLoadedOnce
   } = usePortfolioStore();
   const { activities } = useActivityStore();
-  const { vaults } = useVaultStore();
+  const { vaults, refreshVaults } = useVaultStore();
   const account = useWalletStore((state) => state.account);
   const updateTokenBalance = useWalletStore((state) => state.updateTokenBalance);
   const fetchAllTokenAccounts = useWalletStore((state) => state.fetchAllTokenAccounts);
@@ -79,6 +79,33 @@ export const PortfolioScreen: React.FC = () => {
   const requestsToShow = allRequests; // Always use real requests, no fallback
   
   // Data is now initialized globally in DataInitializer
+  
+  // Refresh vaults when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      console.log('[PortfolioScreen] Screen focused, refreshing vaults...');
+      refreshVaults();
+      
+      // Set up periodic refresh while screen is focused
+      const interval = setInterval(() => {
+        console.log('[PortfolioScreen] Periodic refresh of vaults...');
+        refreshVaults();
+      }, 30000); // Every 30 seconds
+      
+      return () => {
+        console.log('[PortfolioScreen] Screen unfocused, clearing refresh interval');
+        clearInterval(interval);
+      };
+    }, [refreshVaults])
+  );
+  
+  // Refresh when Requests tab is selected
+  useEffect(() => {
+    if (selectedTab === 'Requests') {
+      console.log('[PortfolioScreen] Requests tab selected, refreshing vaults...');
+      refreshVaults();
+    }
+  }, [selectedTab, refreshVaults]);
 
   const handleClaim = useCallback(async (request: RedemptionRequest) => {
     if (!account || !connection || !request.outgoing) {
