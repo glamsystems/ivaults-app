@@ -226,10 +226,33 @@ export const useWalletStore = create<WalletState>((set, get) => ({
     
     // Batch update balances to avoid too many parallel requests
     const BATCH_SIZE = 5;
+    const batches: Promise<void>[] = [];
+    
     for (let i = 0; i < mints.length; i += BATCH_SIZE) {
       const batch = mints.slice(i, i + BATCH_SIZE);
-      await Promise.all(batch.map(mint => updateTokenBalance(connection, mint)));
+      
+      // Queue each batch as a microtask to prevent blocking the UI
+      const batchPromise = new Promise<void>((resolve) => {
+        queueMicrotask(async () => {
+          try {
+            await Promise.all(batch.map(mint => updateTokenBalance(connection, mint)));
+          } catch (error) {
+            console.error('[WalletStore] Error updating batch:', error);
+          }
+          resolve();
+        });
+      });
+      
+      batches.push(batchPromise);
+      
+      // Add a small delay between batches to prevent overwhelming the RPC
+      if (i + BATCH_SIZE < mints.length) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
     }
+    
+    // Wait for all batches to complete
+    await Promise.all(batches);
   },
 
   // Get token balance

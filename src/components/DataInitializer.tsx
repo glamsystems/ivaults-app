@@ -319,20 +319,27 @@ export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ child
         }
       });
 
-      // Only update balances for tokens we actually own
-      if (tokenMintsToUpdate.size > 0) {
-        await updateAllTokenBalances(connection, Array.from(tokenMintsToUpdate));
-      }
-      
-      // Also update all vault tokens to check if we have any balance
+      // Also add all vault tokens to check if we have any balance
       // This ensures withdraw buttons are properly enabled
-      const allVaultMints = vaults
-        .filter(v => v.mintPubkey)
-        .map(v => v.mintPubkey as string);
-      
-      if (allVaultMints.length > 0) {
-        console.log('[DataInitializer] Checking balances for all vault tokens');
-        await updateAllTokenBalances(connection, allVaultMints);
+      vaults.forEach(vault => {
+        if (vault.mintPubkey) {
+          tokenMintsToUpdate.add(vault.mintPubkey);
+        }
+      });
+
+      // Update all token balances (owned + vault tokens) in a single batch
+      if (tokenMintsToUpdate.size > 0) {
+        const uniqueMints = Array.from(tokenMintsToUpdate);
+        console.log(`[DataInitializer] Updating ${uniqueMints.length} token balances`);
+        
+        // Use setTimeout to make this non-blocking
+        setTimeout(async () => {
+          try {
+            await updateAllTokenBalances(connection, uniqueMints);
+          } catch (error) {
+            console.error('[DataInitializer] Error updating token balances:', error);
+          }
+        }, 0);
       }
     }
   }, [account, connection, vaults, updateAllTokenBalances, fetchAllTokenAccounts]);
