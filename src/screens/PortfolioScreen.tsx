@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { View, FlatList, StyleSheet, Platform } from 'react-native';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { View, FlatList, StyleSheet, Platform, InteractionManager } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../theme';
 import { PageWrapper } from '../components/common';
@@ -41,6 +41,7 @@ export const PortfolioScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const { connection } = useConnection();
   const { authorizeSession } = useAuthorization();
+  const flatListRef = useRef<FlatList>(null);
   const { 
     positions, 
     selectedTab,
@@ -54,12 +55,8 @@ export const PortfolioScreen: React.FC = () => {
   const updateTokenBalance = useWalletStore((state) => state.updateTokenBalance);
   const fetchAllTokenAccounts = useWalletStore((state) => state.fetchAllTokenAccounts);
   const isLoadingTokenAccounts = useWalletStore((state) => state.isLoadingTokenAccounts);
-  const { 
-    redemptionRequests, 
-    getPendingRequests, 
-    getClaimableRequests,
-    updateRequestStatus 
-  } = useRedemptionStore();
+  const redemptionRequests = useRedemptionStore((state) => state.redemptionRequests);
+  const updateRequestStatus = useRedemptionStore((state) => state.updateRequestStatus);
   
   // State for claim handling
   const [claimingRequestId, setClaimingRequestId] = useState<string | null>(null);
@@ -77,54 +74,58 @@ export const PortfolioScreen: React.FC = () => {
   // Track if we've shown the initial animation for positions
   const [hasShownInitialAnimation, setHasShownInitialAnimation] = useState(false);
   
-  // Get real redemption requests from store
-  const pendingRequests = getPendingRequests();
-  const claimableRequests = getClaimableRequests();
-  const allRequests = [...claimableRequests, ...pendingRequests];
+  // Memoize redemption requests to avoid filtering on every render
+  const pendingRequests = useMemo(
+    () => redemptionRequests.filter(req => req.status === 'pending'),
+    [redemptionRequests]
+  );
+  const claimableRequests = useMemo(
+    () => redemptionRequests.filter(req => req.status === 'claimable'),
+    [redemptionRequests]
+  );
+  const allRequests = useMemo(
+    () => [...claimableRequests, ...pendingRequests],
+    [claimableRequests, pendingRequests]
+  );
   
+  // Memoize filtered activities
+  const requestActivities = useMemo(
+    () => activities.filter(activity => activity.type === 'request'),
+    [activities]
+  );
   
-  // Fallback to mock data if no real requests (for DEBUG mode)
-  const requestActivities = activities.filter(activity => activity.type === 'request');
-  // const requestsToShow = allRequests.length > 0 ? allRequests : requestActivities;
-  const requestsToShow = allRequests; // Always use real requests, no fallback
+  // Always use real requests, no fallback
+  const requestsToShow = allRequests;
   
   // Data is now initialized globally in DataInitializer
   
   // Track if screen is focused for polling
   const [isFocused, setIsFocused] = useState(false);
   
-  // Refresh vaults when screen comes into focus
+  // Track screen focus for polling (no refresh on focus)
   useFocusEffect(
     useCallback(() => {
-      console.log('[PortfolioScreen] Screen focused, refreshing vaults...');
+      console.log('[PortfolioScreen] Screen focused');
       setIsFocused(true);
-      refreshVaults();
       
       return () => {
         console.log('[PortfolioScreen] Screen unfocused');
         setIsFocused(false);
       };
-    }, [refreshVaults])
+    }, [])
   );
   
-  // Use polling hook for periodic refresh (only when focused)
+  // Use polling hook for periodic refresh (only when focused AND account connected)
   usePolling(
     'portfolio-vault-refresh',
     refreshVaults,
     60000, // Every 60 seconds (increased from 30s)
     {
-      enabled: isFocused, // Only poll when screen is focused
+      enabled: isFocused && !!account, // Only poll when focused AND account connected
       minInterval: 30000, // Don't refresh more than once per 30 seconds (increased from 10s)
     }
   );
   
-  // Refresh when Requests tab is selected
-  useEffect(() => {
-    if (selectedTab === 'Requests') {
-      console.log('[PortfolioScreen] Requests tab selected, refreshing vaults...');
-      refreshVaults();
-    }
-  }, [selectedTab, refreshVaults]);
   
   // Track when positions are shown for the first time
   useEffect(() => {
@@ -138,8 +139,11 @@ export const PortfolioScreen: React.FC = () => {
     if (!account) {
       // Reset when wallet disconnects
       setHasShownInitialAnimation(false);
+    } else if (account && flatListRef.current && selectedTab === 'Positions') {
+      // Scroll to top when wallet connects and we're on positions tab
+      flatListRef.current.scrollToOffset({ offset: 0, animated: false });
     }
-  }, [account]);
+  }, [account, selectedTab]);
 
   const handleClaim = useCallback(async (request: RedemptionRequest) => {
     if (!account || !connection || !request.outgoing) {
@@ -195,8 +199,10 @@ export const PortfolioScreen: React.FC = () => {
       });
       
       // Check if this was the last active request and switch tabs immediately
-      const { getPendingRequests, getClaimableRequests } = useRedemptionStore.getState();
-      const activeRequests = [...getPendingRequests(), ...getClaimableRequests()];
+      const { redemptionRequests: latestRequests } = useRedemptionStore.getState();
+      const activeRequests = latestRequests.filter(req => 
+        req.status === 'pending' || req.status === 'claimable'
+      );
       
       if (activeRequests.length === 0 && selectedTab === 'Requests') {
         // Switch to Positions tab immediately since no more active requests
@@ -341,14 +347,21 @@ export const PortfolioScreen: React.FC = () => {
   };
   
   // Determine if we should show skeleton loading
-  // Show skeleton when loading positions or when wallet is connected but token accounts are still loading
+  // Only show skeleton if:
+  // 1. No cached positions AND wallet connected
+  // 2. NOT when just switching tabs with existing data
   const shouldShowSkeleton = selectedTab === 'Positions' && 
-    ((isLoading && !hasLoadedOnce) || (account && isLoadingTokenAccounts && positions.length === 0));
+    account && // Wallet is connected
+    positions.length === 0 && // No cached data
+    (isLoading || isLoadingTokenAccounts); // Actually loading
   
-  // Generate skeleton data when loading
-  const skeletonData = shouldShowSkeleton 
-    ? Array.from({ length: 5 }, (_, index) => ({ id: `skeleton-${index}` }))
-    : selectedTab === 'Positions' ? positions : requestsToShow;
+  // Memoize skeleton data to avoid recreating arrays
+  const skeletonData = useMemo(() => {
+    if (shouldShowSkeleton) {
+      return Array.from({ length: 5 }, (_, index) => ({ id: `skeleton-${index}` }));
+    }
+    return selectedTab === 'Positions' ? positions : requestsToShow;
+  }, [shouldShowSkeleton, selectedTab, positions, requestsToShow]);
 
   // Show connect state if no wallet connected and on positions tab
   if (!account && selectedTab === 'Positions') {
@@ -399,6 +412,7 @@ export const PortfolioScreen: React.FC = () => {
         
         <View style={styles.listContainer}>
           <FlatList
+            ref={flatListRef}
             data={skeletonData}
             keyExtractor={(item) => item.id}
             renderItem={shouldShowSkeleton 
@@ -427,9 +441,6 @@ export const PortfolioScreen: React.FC = () => {
             updateCellsBatchingPeriod={50}
             keyboardShouldPersistTaps="handled"
             onEndReachedThreshold={0.5}
-            maintainVisibleContentPosition={{
-              minIndexForVisible: 0,
-            }}
             ListEmptyComponent={renderEmptyState}
           />
           

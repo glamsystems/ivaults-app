@@ -398,8 +398,10 @@ export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ child
     
     console.log('[DataInitializer] Found', userRedemptionRequests.length, 'redemption requests for current user');
     
-    // Set the requests in the store
-    setRequests(userRedemptionRequests);
+    // Defer request update to avoid blocking
+    queueMicrotask(() => {
+      setRequests(userRedemptionRequests);
+    });
   }, [account, vaults]);
 
   // Build positions from token accounts
@@ -460,8 +462,11 @@ export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ child
       }
     });
 
-    setPositions(positions);
-    setTotalValue(totalValue);
+    // Use requestAnimationFrame to avoid blocking the render
+    requestAnimationFrame(() => {
+      setPositions(positions);
+      setTotalValue(totalValue);
+    });
   }, [account, allTokenAccounts, vaults, setPositions, setTotalValue, DEBUG]);
 
   return <>{children}</>;
