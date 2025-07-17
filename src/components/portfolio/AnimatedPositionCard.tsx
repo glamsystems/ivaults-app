@@ -1,27 +1,27 @@
 import React, { useRef, useEffect } from 'react';
 import { Animated, InteractionManager } from 'react-native';
-import { VaultCard } from './VaultCard';
-import { Vault } from '../../store/vaultStore';
+import { PositionCard } from './PositionCard';
+import { Position } from '../../store/portfolioStore';
 
-interface AnimatedVaultCardProps {
-  vault: Vault;
+interface AnimatedPositionCardProps {
+  position: Position;
   onPress: () => void;
   index: number;
 }
 
-export const AnimatedVaultCard: React.FC<AnimatedVaultCardProps> = ({ vault, onPress, index }) => {
+export const AnimatedPositionCard: React.FC<AnimatedPositionCardProps> = ({ position, onPress, index }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     // Use InteractionManager for better performance
     const handle = InteractionManager.runAfterInteractions(() => {
       // Stagger animation start based on index
-      const delay = index * 50; // 50ms delay per row (smaller offset)
+      const delay = index * 50; // 50ms delay per row (same as vault cards)
       
       const timeout = setTimeout(() => {
         Animated.timing(fadeAnim, {
           toValue: 1,
-          duration: 200, // Faster fade in
+          duration: 200, // Fast fade in (same as vault cards)
           useNativeDriver: true,
         }).start();
       }, delay);
@@ -36,7 +36,7 @@ export const AnimatedVaultCard: React.FC<AnimatedVaultCardProps> = ({ vault, onP
 
   return (
     <Animated.View style={{ opacity: fadeAnim }}>
-      <VaultCard vault={vault} onPress={onPress} />
+      <PositionCard position={position} onPress={onPress} />
     </Animated.View>
   );
 };

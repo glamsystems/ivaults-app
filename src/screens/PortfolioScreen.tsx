@@ -8,6 +8,7 @@ import {
   PortfolioHeader, 
   PortfolioTabs, 
   PositionCard, 
+  AnimatedPositionCard,
   RequestCard,
   EmptyState,
   ConnectAccountState,
@@ -52,6 +53,7 @@ export const PortfolioScreen: React.FC = () => {
   const account = useWalletStore((state) => state.account);
   const updateTokenBalance = useWalletStore((state) => state.updateTokenBalance);
   const fetchAllTokenAccounts = useWalletStore((state) => state.fetchAllTokenAccounts);
+  const isLoadingTokenAccounts = useWalletStore((state) => state.isLoadingTokenAccounts);
   const { 
     redemptionRequests, 
     getPendingRequests, 
@@ -245,16 +247,18 @@ export const PortfolioScreen: React.FC = () => {
     }
   };
 
-  const renderPosition = ({ item }: { item: any }) => {
+  const renderPosition = ({ item, index }: { item: any; index: number }) => {
+    // Use AnimatedPositionCard for smooth fade-in effect
     return (
-      <PositionCard 
+      <AnimatedPositionCard 
         position={item} 
         onPress={() => handlePositionPress(item.vaultId)}
+        index={index}
       />
     );
   };
 
-  const renderRequest = ({ item }: { item: any }) => {
+  const renderRequest = ({ item, index }: { item: any; index: number }) => {
     // Check if it's a real redemption request or mock data
     if (item.vaultId) {
       // Real redemption request
@@ -309,7 +313,9 @@ export const PortfolioScreen: React.FC = () => {
   };
   
   // Determine if we should show skeleton loading
-  const shouldShowSkeleton = selectedTab === 'Positions' && isLoading && !hasLoadedOnce;
+  // Show skeleton when loading positions or when wallet is connected but token accounts are still loading
+  const shouldShowSkeleton = selectedTab === 'Positions' && 
+    ((isLoading && !hasLoadedOnce) || (account && isLoadingTokenAccounts && positions.length === 0));
   
   // Generate skeleton data when loading
   const skeletonData = shouldShowSkeleton 
