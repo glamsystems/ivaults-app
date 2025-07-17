@@ -12,6 +12,7 @@ interface RequestCardProps {
   request: RedemptionRequest | Activity;
   canClaim?: boolean;
   canCancel?: boolean;
+  isClaimLoading?: boolean;
   daysRemaining?: string; // e.g., "7 days 3 hours"
   onClaim?: () => void;
   onCancel?: () => void;
@@ -21,6 +22,7 @@ export const RequestCard: React.FC<RequestCardProps> = ({
   request, 
   canClaim = false,
   canCancel = false,
+  isClaimLoading = false,
   daysRemaining,
   onClaim,
   onCancel 
@@ -41,12 +43,17 @@ export const RequestCard: React.FC<RequestCardProps> = ({
     <View style={styles.buttonContainer}>
       {canClaim ? (
         <TouchableOpacity 
-          style={[styles.claimButton, { backgroundColor: colors.button.primary }]}
+          style={[
+            styles.claimButton, 
+            { backgroundColor: colors.button.primary },
+            isClaimLoading && { opacity: 0.5 }
+          ]}
           onPress={onClaim}
           activeOpacity={0.7}
+          disabled={isClaimLoading}
         >
           <Text variant="regular" style={[styles.claimButtonText, { color: colors.button.primaryText }]}>
-            Claim
+            {isClaimLoading ? 'Claiming...' : 'Claim'}
           </Text>
         </TouchableOpacity>
       ) : canCancel ? (

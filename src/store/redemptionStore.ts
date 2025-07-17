@@ -14,6 +14,11 @@ export interface RedemptionRequest {
   transactionSignature: string; // Transaction signature of the request
   mintId: number; // GLAM mint ID
   walletAddress: string; // User's wallet address
+  outgoing?: { // Outgoing funds info when claimable
+    pubkey: string;
+    amount: string;
+    decimals: number;
+  };
 }
 
 interface RedemptionStore {
@@ -33,6 +38,7 @@ interface RedemptionStore {
   getRequestsByWallet: (walletAddress: string) => RedemptionRequest[];
   getPendingRequests: () => RedemptionRequest[];
   getClaimableRequests: () => RedemptionRequest[];
+  getClaimedRequests: () => RedemptionRequest[];
   
   // Clear store when wallet disconnects
   clearRequests: () => void;
@@ -77,17 +83,22 @@ export const useRedemptionStore = create<RedemptionStore>((set, get) => ({
   
   getPendingRequests: () => {
     const { redemptionRequests } = get();
-    const now = new Date();
     return redemptionRequests.filter(req => 
-      req.status === 'pending' && req.settlementPeriodEnd > now
+      req.status === 'pending'
     );
   },
   
   getClaimableRequests: () => {
     const { redemptionRequests } = get();
-    const now = new Date();
     return redemptionRequests.filter(req => 
-      req.status === 'pending' && req.settlementPeriodEnd <= now
+      req.status === 'claimable'
+    );
+  },
+  
+  getClaimedRequests: () => {
+    const { redemptionRequests } = get();
+    return redemptionRequests.filter(req => 
+      req.status === 'claimed'
     );
   },
   

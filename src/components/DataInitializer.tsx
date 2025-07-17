@@ -75,69 +75,33 @@ export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ child
         }
         
         // Parse redemption requests from vault ledger data
-        console.log('[DataInitializer] Parsing redemption requests from vaults...');
         const { setRequests } = useRedemptionStore.getState();
         const allRedemptionRequests = [];
         
         // Check each vault for ledger entries
-        console.log(`[DataInitializer] Checking ${vaults.length} vaults for ledger entries...`);
-        let vaultsWithLedger = 0;
-        let totalLedgerEntries = 0;
-        
         for (const vault of vaults) {
           const ledgerEntries = (vault as any).ledgerEntries;
-          console.log(`[DataInitializer] Vault "${vault.name}" (${vault.id}):`);
           
           if (ledgerEntries && ledgerEntries.length > 0) {
-            vaultsWithLedger++;
-            totalLedgerEntries += ledgerEntries.length;
-            console.log(`[DataInitializer]   - Has ${ledgerEntries.length} ledger entries`);
-            console.log(`[DataInitializer]   - First entry user: ${ledgerEntries[0].user}`);
-            if (ledgerEntries.length > 1) {
-              console.log(`[DataInitializer]   - Second entry user: ${ledgerEntries[1].user}`);
-            }
-            
             // Parse redemption requests from ledger entries
             const redemptionRequests = RedemptionFetcherService.parseRedemptionRequestsFromLedger(
               vault, 
               ledgerEntries
             );
             
-            console.log(`[DataInitializer]   - Parsed ${redemptionRequests.length} redemption requests`);
             allRedemptionRequests.push(...redemptionRequests);
-          } else {
-            console.log(`[DataInitializer]   - No ledger entries`);
           }
         }
-        
-        console.log(`[DataInitializer] Summary: ${vaultsWithLedger}/${vaults.length} vaults have ledger data`);
-        console.log(`[DataInitializer] Total ledger entries across all vaults: ${totalLedgerEntries}`);
-        console.log(`[DataInitializer] Total redemption requests parsed: ${allRedemptionRequests.length}`);
         
         // Filter by current user if account is connected
         let userRedemptionRequests = allRedemptionRequests;
         if (account) {
           const userAddress = account.publicKey.toBase58();
-          console.log(`[DataInitializer] ========== WALLET FILTERING ==========`);
-          console.log(`[DataInitializer] Connected wallet: ${userAddress}`);
-          console.log(`[DataInitializer] All redemption requests (${allRedemptionRequests.length} total):`);
-          
-          allRedemptionRequests.forEach((req, idx) => {
-            console.log(`[DataInitializer]   ${idx + 1}. Wallet: ${req.walletAddress}, Amount: ${req.amount}, Vault: ${req.vaultName}`);
-          });
           
           userRedemptionRequests = allRedemptionRequests.filter(req => {
             const matches = req.walletAddress === userAddress;
-            if (matches) {
-              console.log(`[DataInitializer] ✓ MATCH: ${req.walletAddress} === ${userAddress}`);
-            }
             return matches;
           });
-          
-          console.log(`[DataInitializer] Result: ${userRedemptionRequests.length} requests match connected wallet`);
-          console.log(`[DataInitializer] ====================================`);
-        } else {
-          console.log(`[DataInitializer] No account connected, showing all ${allRedemptionRequests.length} requests`);
         }
         
         // Set the requests in the store
@@ -389,12 +353,10 @@ export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ child
     if (vaults.length === 0) return;
 
     // Re-parse redemption requests when account changes
-    console.log('[DataInitializer] Re-filtering redemption requests for account change');
     const { setRequests } = useRedemptionStore.getState();
     const allRedemptionRequests = [];
     
     // Check each vault for ledger entries
-    let totalParsed = 0;
     for (const vault of vaults) {
       const ledgerEntries = (vault as any).ledgerEntries;
       if (ledgerEntries && ledgerEntries.length > 0) {
@@ -403,30 +365,19 @@ export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ child
           vault, 
           ledgerEntries
         );
-        totalParsed += redemptionRequests.length;
         allRedemptionRequests.push(...redemptionRequests);
       }
     }
-    console.log(`[DataInitializer] Re-filter: Parsed ${totalParsed} total redemption requests`);
     
     // Filter by current user if account is connected
     let userRedemptionRequests = allRedemptionRequests;
     if (account) {
       const userAddress = account.publicKey.toBase58();
-      console.log(`[DataInitializer] RE-FILTER: Connected wallet changed to ${userAddress}`);
-      console.log(`[DataInitializer] Checking ${totalParsed} redemption requests for matches`);
       
       userRedemptionRequests = allRedemptionRequests.filter(req => {
         const matches = req.walletAddress === userAddress;
-        if (matches) {
-          console.log(`[DataInitializer] ✓ MATCH found for ${req.vaultName}`);
-        }
         return matches;
       });
-      
-      console.log(`[DataInitializer] RE-FILTER Result: ${userRedemptionRequests.length} requests for connected wallet`);
-    } else {
-      console.log(`[DataInitializer] No account connected in re-filter`);
     }
     
     // Set the requests in the store

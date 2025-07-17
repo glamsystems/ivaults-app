@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, FlatList, StyleSheet, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../theme';
@@ -18,13 +18,23 @@ import { usePortfolioStore } from '../store/portfolioStore';
 import { useActivityStore } from '../store/activityStore';
 import { useVaultStore } from '../store/vaultStore';
 import { useWalletStore } from '../store/walletStore';
-import { useRedemptionStore } from '../store/redemptionStore';
+import { useRedemptionStore, RedemptionRequest } from '../store/redemptionStore';
 import { RedemptionFetcherService } from '../services/redemptionFetcherService';
-import { DEBUG } from '@env';
+import { GlamClaimService } from '../services/glamClaimService';
+import { useConnection } from '../solana/providers/ConnectionProvider';
+import { useAuthorization } from '../solana/providers/AuthorizationProvider';
+import { PublicKey } from '@solana/web3.js';
+import { showStyledAlert, getTransactionErrorInfo } from '../utils/walletErrorHandler';
+import { ActivityModal } from '../components/ActivityModal';
+import { GenericNotificationModal } from '../components/GenericNotificationModal';
+import { getTokenSymbol } from '../constants/tokens';
+import { NETWORK, DEBUG } from '@env';
 
 export const PortfolioScreen: React.FC = () => {
   const { colors } = useTheme();
   const navigation = useNavigation<any>();
+  const { connection } = useConnection();
+  const { authorizeSession } = useAuthorization();
   const { 
     positions, 
     selectedTab,
@@ -35,25 +45,33 @@ export const PortfolioScreen: React.FC = () => {
   const { activities } = useActivityStore();
   const { vaults } = useVaultStore();
   const account = useWalletStore((state) => state.account);
+  const updateTokenBalance = useWalletStore((state) => state.updateTokenBalance);
+  const fetchAllTokenAccounts = useWalletStore((state) => state.fetchAllTokenAccounts);
   const { 
     redemptionRequests, 
     getPendingRequests, 
-    getClaimableRequests 
+    getClaimableRequests,
+    updateRequestStatus 
   } = useRedemptionStore();
+  
+  // State for claim handling
+  const [claimingRequestId, setClaimingRequestId] = useState<string | null>(null);
+  const [activityModal, setActivityModal] = useState({
+    visible: false,
+    amount: '',
+    symbol: '',
+    assetSymbol: ''
+  });
+  const [errorModal, setErrorModal] = useState({
+    visible: false,
+    message: '',
+  });
   
   // Get real redemption requests from store
   const pendingRequests = getPendingRequests();
   const claimableRequests = getClaimableRequests();
   const allRequests = [...claimableRequests, ...pendingRequests];
   
-  // Debug logging
-  console.log('[PortfolioScreen] Redemption requests:', {
-    pendingCount: pendingRequests.length,
-    claimableCount: claimableRequests.length,
-    totalCount: allRequests.length,
-    allRedemptionRequests: redemptionRequests,
-    account: account?.publicKey.toBase58()
-  });
   
   // Fallback to mock data if no real requests (for DEBUG mode)
   const requestActivities = activities.filter(activity => activity.type === 'request');
@@ -61,6 +79,104 @@ export const PortfolioScreen: React.FC = () => {
   const requestsToShow = allRequests; // Always use real requests, no fallback
   
   // Data is now initialized globally in DataInitializer
+
+  const handleClaim = useCallback(async (request: RedemptionRequest) => {
+    if (!account || !connection || !request.outgoing) {
+      console.error('[PortfolioScreen] Missing required data for claim');
+      return;
+    }
+    
+    const vault = vaults.find(v => v.id === request.vaultId);
+    if (!vault || !vault.glam_state) {
+      console.error('[PortfolioScreen] Vault not found or missing glam_state');
+      return;
+    }
+    
+    setClaimingRequestId(request.id);
+    
+    try {
+      // Always create a new claim service for each vault to ensure correct state
+      const service = new GlamClaimService();
+      const network = NETWORK === 'devnet' ? 'devnet' : 'mainnet';
+      
+      await service.initializeClient(
+        connection,
+        account.publicKey,
+        new PublicKey(vault.glam_state),
+        authorizeSession,
+        network
+      );
+      
+      console.log('[PortfolioScreen] GLAM claim service initialized for vault:', vault.name);
+      
+      // Execute claim
+      const claimResult = await service.claimRedemption(request);
+      
+      console.log('[PortfolioScreen] Transaction signed, submitting to network...');
+      
+      // Submit and wait for confirmation
+      const signature = await claimResult.submitAndConfirm();
+      
+      console.log('[PortfolioScreen] Claim confirmed:', signature);
+      
+      // Update request status to claimed
+      updateRequestStatus(request.id, 'claimed');
+      
+      // Show success modal
+      setActivityModal({
+        visible: true,
+        amount: request.amount.toString(),
+        symbol: request.vaultSymbol,
+        assetSymbol: getTokenSymbol(request.outgoing!.pubkey, 'mainnet') || 'tokens'
+      });
+      
+      // Update balances in background
+      setTimeout(async () => {
+        try {
+          if (request.outgoing) {
+            await updateTokenBalance(connection, request.outgoing.pubkey);
+          }
+          await fetchAllTokenAccounts(connection);
+        } catch (refreshError) {
+          console.error('[PortfolioScreen] Error refreshing balances:', refreshError);
+        }
+      }, 1000);
+      
+    } catch (error) {
+      console.error('[PortfolioScreen] Claim error:', error);
+      
+      // Handle errors
+      const errorMessage = error?.message || error?.toString() || '';
+      const isTimeout = errorMessage.toLowerCase().includes('timeout');
+      const isNetworkError = errorMessage.toLowerCase().includes('network');
+      
+      if (isTimeout || isNetworkError) {
+        setErrorModal({
+          visible: true,
+          message: 'Network issue detected. Your transaction may still go through. We\'ll check your balance in the background.',
+        });
+        
+        // Check balances in background
+        setTimeout(async () => {
+          try {
+            if (request.outgoing) {
+              await updateTokenBalance(connection, request.outgoing.pubkey);
+            }
+            await fetchAllTokenAccounts(connection);
+          } catch (e) {
+            console.error('[PortfolioScreen] Error checking balances:', e);
+          }
+        }, 3000);
+      } else {
+        const errorInfo = getTransactionErrorInfo(error);
+        if (errorInfo.shouldShow) {
+          showStyledAlert(errorInfo);
+        }
+      }
+    } finally {
+      setClaimingRequestId(null);
+    }
+  }, [account, connection, vaults, authorizeSession, updateRequestStatus, updateTokenBalance, fetchAllTokenAccounts]);
 
   const handlePositionPress = (vaultId: string) => {
     // Only navigate if it's a vault position (not a regular token)
@@ -101,8 +217,9 @@ export const PortfolioScreen: React.FC = () => {
           request={item} 
           canClaim={canClaim}
           canCancel={canCancel}
+          isClaimLoading={claimingRequestId === item.id}
           daysRemaining={!canClaim ? timeRemaining : undefined}
-          onClaim={() => console.log('Claim pressed for:', item.id)}
+          onClaim={() => handleClaim(item)}
           onCancel={() => console.log('Cancel pressed for:', item.id)}
         />
       );
@@ -215,6 +332,26 @@ export const PortfolioScreen: React.FC = () => {
           <BottomGradient height={200} />
         </View>
       </View>
+      
+      <ActivityModal
+        visible={activityModal.visible}
+        onClose={() => {
+          setActivityModal({ ...activityModal, visible: false });
+        }}
+        type="claim"
+        amount={activityModal.amount}
+        symbol={activityModal.symbol}
+        assetSymbol={activityModal.assetSymbol}
+      />
+      
+      <GenericNotificationModal
+        visible={errorModal.visible}
+        onClose={() => {
+          setErrorModal({ ...errorModal, visible: false });
+        }}
+        type="error"
+        message={errorModal.message}
+      />
     </PageWrapper>
   );
 };

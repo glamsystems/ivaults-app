@@ -38,8 +38,6 @@ export class RedemptionFetcherService {
       // 2. Filter by user's wallet address
       // 3. Parse the account data to get request details
       
-      console.log('[RedemptionFetcherService] Fetching redemption requests for wallet:', this.walletPublicKey.toBase58());
-      
       // For now, return empty array as we need proper indexing infrastructure
       // to efficiently query redemption requests
       return requests;
@@ -90,8 +88,8 @@ export class RedemptionFetcherService {
    * Check if a redemption request can be claimed
    */
   static canClaim(request: RedemptionRequest): boolean {
-    const now = new Date();
-    return request.status === 'pending' && request.settlementPeriodEnd <= now;
+    // Can claim if status is claimable (which means outgoing field is populated)
+    return request.status === 'claimable' && request.outgoing !== undefined;
   }
 
   /**
@@ -115,11 +113,16 @@ export class RedemptionFetcherService {
    * Calculate time remaining until claimable
    */
   static getTimeRemaining(request: RedemptionRequest): string {
+    // If already claimable (outgoing field populated), show as claimable
+    if (request.status === 'claimable' || request.outgoing) {
+      return 'Claimable';
+    }
+    
     const now = new Date();
     const targetDate = request.settlementPeriodEnd;
     
     if (targetDate <= now) {
-      return 'Claimable';
+      return 'Ready soon'; // Settlement period passed but funds not yet ready
     }
     
     const diffMs = targetDate.getTime() - now.getTime();
@@ -142,33 +145,14 @@ export class RedemptionFetcherService {
   ): RedemptionRequest[] {
     const requests: RedemptionRequest[] = [];
     
-    console.log(`[RedemptionFetcherService] Parsing ledger data for vault ${vault.name} (${vault.id})`);
-    console.log(`[RedemptionFetcherService] Total ledger entries:`, ledgerData?.length || 0);
-    
     if (!ledgerData || !Array.isArray(ledgerData)) {
-      console.log(`[RedemptionFetcherService] Invalid ledger data, returning empty`);
       return requests;
     }
-    
-    // Log all entries to see what we have
-    ledgerData.forEach((entry, index) => {
-      console.log(`[RedemptionFetcherService] Ledger entry ${index + 1}:`, JSON.stringify(entry, null, 2));
-    });
     
     // Filter for redemption entries
     const redemptionEntries = ledgerData.filter(
       entry => entry.kind && entry.kind.Redemption !== undefined
     );
-    
-    console.log(`[RedemptionFetcherService] Found ${redemptionEntries.length} redemption entries`);
-    if (vault.name === 'GLAM USD' || vault.name === 'gmUSD' || vault.symbol === 'gmUSD') {
-      console.log(`[RedemptionFetcherService] *** This is gmUSD vault! Should have 2 entries ***`);
-      console.log(`[RedemptionFetcherService] gmUSD redemption entries:`, redemptionEntries.map(e => ({
-        user: e.user,
-        created_at: e.created_at,
-        amount: e.incoming?.amount
-      })));
-    }
     
     // Get vault's notice and settlement periods
     const noticePeriod = vault.redemptionNoticePeriod || 86400; // Default 1 day
@@ -176,12 +160,6 @@ export class RedemptionFetcherService {
     
     redemptionEntries.forEach((entry, index) => {
       try {
-        console.log(`[RedemptionFetcherService] Processing redemption entry ${index + 1}:`, {
-          user: entry.user,
-          created_at: entry.created_at,
-          incoming: entry.incoming
-        });
-        
         // Parse timestamp (created_at is already in string format from parsing)
         const createdAt = parseInt(entry.created_at) * 1000; // Convert to milliseconds
         const requestDate = new Date(createdAt);
@@ -192,13 +170,22 @@ export class RedemptionFetcherService {
         let amount = 0;
         if (entry.incoming && entry.incoming.amount && entry.incoming.decimals !== undefined) {
           amount = parseInt(entry.incoming.amount) / Math.pow(10, entry.incoming.decimals);
-          console.log(`[RedemptionFetcherService] Parsed amount: ${entry.incoming.amount} / 10^${entry.incoming.decimals} = ${amount}`);
-        } else {
-          console.log(`[RedemptionFetcherService] No incoming data for entry`);
         }
         
         // Create unique ID
         const id = `${vault.id}-${entry.user}-${entry.created_at}`;
+        
+        // Check if outgoing field exists and has data
+        const hasOutgoing = entry.outgoing && entry.outgoing.pubkey && entry.outgoing.amount;
+        
+        // Determine status based on outgoing field
+        let status: RedemptionRequest['status'] = 'pending';
+        if (hasOutgoing) {
+          // Has outgoing funds ready to claim
+          status = 'claimable';
+        }
+        // Note: 'claimed' status should be set after user successfully claims,
+        // not based on fulfilled_at from the ledger
         
         const request: RedemptionRequest = {
           id,
@@ -210,23 +197,20 @@ export class RedemptionFetcherService {
           requestDate,
           noticePeriodEnd,
           settlementPeriodEnd,
-          status: entry.fulfilled_at && entry.fulfilled_at !== '0' ? 'claimed' : 'pending',
+          status,
           transactionSignature: '', // Not available in ledger data
           mintId: 0, // Default mint ID
-          walletAddress: entry.user
+          walletAddress: entry.user,
+          outgoing: hasOutgoing ? {
+            pubkey: entry.outgoing.pubkey,
+            amount: entry.outgoing.amount,
+            decimals: entry.outgoing.decimals || 0
+          } : undefined
         };
-        
-        console.log(`[RedemptionFetcherService] Created redemption request:`, {
-          id: request.id,
-          walletAddress: request.walletAddress,
-          amount: request.amount,
-          requestDate: request.requestDate
-        });
         
         requests.push(request);
       } catch (error) {
-        console.error(`[RedemptionFetcherService] Error parsing redemption entry ${index + 1}:`, error);
-        console.error(`[RedemptionFetcherService] Entry data:`, JSON.stringify(entry, null, 2));
+        console.error(`[RedemptionFetcherService] Error parsing redemption entry:`, error);
       }
     });
     
