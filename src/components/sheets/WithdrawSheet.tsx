@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, StyleSheet, TouchableOpacity, AppState } from 'react-native';
 import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
 import { Text, DisplayPubkey, PulsatingText } from '../common';
@@ -10,6 +10,7 @@ import { useConnection } from '../../solana/providers/ConnectionProvider';
 import { PublicKey } from '@solana/web3.js';
 import { transact, Web3MobileWallet } from '@solana-mobile/mobile-wallet-adapter-protocol-web3js';
 import { useAuthorization } from '../../solana/providers/AuthorizationProvider';
+import { formatTokenAmount } from '../../utils/tokenFormatting';
 import { getWalletErrorInfo, getTransactionErrorInfo, showStyledAlert } from '../../utils/walletErrorHandler';
 import { getTokenDecimals } from '../../constants/tokens';
 import { GlamWithdrawService } from '../../services/glamWithdrawService';
@@ -18,6 +19,7 @@ import { ActivityModal } from '../ActivityModal';
 import { GenericNotificationModal } from '../GenericNotificationModal';
 import { useRedemptionStore } from '../../store/redemptionStore';
 import { RedemptionFetcherService } from '../../services/redemptionFetcherService';
+import { useVaultStore } from '../../store/vaultStore';
 
 interface WithdrawSheetProps {
   vault: Vault;
@@ -33,6 +35,7 @@ export const WithdrawSheet: React.FC<WithdrawSheetProps> = ({ vault, onClose }) 
   const fetchAllTokenAccounts = useWalletStore((state) => state.fetchAllTokenAccounts);
   const tokenBalance = useWalletStore((state) => state.getTokenBalance(vault.mintPubkey || ''));
   const network = useWalletStore((state) => state.network);
+  const vaults = useVaultStore((state) => state.vaults);
   
   const [amount, setAmount] = useState('');
   const [selectedUnit, setSelectedUnit] = useState<'baseAsset' | 'symbol'>('symbol'); // Start with symbol
@@ -293,6 +296,75 @@ export const WithdrawSheet: React.FC<WithdrawSheetProps> = ({ vault, onClose }) 
     }
   };
   
+  // Calculate dynamic font size based on input length
+  const getInputFontSize = (value: string): number => {
+    const length = value.length;
+    if (length <= 8) return FontSizes.input; // 50px
+    if (length <= 12) return 40;
+    return 32;
+  };
+  
+  // Format minimum redemption
+  const formatMinRedemption = (): string => {
+    if (!vault.minRedemption || vault.minRedemption === '0') return 'None';
+    // Temporarily using base asset instead of vault token - need to verify with team
+    return formatTokenAmount(vault.minRedemption, vault.baseAsset, {
+      showSymbol: true,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 6,
+      vaults
+    });
+  };
+  
+  // Check if amount is below minimum
+  // TEMPORARILY DISABLED - need to verify with team if min redemption is in base asset or vault token
+  const isBelowMinimum = useMemo(() => {
+    return false; // Temporarily disabled
+    /*
+    if (!amount || !vault.minRedemption || vault.minRedemption === '0' || !vault.mintPubkey) return false;
+    const numAmount = parseFloat(amount);
+    if (isNaN(numAmount)) return false;
+    
+    const decimals = getTokenDecimals(vault.mintPubkey, 'mainnet') || 9;
+    const minRedemptionInSmallestUnit = parseFloat(vault.minRedemption);
+    const minRedemptionInUiAmount = minRedemptionInSmallestUnit / Math.pow(10, decimals);
+    
+    return numAmount < minRedemptionInUiAmount && numAmount > 0;
+    */
+  }, [amount, vault.minRedemption, vault.mintPubkey]);
+  
+  // Check if wallet balance is insufficient for minimum redemption
+  // TEMPORARILY DISABLED - need to verify with team if min redemption is in base asset or vault token
+  const hasInsufficientBalance = useMemo(() => {
+    return false; // Temporarily disabled
+    /*
+    if (!vault.minRedemption || vault.minRedemption === '0' || !vault.mintPubkey) return false;
+    if (!tokenBalance) return true;
+    
+    const decimals = getTokenDecimals(vault.mintPubkey, 'mainnet') || 9;
+    const minRedemptionInSmallestUnit = parseFloat(vault.minRedemption);
+    const minRedemptionInUiAmount = minRedemptionInSmallestUnit / Math.pow(10, decimals);
+    
+    return tokenBalance.uiAmount < minRedemptionInUiAmount;
+    */
+  }, [vault.minRedemption, vault.mintPubkey, tokenBalance]);
+  
+  const handleMinRedemptionClick = () => {
+    // TEMPORARILY DISABLED - need to verify with team if min redemption is in base asset or vault token
+    return; // Temporarily disabled
+    /*
+    if (!vault.minRedemption || vault.minRedemption === '0' || !vault.mintPubkey) return;
+    if (!tokenBalance || hasInsufficientBalance) return;
+    
+    const decimals = getTokenDecimals(vault.mintPubkey, 'mainnet') || 9;
+    const minRedemptionInSmallestUnit = parseFloat(vault.minRedemption);
+    const minRedemptionInUiAmount = minRedemptionInSmallestUnit / Math.pow(10, decimals);
+    
+    // Format with appropriate decimal places
+    setAmount(minRedemptionInUiAmount.toFixed(6).replace(/\.?0+$/, ''));
+    */
+  };
+  
   // Validation function
   const isValidAmount = (): boolean => {
     if (!account) return false; // No wallet connected
@@ -302,6 +374,17 @@ export const WithdrawSheet: React.FC<WithdrawSheetProps> = ({ vault, onClose }) 
     const numAmount = parseFloat(amount);
     if (isNaN(numAmount) || numAmount <= 0) return false; // Invalid amount
     if (numAmount > userBalance) return false; // Exceeds balance
+    
+    // Check minimum redemption requirement
+    // TEMPORARILY DISABLED - need to verify with team if min redemption is in base asset or vault token
+    /*
+    if (vault.minRedemption && vault.minRedemption !== '0' && vault.mintPubkey) {
+      const decimals = getTokenDecimals(vault.mintPubkey, 'mainnet') || 9;
+      const minRedemptionInSmallestUnit = parseFloat(vault.minRedemption);
+      const minRedemptionInUiAmount = minRedemptionInSmallestUnit / Math.pow(10, decimals);
+      if (numAmount < minRedemptionInUiAmount) return false;
+    }
+    */
     
     return true;
   };
@@ -322,7 +405,35 @@ export const WithdrawSheet: React.FC<WithdrawSheetProps> = ({ vault, onClose }) 
           </Text>
         </View>
         
-        {/* Row 2: Balance */}
+        {/* Row 2: Min Withdrawal */}
+        <View style={styles.row}>
+          <Text mono variant="regular" style={[styles.label, { color: colors.text.tertiary }]}>
+            Min Withdrawal
+          </Text>
+          {/* TEMPORARILY DISABLED CLICKABILITY - need to verify with team */}
+          <Text variant="regular" style={[
+            styles.value, 
+            { color: colors.text.primary } // Temporarily removed red color for below minimum
+          ]}>
+            {formatMinRedemption()}
+          </Text>
+          {/* 
+          <TouchableOpacity 
+            onPress={handleMinRedemptionClick}
+            activeOpacity={0.7}
+            disabled={!account || hasInsufficientBalance || !vault.minRedemption || vault.minRedemption === '0'}
+          >
+            <Text variant="regular" style={[
+              styles.value, 
+              { color: isBelowMinimum ? colors.status.error : colors.text.primary }
+            ]}>
+              {formatMinRedemption()}
+            </Text>
+          </TouchableOpacity>
+          */}
+        </View>
+        
+        {/* Row 3: Balance */}
         <View style={styles.row}>
           <Text mono variant="regular" style={[styles.label, { color: colors.text.tertiary }]}>
             Balance
@@ -352,7 +463,13 @@ export const WithdrawSheet: React.FC<WithdrawSheetProps> = ({ vault, onClose }) 
       {/* Amount Input Section */}
       <View style={styles.inputSection}>
         <BottomSheetTextInput
-          style={[styles.amountInput, { color: colors.text.primary }]}
+          style={[
+            styles.amountInput, 
+            { 
+              color: colors.text.primary,
+              fontSize: getInputFontSize(amount)
+            }
+          ]}
           value={amount}
           onChangeText={setAmount}
           placeholder="0"
@@ -488,7 +605,7 @@ const styles = StyleSheet.create({
     marginVertical: 20,
   },
   amountInput: {
-    fontSize: FontSizes.input,
+    // fontSize is now dynamic based on input length
     fontFamily: fonts.sans.regular,
     fontWeight: '400', // Match portfolio page
     textAlign: 'center',

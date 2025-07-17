@@ -15,7 +15,7 @@ export const colors = {
       card: '#FEFEFE',
       input: '#F0F0F0',
       sheet: {
-        start: 'rgba(254, 254, 254, 0.98)',
+        start: 'rgba(254, 254, 254, 1)',
         end: 'rgba(217, 217, 217, 1)',
       },
     },
@@ -60,7 +60,7 @@ export const colors = {
       card: '#1A1A1A',
       input: '#1A1A1A',
       sheet: {
-        start: 'rgba(38, 38, 38, 0.98)',
+        start: 'rgba(38, 38, 38, 1)',
         end: 'rgba(1, 1, 1, 1)',
       },
     },

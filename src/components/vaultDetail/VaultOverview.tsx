@@ -5,6 +5,7 @@ import { FontSizes } from '../../constants/fonts';
 import { useTheme } from '../../theme';
 import { Vault } from '../../store/vaultStore';
 import { formatTokenAmount } from '../../utils/tokenFormatting';
+import { useVaultStore } from '../../store/vaultStore';
 
 interface VaultOverviewProps {
   vault: Vault;
@@ -16,6 +17,7 @@ export const VaultOverview: React.FC<VaultOverviewProps> = ({
   description = "Automated yield farming strategy across multiple DeFi protocols." 
 }) => {
   const { colors } = useTheme();
+  const vaults = useVaultStore((state) => state.vaults);
   
   // Convert periods to human-readable format
   const formatPeriod = (period: number, type: string): string => {
@@ -63,13 +65,17 @@ export const VaultOverview: React.FC<VaultOverviewProps> = ({
   };
   
   // Format amount with decimals and base asset
-  const formatAmount = (amount?: string): string => {
+  const formatAmount = (amount?: string, useVaultToken: boolean = false): string => {
     if (!amount || amount === '0') return 'None';
     
-    return formatTokenAmount(amount, vault.baseAsset, {
+    // Use vault token (mintPubkey) for redemption amounts, base asset for subscription
+    const token = useVaultToken && vault.mintPubkey ? vault.mintPubkey : vault.baseAsset;
+    
+    return formatTokenAmount(amount, token, {
       showSymbol: true,
       minimumFractionDigits: 0,
-      maximumFractionDigits: 2
+      maximumFractionDigits: useVaultToken ? 6 : 2,
+      vaults
     });
   };
   
@@ -83,7 +89,7 @@ export const VaultOverview: React.FC<VaultOverviewProps> = ({
   const redemptionTerms = [
     {
       label: 'Minimum Withdrawal',
-      value: formatAmount(vault.minRedemption)
+      value: formatAmount(vault.minRedemption, false) // false = use base asset (temporary - need to verify with team)
     },
     { 
       label: 'Notice Period', 

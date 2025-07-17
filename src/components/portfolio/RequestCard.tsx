@@ -75,7 +75,7 @@ export const RequestCard: React.FC<RequestCardProps> = ({
         </View>
       ) : (
         <View style={[styles.countdownButtonFull, { borderColor: colors.border.secondary }]}>
-          <Text variant="regular" style={styles.countdownText}>
+          <Text variant="regular" style={[styles.countdownText, { color: colors.text.disabled }]}>
             {daysRemaining || '7 days 3 hours'}
           </Text>
         </View>

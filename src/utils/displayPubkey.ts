@@ -4,7 +4,7 @@ import { Vault } from '../store/vaultStore';
 
 export function getDisplayPubkey(
   pubkey: string,
-  type: 'token' | 'glam' | 'hardcoded' | 'default' = 'default',
+  type: 'token' | 'glam' | 'hardcoded' | 'default' | 'auto' = 'auto',
   options?: {
     fallback?: string;
     network?: NetworkType;
@@ -23,6 +23,34 @@ export function getDisplayPubkey(
   
   console.log(`[DisplayPubkey] Processing pubkey: ${pubkey}, type: ${type}, network: ${options?.network || 'not specified'}`);
   
+  // If type is 'auto' or not specified, check all sources in order
+  if (type === 'auto' || type === 'default') {
+    // 1. Check hardcoded token list first
+    const hardcodedSymbol = getTokenSymbol(pubkey, 'mainnet');
+    if (hardcodedSymbol) {
+      console.log(`[DisplayPubkey] Found hardcoded symbol "${hardcodedSymbol}" for pubkey ${pubkey}`);
+      return hardcodedSymbol;
+    }
+    
+    // 2. Check vault mints
+    if (options?.vaults) {
+      const vault = options.vaults.find(v => v.mintPubkey === pubkey);
+      if (vault?.symbol) {
+        console.log(`[DisplayPubkey] Found vault symbol "${vault.symbol}" for pubkey ${pubkey}`);
+        return vault.symbol;
+      }
+    }
+    
+    // 3. TODO: Check on-chain token metadata
+    // In the future, this could fetch token metadata from the chain
+    
+    // 4. Fall back to truncated format
+    const truncated = `${pubkey.slice(0, 4)}...${pubkey.slice(-4)}`;
+    console.log(`[DisplayPubkey] Falling back to truncated format: ${truncated}`);
+    return truncated;
+  }
+  
+  // Handle specific type requests (for backward compatibility)
   switch (type) {
     case 'hardcoded':
       // Check hardcoded token list - always use mainnet
@@ -38,7 +66,7 @@ export function getDisplayPubkey(
     case 'glam':
       // Look up GLAM vault by mint pubkey
       if (options?.vaults) {
-        const vault = options.vaults.find(v => v.glam_state === pubkey || v.id === pubkey);
+        const vault = options.vaults.find(v => v.mintPubkey === pubkey);
         if (vault?.symbol) {
           return vault.symbol;
         }

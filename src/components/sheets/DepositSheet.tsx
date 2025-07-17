@@ -347,6 +347,14 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault, onClose }) =>
     }
   };
   
+  // Calculate dynamic font size based on input length
+  const getInputFontSize = (value: string): number => {
+    const length = value.length;
+    if (length <= 8) return FontSizes.input; // 50px
+    if (length <= 12) return 40;
+    return 32;
+  };
+  
   const handleMinDepositClick = () => {
     if (!vault.minSubscription || vault.minSubscription === '0') return;
     if (!tokenBalance || hasInsufficientBalance) return;
@@ -495,7 +503,13 @@ export const DepositSheet: React.FC<DepositSheetProps> = ({ vault, onClose }) =>
       {/* Amount Input Section */}
       <View style={styles.inputSection}>
         <BottomSheetTextInput
-          style={[styles.amountInput, { color: colors.text.primary }]}
+          style={[
+            styles.amountInput, 
+            { 
+              color: colors.text.primary,
+              fontSize: getInputFontSize(amount)
+            }
+          ]}
           value={amount}
           onChangeText={setAmount}
           placeholder="0"
@@ -654,7 +668,7 @@ const styles = StyleSheet.create({
     marginVertical: 20,
   },
   amountInput: {
-    fontSize: FontSizes.input,
+    // fontSize is now dynamic based on input length
     fontFamily: fonts.sans.regular,
     fontWeight: '400', // Match portfolio page
     textAlign: 'center',

@@ -1,5 +1,6 @@
 import { getTokenSymbol, getTokenDecimals } from '../constants/tokens';
 import { getDisplayPubkey } from './displayPubkey';
+import { Vault } from '../store/vaultStore';
 
 interface FormatTokenAmountOptions {
   showSymbol?: boolean;
@@ -7,6 +8,7 @@ interface FormatTokenAmountOptions {
   maximumFractionDigits?: number;
   fallbackDecimals?: number;
   network?: 'mainnet' | 'devnet';
+  vaults?: Vault[];
 }
 
 /**
@@ -26,12 +28,13 @@ export function formatTokenAmount(
     minimumFractionDigits = 2,
     maximumFractionDigits = 2,
     fallbackDecimals = 9,
-    network = 'mainnet'
+    network = 'mainnet',
+    vaults
   } = options;
 
   // Handle undefined or zero amounts
   if (!amount || amount === '0' || amount === 0) {
-    return showSymbol ? `0 ${getDisplayPubkey(tokenAddress, 'hardcoded')}` : '0';
+    return showSymbol ? `0 ${getDisplayPubkey(tokenAddress, 'auto', { vaults })}` : '0';
   }
 
   // Get token decimals
@@ -49,7 +52,7 @@ export function formatTokenAmount(
   
   // Get symbol if needed
   if (showSymbol) {
-    const symbol = getDisplayPubkey(tokenAddress, 'hardcoded');
+    const symbol = getDisplayPubkey(tokenAddress, 'auto', { vaults });
     return `${formatted} ${symbol}`;
   }
   
