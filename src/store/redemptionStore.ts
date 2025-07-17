@@ -25,6 +25,7 @@ interface RedemptionStore {
   redemptionRequests: RedemptionRequest[];
   isLoading: boolean;
   lastFetch: number | null;
+  claimedRequestIds: Set<string>;
   
   // Actions
   addRequest: (request: RedemptionRequest) => void;
@@ -32,6 +33,7 @@ interface RedemptionStore {
   removeRequest: (id: string) => void;
   setRequests: (requests: RedemptionRequest[]) => void;
   setIsLoading: (loading: boolean) => void;
+  addClaimedId: (id: string) => void;
   
   // Getters
   getRequestsByVault: (vaultId: string) => RedemptionRequest[];
@@ -48,16 +50,28 @@ export const useRedemptionStore = create<RedemptionStore>((set, get) => ({
   redemptionRequests: [],
   isLoading: false,
   lastFetch: null,
+  claimedRequestIds: new Set<string>(),
   
   addRequest: (request) => set((state) => ({
     redemptionRequests: [...state.redemptionRequests, request],
     lastFetch: Date.now()
   })),
   
-  updateRequestStatus: (id, status) => set((state) => ({
-    redemptionRequests: state.redemptionRequests.map(req =>
-      req.id === id ? { ...req, status } : req
-    )
+  updateRequestStatus: (id, status) => set((state) => {
+    // When marking as claimed, also add to claimedRequestIds
+    if (status === 'claimed') {
+      state.claimedRequestIds.add(id);
+    }
+    return {
+      redemptionRequests: state.redemptionRequests.map(req =>
+        req.id === id ? { ...req, status } : req
+      ),
+      claimedRequestIds: new Set(state.claimedRequestIds)
+    };
+  }),
+  
+  addClaimedId: (id) => set((state) => ({
+    claimedRequestIds: new Set(state.claimedRequestIds).add(id)
   })),
   
   removeRequest: (id) => set((state) => ({
@@ -104,6 +118,7 @@ export const useRedemptionStore = create<RedemptionStore>((set, get) => ({
   
   clearRequests: () => set({
     redemptionRequests: [],
-    lastFetch: null
+    lastFetch: null,
+    claimedRequestIds: new Set<string>()
   })
 }));

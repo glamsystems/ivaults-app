@@ -9,6 +9,7 @@ import { usePortfolioStore, PortfolioTab } from '../../store/portfolioStore';
 import { FontSizes } from '../../constants/fonts';
 import { useTheme } from '../../theme';
 import { useWalletStore } from '../../store/walletStore';
+import { useRedemptionStore } from '../../store/redemptionStore';
 
 const ALL_TABS: PortfolioTab[] = ['Positions', 'Requests'];
 
@@ -16,20 +17,25 @@ export const PortfolioTabs: React.FC = () => {
   const { selectedTab, setSelectedTab } = usePortfolioStore();
   const { colors } = useTheme();
   const account = useWalletStore((state) => state.account);
+  const { getPendingRequests, getClaimableRequests } = useRedemptionStore();
   
-  // If wallet disconnects while on Requests tab, switch to Positions
+  // Check if there are any active requests
+  const activeRequests = [...getPendingRequests(), ...getClaimableRequests()];
+  const hasActiveRequests = activeRequests.length > 0;
+  
+  // If wallet disconnects or no requests while on Requests tab, switch to Positions
   useEffect(() => {
-    if (!account && selectedTab === 'Requests') {
+    if ((!account || !hasActiveRequests) && selectedTab === 'Requests') {
       setSelectedTab('Positions');
     }
-  }, [account, selectedTab, setSelectedTab]);
+  }, [account, hasActiveRequests, selectedTab, setSelectedTab]);
 
   return (
     <View style={styles.container}>
       <View style={styles.tabContainer}>
         {ALL_TABS.map((tab) => {
           const isActive = selectedTab === tab;
-          const isDisabled = tab === 'Requests' && !account;
+          const isDisabled = tab === 'Requests' && (!account || !hasActiveRequests);
           
           return (
             <TouchableOpacity

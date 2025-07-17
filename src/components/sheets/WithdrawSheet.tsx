@@ -35,7 +35,7 @@ export const WithdrawSheet: React.FC<WithdrawSheetProps> = ({ vault, onClose }) 
   const fetchAllTokenAccounts = useWalletStore((state) => state.fetchAllTokenAccounts);
   const tokenBalance = useWalletStore((state) => state.getTokenBalance(vault.mintPubkey || ''));
   const network = useWalletStore((state) => state.network);
-  const vaults = useVaultStore((state) => state.vaults);
+  const { vaults, refreshVaults } = useVaultStore();
   
   const [amount, setAmount] = useState('');
   const [selectedUnit, setSelectedUnit] = useState<'baseAsset' | 'symbol'>('symbol'); // Start with symbol
@@ -182,6 +182,9 @@ export const WithdrawSheet: React.FC<WithdrawSheetProps> = ({ vault, onClose }) 
         
         const { addRequest } = useRedemptionStore.getState();
         addRequest(redemptionRequest);
+        
+        // Refresh vaults to ensure the new request appears in the UI
+        await refreshVaults();
         
         // Show activity modal immediately
         setActivityModal({

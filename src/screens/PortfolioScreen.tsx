@@ -146,8 +146,11 @@ export const PortfolioScreen: React.FC = () => {
       
       console.log('[PortfolioScreen] Claim confirmed:', signature);
       
-      // Update request status to claimed
+      // Update request status to claimed locally first
       updateRequestStatus(request.id, 'claimed');
+      
+      // Refresh vaults to get latest ledger data from blockchain
+      await refreshVaults();
       
       // Show success modal
       setActivityModal({
@@ -156,6 +159,16 @@ export const PortfolioScreen: React.FC = () => {
         symbol: request.vaultSymbol,
         assetSymbol: getTokenSymbol(request.outgoing!.pubkey, 'mainnet') || 'tokens'
       });
+      
+      // Check if this was the last active request and switch tabs immediately
+      const { getPendingRequests, getClaimableRequests } = useRedemptionStore.getState();
+      const activeRequests = [...getPendingRequests(), ...getClaimableRequests()];
+      
+      if (activeRequests.length === 0 && selectedTab === 'Requests') {
+        // Switch to Positions tab immediately since no more active requests
+        const { setSelectedTab } = usePortfolioStore.getState();
+        setSelectedTab('Positions');
+      }
       
       // Update balances in background
       setTimeout(async () => {

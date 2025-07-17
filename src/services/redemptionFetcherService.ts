@@ -178,14 +178,17 @@ export class RedemptionFetcherService {
         // Check if outgoing field exists and has data
         const hasOutgoing = entry.outgoing && entry.outgoing.pubkey && entry.outgoing.amount;
         
-        // Determine status based on outgoing field
+        // Determine status based on outgoing field and claimed history
         let status: RedemptionRequest['status'] = 'pending';
-        if (hasOutgoing) {
+        
+        // Check if this request was already claimed locally
+        const { claimedRequestIds } = useRedemptionStore.getState();
+        if (claimedRequestIds.has(id)) {
+          status = 'claimed';
+        } else if (hasOutgoing) {
           // Has outgoing funds ready to claim
           status = 'claimable';
         }
-        // Note: 'claimed' status should be set after user successfully claims,
-        // not based on fulfilled_at from the ledger
         
         const request: RedemptionRequest = {
           id,
