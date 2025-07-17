@@ -29,6 +29,7 @@ import { ActivityModal } from '../components/ActivityModal';
 import { GenericNotificationModal } from '../components/GenericNotificationModal';
 import { getTokenSymbol } from '../constants/tokens';
 import { NETWORK, DEBUG } from '@env';
+import { usePolling } from '../hooks/usePolling';
 
 export const PortfolioScreen: React.FC = () => {
   const { colors } = useTheme();
@@ -80,23 +81,32 @@ export const PortfolioScreen: React.FC = () => {
   
   // Data is now initialized globally in DataInitializer
   
+  // Track if screen is focused for polling
+  const [isFocused, setIsFocused] = useState(false);
+  
   // Refresh vaults when screen comes into focus
   useFocusEffect(
     useCallback(() => {
       console.log('[PortfolioScreen] Screen focused, refreshing vaults...');
+      setIsFocused(true);
       refreshVaults();
       
-      // Set up periodic refresh while screen is focused
-      const interval = setInterval(() => {
-        console.log('[PortfolioScreen] Periodic refresh of vaults...');
-        refreshVaults();
-      }, 30000); // Every 30 seconds
-      
       return () => {
-        console.log('[PortfolioScreen] Screen unfocused, clearing refresh interval');
-        clearInterval(interval);
+        console.log('[PortfolioScreen] Screen unfocused');
+        setIsFocused(false);
       };
     }, [refreshVaults])
+  );
+  
+  // Use polling hook for periodic refresh (only when focused)
+  usePolling(
+    'portfolio-vault-refresh',
+    refreshVaults,
+    60000, // Every 60 seconds (increased from 30s)
+    {
+      enabled: isFocused, // Only poll when screen is focused
+      minInterval: 30000, // Don't refresh more than once per 30 seconds (increased from 10s)
+    }
   );
   
   // Refresh when Requests tab is selected

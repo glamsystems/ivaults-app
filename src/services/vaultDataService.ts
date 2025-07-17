@@ -2,6 +2,7 @@ import { Connection } from '@solana/web3.js';
 import { NetworkType } from '../solana/providers/ConnectionProvider';
 import { GlamService, GlamVault } from './glamService';
 import { Vault, VaultCategory } from '../store/vaultStore';
+import { QueuedConnection } from './rpcQueue';
 
 // Generate consistent random data based on a seed string
 function seededRandom(seed: string): number {

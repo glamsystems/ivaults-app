@@ -3,6 +3,8 @@ import { Connection, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID } from '@solana/spl-token';
 import { Account } from '../solana/providers/AuthorizationProvider';
 import { NetworkType } from '../solana/providers/ConnectionProvider';
+import { pollingManager } from '../services/pollingManager';
+import { QueuedConnection } from '../services/rpcQueue';
 
 interface TokenBalance {
   balance: number;
@@ -86,7 +88,8 @@ export const useWalletStore = create<WalletState>((set, get) => ({
     set({ isLoadingBalance: true, balanceError: null });
     
     try {
-      const balance = await connection.getBalance(account.publicKey);
+      const queuedConnection = new QueuedConnection(connection);
+      const balance = await queuedConnection.getBalance(account.publicKey);
       set({ 
         balance, 
         balanceInSol: balance / LAMPORTS_PER_SOL,
@@ -119,31 +122,33 @@ export const useWalletStore = create<WalletState>((set, get) => ({
   
   // Start polling for balance updates
   startBalancePolling: (connection: Connection) => {
-    const { pollingInterval } = get();
+    console.log('[WalletStore] Starting balance polling');
     
-    // Clear existing interval
-    if (pollingInterval) {
-      clearInterval(pollingInterval);
-    }
+    // Register with polling manager
+    pollingManager.register(
+      'wallet-balance',
+      () => {
+        get().updateBalance(connection);
+      },
+      POLLING_INTERVAL,
+      {
+        executeImmediately: true, // Execute immediately on start
+        minInterval: 5000, // Don't allow refresh more than once per 5 seconds
+      }
+    );
     
-    // Initial fetch
-    get().updateBalance(connection);
+    // Start polling
+    pollingManager.start('wallet-balance');
     
-    // Set up polling
-    const interval = setInterval(() => {
-      get().updateBalance(connection);
-    }, POLLING_INTERVAL);
-    
-    set({ pollingInterval: interval });
+    // Keep track that polling is active (for backward compatibility)
+    set({ pollingInterval: true as any });
   },
   
   // Stop polling
   stopBalancePolling: () => {
-    const { pollingInterval } = get();
-    if (pollingInterval) {
-      clearInterval(pollingInterval);
-      set({ pollingInterval: null });
-    }
+    console.log('[WalletStore] Stopping balance polling');
+    pollingManager.stop('wallet-balance');
+    set({ pollingInterval: null });
   },
 
   // Update single token balance
@@ -161,9 +166,11 @@ export const useWalletStore = create<WalletState>((set, get) => ({
     set({ tokenBalances: new Map(tokenBalances) });
 
     try {
+      const queuedConnection = new QueuedConnection(connection);
+      
       // Special handling for SOL
       if (mint === 'So11111111111111111111111111111111111111112') {
-        const balance = await connection.getBalance(account.publicKey);
+        const balance = await queuedConnection.getBalance(account.publicKey);
         tokenBalances.set(mint, {
           balance,
           uiAmount: balance / LAMPORTS_PER_SOL,
@@ -174,7 +181,7 @@ export const useWalletStore = create<WalletState>((set, get) => ({
         });
       } else {
         // SPL token balance
-        const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
+        const tokenAccounts = await queuedConnection.getParsedTokenAccountsByOwner(
           account.publicKey,
           { mint: new PublicKey(mint) }
         );
@@ -216,8 +223,13 @@ export const useWalletStore = create<WalletState>((set, get) => ({
   // Update multiple token balances
   updateAllTokenBalances: async (connection: Connection, mints: string[]) => {
     const { updateTokenBalance } = get();
-    // Update balances in parallel
-    await Promise.all(mints.map(mint => updateTokenBalance(connection, mint)));
+    
+    // Batch update balances to avoid too many parallel requests
+    const BATCH_SIZE = 5;
+    for (let i = 0; i < mints.length; i += BATCH_SIZE) {
+      const batch = mints.slice(i, i + BATCH_SIZE);
+      await Promise.all(batch.map(mint => updateTokenBalance(connection, mint)));
+    }
   },
 
   // Get token balance
@@ -234,14 +246,16 @@ export const useWalletStore = create<WalletState>((set, get) => ({
     set({ isLoadingTokenAccounts: true });
 
     try {
+      const queuedConnection = new QueuedConnection(connection);
+      
       // Get regular SPL token accounts
-      const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
+      const tokenAccounts = await queuedConnection.getParsedTokenAccountsByOwner(
         account.publicKey,
         { programId: TOKEN_PROGRAM_ID }
       );
 
       // Get Token-2022 accounts (for vault shares)
-      const token2022Accounts = await connection.getParsedTokenAccountsByOwner(
+      const token2022Accounts = await queuedConnection.getParsedTokenAccountsByOwner(
         account.publicKey,
         { programId: TOKEN_2022_PROGRAM_ID }
       );
@@ -249,7 +263,7 @@ export const useWalletStore = create<WalletState>((set, get) => ({
       const accounts: TokenAccount[] = [];
       
       // Add SOL as a token
-      const solBalance = await connection.getBalance(account.publicKey);
+      const solBalance = await queuedConnection.getBalance(account.publicKey);
       accounts.push({
         mint: 'So11111111111111111111111111111111111111112',
         balance: solBalance,

@@ -7,6 +7,7 @@ import { Buffer } from 'buffer';
 import { TextDecoder } from 'text-encoding';
 import { unpackMint, ExtensionType, getExtensionData, TOKEN_2022_PROGRAM_ID } from '@solana/spl-token';
 import { unpack } from '@solana/spl-token-metadata';
+import { QueuedConnection } from './rpcQueue';
 
 export interface GlamVault {
   pubkey: string;
@@ -947,10 +948,12 @@ function decodeStateAccount(data: Uint8Array): any {
 
 export class GlamService {
   private connection: Connection;
+  private queuedConnection: QueuedConnection;
   private programId: PublicKey;
   
   constructor(connection: Connection, network: NetworkType) {
     this.connection = connection;
+    this.queuedConnection = new QueuedConnection(connection);
     const programIdStr = network === 'mainnet' ? GLAM_PROGRAM_MAINNET : GLAM_PROGRAM_DEVNET;
     this.programId = new PublicKey(programIdStr || 'Gco1pcjxCMYjKJjSNJ7mKV7qezeUTE7arXJgy7PAPNRc');
   }
@@ -1014,8 +1017,44 @@ export class GlamService {
         debugInfo.push('[RPC] Attempting direct RPC call to getProgramAccounts...');
         console.log('[GLAM] Falling back to direct RPC call...');
         
-        // Get all accounts without data slice to decode them properly
-        const accounts = await this.connection.getProgramAccounts(this.programId);
+        // Get all accounts with a filter to only get StateAccount types
+        // First fetch just the discriminator to filter accounts
+        const discriminatorAccounts = await this.queuedConnection.getProgramAccounts(this.programId, {
+          dataSlice: {
+            offset: 0,
+            length: 8  // Just get discriminator
+          }
+        });
+        
+        // Filter to only StateAccount discriminator
+        const stateAccountDiscriminator = [142, 247, 54, 95, 85, 133, 249, 103];
+        const stateAccountPubkeys = discriminatorAccounts
+          .filter(({ account }) => {
+            const disc = Array.from(account.data.slice(0, 8));
+            return JSON.stringify(disc) === JSON.stringify(stateAccountDiscriminator);
+          })
+          .map(({ pubkey }) => pubkey);
+        
+        debugInfo.push(`[RPC] Found ${stateAccountPubkeys.length} StateAccount pubkeys`);
+        
+        // Now fetch full data only for StateAccounts
+        if (stateAccountPubkeys.length === 0) {
+          debugInfo.push('[RPC] No StateAccounts found');
+          return {
+            vaults: [],
+            debugInfo,
+            error: 'No vaults found'
+          };
+        }
+        
+        // Fetch full account data for StateAccounts only
+        const accountInfos = await this.queuedConnection.getMultipleAccountsInfo(stateAccountPubkeys);
+        const accounts = stateAccountPubkeys
+          .map((pubkey, index) => ({
+            pubkey,
+            account: accountInfos[index]!
+          }))
+          .filter(({ account }) => account !== null);
         
         debugInfo.push(`[RPC] Found ${accounts.length} program accounts`);
         console.log(`[GLAM] Found ${accounts.length} program accounts`);
@@ -1242,7 +1281,7 @@ export class GlamService {
             console.log(`[GLAM] Fetching symbols for ${mintAddresses.length} mints`);
             if (mintAddresses.length > 0) {
               try {
-                const mintAccounts = await this.connection.getMultipleAccountsInfo(mintAddresses);
+                const mintAccounts = await this.queuedConnection.getMultipleAccountsInfo(mintAddresses);
                 
                 mintAccounts.forEach((accountInfo, index) => {
                   if (accountInfo) {

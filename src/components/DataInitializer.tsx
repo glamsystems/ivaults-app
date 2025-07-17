@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { Connection } from '@solana/web3.js';
 import { useVaultStore } from '../store/vaultStore';
 import { useActivityStore } from '../store/activityStore';
@@ -10,6 +10,7 @@ import { useWalletStore } from '../store/walletStore';
 import { useConnection } from '../solana/providers/ConnectionProvider';
 import { useRedemptionStore } from '../store/redemptionStore';
 import { RedemptionFetcherService } from '../services/redemptionFetcherService';
+import { usePolling } from '../hooks/usePolling';
 
 // Generate gradient colors based on index
 const generateGradientColors = (index: number): string[] => {
@@ -290,63 +291,69 @@ export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ child
     initializeData();
   }, [setVaults, setIsLoading, setActivities, setPositions, setTotalValue, setDroppedVaults, setPortfolioLoading]);
 
-  // Separate effect for updating token balances when wallet connects
-  useEffect(() => {
+  // Callback for fetching and updating token balances
+  const fetchAndUpdate = useCallback(async () => {
     if (!account || !connection || vaults.length === 0) return;
 
-    const fetchAndUpdate = async () => {
-      // Fetch all token accounts first and wait for completion
-      const tokenAccounts = await fetchAllTokenAccounts(connection);
+    // Fetch all token accounts first and wait for completion
+    const tokenAccounts = await fetchAllTokenAccounts(connection);
+
+    // Only update balances for tokens we actually own
+    if (tokenAccounts && tokenAccounts.length > 0) {
+      const ownedMints = tokenAccounts.map(ta => ta.mint);
+      
+      // Collect unique token mints from vaults that we actually own
+      const tokenMintsToUpdate = new Set<string>();
+      
+      // Add base assets if we own them
+      vaults.forEach(vault => {
+        if (vault.baseAsset && ownedMints.includes(vault.baseAsset)) {
+          tokenMintsToUpdate.add(vault.baseAsset);
+        }
+      });
+      
+      // Add vault tokens if we own them
+      vaults.forEach(vault => {
+        if (vault.mintPubkey && ownedMints.includes(vault.mintPubkey)) {
+          tokenMintsToUpdate.add(vault.mintPubkey);
+        }
+      });
 
       // Only update balances for tokens we actually own
-      if (tokenAccounts && tokenAccounts.length > 0) {
-        const ownedMints = tokenAccounts.map(ta => ta.mint);
-        
-        // Collect unique token mints from vaults that we actually own
-        const tokenMintsToUpdate = new Set<string>();
-        
-        // Add base assets if we own them
-        vaults.forEach(vault => {
-          if (vault.baseAsset && ownedMints.includes(vault.baseAsset)) {
-            tokenMintsToUpdate.add(vault.baseAsset);
-          }
-        });
-        
-        // Add vault tokens if we own them
-        vaults.forEach(vault => {
-          if (vault.mintPubkey && ownedMints.includes(vault.mintPubkey)) {
-            tokenMintsToUpdate.add(vault.mintPubkey);
-          }
-        });
-
-        // Only update balances for tokens we actually own
-        if (tokenMintsToUpdate.size > 0) {
-          await updateAllTokenBalances(connection, Array.from(tokenMintsToUpdate));
-        }
-        
-        // Also update all vault tokens to check if we have any balance
-        // This ensures withdraw buttons are properly enabled
-        const allVaultMints = vaults
-          .filter(v => v.mintPubkey)
-          .map(v => v.mintPubkey as string);
-        
-        if (allVaultMints.length > 0) {
-          console.log('[DataInitializer] Checking balances for all vault tokens');
-          await updateAllTokenBalances(connection, allVaultMints);
-        }
+      if (tokenMintsToUpdate.size > 0) {
+        await updateAllTokenBalances(connection, Array.from(tokenMintsToUpdate));
       }
-    };
-
-    // Initial fetch
-    fetchAndUpdate();
-
-    // Set up interval to refresh balances every 30 seconds
-    const interval = setInterval(() => {
-      fetchAndUpdate();
-    }, 30000);
-
-    return () => clearInterval(interval);
+      
+      // Also update all vault tokens to check if we have any balance
+      // This ensures withdraw buttons are properly enabled
+      const allVaultMints = vaults
+        .filter(v => v.mintPubkey)
+        .map(v => v.mintPubkey as string);
+      
+      if (allVaultMints.length > 0) {
+        console.log('[DataInitializer] Checking balances for all vault tokens');
+        await updateAllTokenBalances(connection, allVaultMints);
+      }
+    }
   }, [account, connection, vaults, updateAllTokenBalances, fetchAllTokenAccounts]);
+
+  // Effect for initial token balance fetch
+  useEffect(() => {
+    if (!account || !connection || vaults.length === 0) return;
+    fetchAndUpdate();
+  }, [fetchAndUpdate, account, connection, vaults]);
+
+  // Use polling hook for periodic updates
+  usePolling(
+    'token-balances',
+    fetchAndUpdate,
+    45000, // Every 45 seconds (increased from 30s)
+    {
+      enabled: !!account && !!connection && vaults.length > 0,
+      executeImmediately: false, // Already executed in useEffect
+      minInterval: 20000, // Don't refresh more than once per 20 seconds (increased from 15s)
+    }
+  );
 
   // Separate effect for filtering redemption requests when account or vaults change
   useEffect(() => {

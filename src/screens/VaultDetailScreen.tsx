@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { View, StyleSheet, ScrollView, Platform } from 'react-native';
 import { SecondaryHeader } from '../components/headers';
 import { PageWrapper, Text } from '../components/common';
@@ -25,6 +25,7 @@ import { useConnection } from '../solana/providers/ConnectionProvider';
 import { useRedemptionStore } from '../store/redemptionStore';
 import { GenericNotificationModal } from '../components/GenericNotificationModal';
 import { ActivityModal } from '../components/ActivityModal';
+import { usePolling } from '../hooks/usePolling';
 
 type RootStackParamList = {
   VaultDetail: { vault: Vault };
@@ -69,24 +70,28 @@ export const VaultDetailScreen: React.FC = () => {
     assetSymbol: '',
   });
   
-  // Fetch user's vault token balance
-  useEffect(() => {
+  // Update balance callback
+  const updateBalance = useCallback(async () => {
     if (!vault.mintPubkey || !connection) return;
-    
-    // Always update token balance when component mounts or wallet changes
-    // This ensures we get the balance even if wallet was connected elsewhere
-    const updateBalance = async () => {
-      console.log('[VaultDetailScreen] Updating vault balance for:', vault.mintPubkey);
-      await updateTokenBalance(connection, vault.mintPubkey);
-    };
-    
+    console.log('[VaultDetailScreen] Updating vault balance for:', vault.mintPubkey);
+    await updateTokenBalance(connection, vault.mintPubkey);
+  }, [vault.mintPubkey, connection, updateTokenBalance]);
+  
+  // Fetch user's vault token balance on mount
+  useEffect(() => {
     updateBalance();
-    
-    // Also set up an interval to refresh balance periodically
-    const interval = setInterval(updateBalance, 10000); // Every 10 seconds
-    
-    return () => clearInterval(interval);
-  }, [account, vault.mintPubkey, connection, updateTokenBalance]);
+  }, [updateBalance]);
+  
+  // Use polling hook for periodic balance updates
+  usePolling(
+    `vault-balance-${vault.mintPubkey}`,
+    updateBalance,
+    10000, // Every 10 seconds
+    {
+      enabled: !!vault.mintPubkey && !!connection,
+      minInterval: 5000, // Don't refresh more than once per 5 seconds
+    }
+  );
   
   // Get balance from store
   const userVaultBalance = tokenBalance?.uiAmount || 0;
