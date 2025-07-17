@@ -18,7 +18,7 @@ interface RequestCardProps {
   onCancel?: () => void;
 }
 
-export const RequestCard: React.FC<RequestCardProps> = ({ 
+export const RequestCard = React.memo<RequestCardProps>(({ 
   request, 
   canClaim = false,
   canCancel = false,
@@ -105,7 +105,21 @@ export const RequestCard: React.FC<RequestCardProps> = ({
       {rightBottomContent}
     </View>
   );
-};
+}, (prevProps, nextProps) => {
+  // Custom comparison to prevent re-renders when callbacks change
+  // Compare request data
+  const requestEqual = prevProps.request.id === nextProps.request.id &&
+                      prevProps.request.amount === nextProps.request.amount &&
+                      prevProps.request.status === nextProps.request.status;
+  
+  // Compare UI state
+  const uiStateEqual = prevProps.canClaim === nextProps.canClaim &&
+                      prevProps.canCancel === nextProps.canCancel &&
+                      prevProps.isClaimLoading === nextProps.isClaimLoading &&
+                      prevProps.daysRemaining === nextProps.daysRemaining;
+  
+  return requestEqual && uiStateEqual;
+});
 
 const styles = StyleSheet.create({
   iconContainer: {

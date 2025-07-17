@@ -10,7 +10,7 @@ interface VaultDetailHeaderProps {
   vault: Vault;
 }
 
-export const VaultDetailHeader: React.FC<VaultDetailHeaderProps> = ({ vault }) => {
+export const VaultDetailHeader = React.memo<VaultDetailHeaderProps>(({ vault }) => {
   const { colors } = useTheme();
   
   return (
@@ -52,7 +52,7 @@ export const VaultDetailHeader: React.FC<VaultDetailHeaderProps> = ({ vault }) =
       </View>
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {

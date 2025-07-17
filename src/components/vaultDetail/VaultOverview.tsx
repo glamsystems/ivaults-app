@@ -12,7 +12,7 @@ interface VaultOverviewProps {
   description?: string;
 }
 
-export const VaultOverview: React.FC<VaultOverviewProps> = ({ 
+export const VaultOverview = React.memo<VaultOverviewProps>(({ 
   vault,
   description = "Automated yield farming strategy across multiple DeFi protocols." 
 }) => {
@@ -154,7 +154,7 @@ export const VaultOverview: React.FC<VaultOverviewProps> = ({
       </View>
     </ScrollView>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {

@@ -12,7 +12,7 @@ interface PositionCardProps {
   onPress?: () => void;
 }
 
-export const PositionCard: React.FC<PositionCardProps> = ({ position, onPress }) => {
+export const PositionCard = React.memo<PositionCardProps>(({ position, onPress }) => {
   const { colors } = useTheme();
   const icon = (
     <LinearGradient
@@ -48,7 +48,14 @@ export const PositionCard: React.FC<PositionCardProps> = ({ position, onPress })
       onPress={onPress}
     />
   );
-};
+}, (prevProps, nextProps) => {
+  // Custom comparison to prevent re-renders when only onPress changes
+  return prevProps.position.id === nextProps.position.id &&
+         prevProps.position.balance === nextProps.position.balance &&
+         prevProps.position.name === nextProps.position.name &&
+         prevProps.position.symbol === nextProps.position.symbol &&
+         prevProps.position.category === nextProps.position.category;
+});
 
 const styles = StyleSheet.create({
   iconPlaceholder: {

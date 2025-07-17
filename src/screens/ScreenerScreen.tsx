@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../theme';
@@ -9,8 +9,34 @@ import { useVaultStore } from '../store/vaultStore';
 export const ScreenerScreen: React.FC = () => {
   const { colors } = useTheme();
   const navigation = useNavigation<any>();
-  const { getFilteredVaults, vaults, isLoading, droppedVaults } = useVaultStore();
-  const filteredVaults = getFilteredVaults();
+  
+  // Get values from store using separate selectors to avoid infinite loop
+  const vaults = useVaultStore((state) => state.vaults);
+  const isLoading = useVaultStore((state) => state.isLoading);
+  const droppedVaults = useVaultStore((state) => state.droppedVaults);
+  const searchQuery = useVaultStore((state) => state.searchQuery);
+  const selectedFilter = useVaultStore((state) => state.selectedFilter);
+  
+  // Memoize the filtered vaults to prevent recalculation on every render
+  const filteredVaults = useMemo(() => {
+    let filtered = vaults;
+    
+    // Filter by category
+    if (selectedFilter !== 'All') {
+      filtered = filtered.filter(vault => vault.category === selectedFilter);
+    }
+    
+    // Filter by search query
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(vault => 
+        vault.name.toLowerCase().includes(query) || 
+        vault.symbol.toLowerCase().includes(query)
+      );
+    }
+    
+    return filtered;
+  }, [vaults, selectedFilter, searchQuery]);
   
   // Debug log
   let logMessage = `[ScreenerScreen] isLoading: ${isLoading}, vaults: ${vaults.length}, filteredVaults: ${filteredVaults.length}`;

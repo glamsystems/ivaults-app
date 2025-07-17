@@ -14,7 +14,7 @@ interface VaultFeesProps {
   vault: Vault;
 }
 
-export const VaultFees: React.FC<VaultFeesProps> = ({ vault }) => {
+export const VaultFees = React.memo<VaultFeesProps>(({ vault }) => {
   const { colors } = useTheme();
   
   // Convert basis points to percentage string
@@ -109,7 +109,7 @@ export const VaultFees: React.FC<VaultFeesProps> = ({ vault }) => {
       {renderFeeSection('Protocol', protocolFees)}
     </ScrollView>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {

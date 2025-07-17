@@ -12,7 +12,7 @@ interface VaultCardProps {
   onPress: () => void;
 }
 
-export const VaultCard: React.FC<VaultCardProps> = ({ vault, onPress }) => {
+export const VaultCard = React.memo<VaultCardProps>(({ vault, onPress }) => {
   const { colors } = useTheme();
   const isError = vault.id === 'error';
   const performanceColor = vault.performance24h >= 0 ? colors.status.success : colors.status.error;
@@ -51,7 +51,15 @@ export const VaultCard: React.FC<VaultCardProps> = ({ vault, onPress }) => {
       onPress={isError ? undefined : onPress}
     />
   );
-};
+}, (prevProps, nextProps) => {
+  // Custom comparison to prevent re-renders when only onPress changes
+  return prevProps.vault.id === nextProps.vault.id &&
+         prevProps.vault.performance24h === nextProps.vault.performance24h &&
+         prevProps.vault.nav === nextProps.vault.nav &&
+         prevProps.vault.name === nextProps.vault.name &&
+         prevProps.vault.symbol === nextProps.vault.symbol &&
+         prevProps.vault.category === nextProps.vault.category;
+});
 
 const styles = StyleSheet.create({
   iconPlaceholder: {
