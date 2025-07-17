@@ -74,6 +74,9 @@ export const PortfolioScreen: React.FC = () => {
     message: '',
   });
   
+  // Track if we've shown the initial animation for positions
+  const [hasShownInitialAnimation, setHasShownInitialAnimation] = useState(false);
+  
   // Get real redemption requests from store
   const pendingRequests = getPendingRequests();
   const claimableRequests = getClaimableRequests();
@@ -122,6 +125,21 @@ export const PortfolioScreen: React.FC = () => {
       refreshVaults();
     }
   }, [selectedTab, refreshVaults]);
+  
+  // Track when positions are shown for the first time
+  useEffect(() => {
+    if (selectedTab === 'Positions' && positions.length > 0 && !hasShownInitialAnimation) {
+      setHasShownInitialAnimation(true);
+    }
+  }, [selectedTab, positions.length, hasShownInitialAnimation]);
+  
+  // Reset animation state when account changes (disconnect/new connection)
+  useEffect(() => {
+    if (!account) {
+      // Reset when wallet disconnects
+      setHasShownInitialAnimation(false);
+    }
+  }, [account]);
 
   const handleClaim = useCallback(async (request: RedemptionRequest) => {
     if (!account || !connection || !request.outgoing) {
@@ -248,12 +266,22 @@ export const PortfolioScreen: React.FC = () => {
   };
 
   const renderPosition = ({ item, index }: { item: any; index: number }) => {
-    // Use AnimatedPositionCard for smooth fade-in effect
+    // Only animate on initial load, not when switching tabs
+    if (!hasShownInitialAnimation) {
+      return (
+        <AnimatedPositionCard 
+          position={item} 
+          onPress={() => handlePositionPress(item.vaultId)}
+          index={index}
+        />
+      );
+    }
+    
+    // No animation when just switching tabs
     return (
-      <AnimatedPositionCard 
+      <PositionCard 
         position={item} 
         onPress={() => handlePositionPress(item.vaultId)}
-        index={index}
       />
     );
   };
