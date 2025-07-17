@@ -2,20 +2,15 @@ import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons as Icon } from '@expo/vector-icons';
 import { useTheme } from '../../theme';
 import { Text } from '../common';
 
 interface MainHeaderProps {
   title: string;
-  rightIcon?: string;
-  onRightPress?: () => void;
 }
 
 export const MainHeader: React.FC<MainHeaderProps> = ({
   title,
-  rightIcon = 'timer-outline',
-  onRightPress,
 }) => {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
@@ -38,13 +33,17 @@ export const MainHeader: React.FC<MainHeaderProps> = ({
         >
           {title}
         </Text>
-        <Icon
-          name={rightIcon}
-          size={25}
-          color={colors.icon.secondary}
-          onPress={onRightPress}
-          style={styles.icon}
-        />
+        <Text 
+          variant="regular"
+          style={[
+            styles.byGlam, 
+            { 
+              color: colors.text.disabled
+            }
+          ]}
+        >
+          by GLAM *.+
+        </Text>
       </View>
     </LinearGradient>
   );
@@ -64,10 +63,9 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: 'normal', // Let the font file handle the weight
   },
-  icon: {
-    paddingTop: 8,
-    paddingBottom: 8,
-    paddingLeft: 8,
-    // No right padding to respect the container's 38px padding
+  byGlam: {
+    fontSize: 16,
+    fontWeight: 'light',
+    marginTop: 4,
   },
 });

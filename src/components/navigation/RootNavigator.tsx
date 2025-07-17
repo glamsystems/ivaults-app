@@ -5,21 +5,14 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { TabNavigator } from './TabNavigator';
 import { FullScreenPage, ActivityScreen, VaultDetailScreen } from '../../screens';
 import { MainHeader } from '../headers';
-import { useNavigation } from '@react-navigation/native';
 import { PageWrapper } from '../common/PageWrapper';
 
 const Stack = createStackNavigator();
 
 const MainTabsScreen: React.FC = () => {
-  const navigation = useNavigation<any>();
-  
-  const handleActivityPress = () => {
-    navigation.navigate('Activity');
-  };
-  
   return (
     <>
-      <MainHeader title="iVaults" onRightPress={handleActivityPress} />
+      <MainHeader title="iVaults" />
       <TabNavigator />
     </>
   );
