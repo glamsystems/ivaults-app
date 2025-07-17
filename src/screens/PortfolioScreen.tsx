@@ -54,6 +54,10 @@ export const PortfolioScreen: React.FC = () => {
   const isLoadingTokenAccounts = useWalletStore((state) => state.isLoadingTokenAccounts);
   const redemptionRequests = useRedemptionStore((state) => state.redemptionRequests);
   
+  // Track wallet connection time for grace period
+  const [walletConnectedAt, setWalletConnectedAt] = useState<number | null>(null);
+  const prevAccountRef = useRef(account);
+  
   // State for modals
   const [activityModal, setActivityModal] = useState({
     visible: false,
@@ -108,6 +112,16 @@ export const PortfolioScreen: React.FC = () => {
   
   // Track if screen is focused for polling
   const [isFocused, setIsFocused] = useState(false);
+  
+  // Detect wallet connection
+  useEffect(() => {
+    if (account && !prevAccountRef.current) {
+      // Wallet just connected
+      console.log('[PortfolioScreen] Wallet just connected, setting grace period');
+      setWalletConnectedAt(Date.now());
+    }
+    prevAccountRef.current = account;
+  }, [account]);
   
   // Track screen focus for polling (no refresh on focus)
   useFocusEffect(
@@ -256,6 +270,14 @@ export const PortfolioScreen: React.FC = () => {
     if (isLoading && !hasLoadedOnce) {
       return null;
     }
+    // Don't show empty state while loading token accounts
+    if (isLoadingTokenAccounts) {
+      return null;
+    }
+    // Add grace period after wallet connection (2 seconds)
+    if (walletConnectedAt && Date.now() - walletConnectedAt < 2000) {
+      return null;
+    }
     // Only show empty state in production mode and for positions tab
     if (DEBUG === 'true' || selectedTab !== 'Positions') {
       return null;
@@ -267,6 +289,7 @@ export const PortfolioScreen: React.FC = () => {
   // Only show skeleton if:
   // 1. No cached positions AND wallet connected
   // 2. NOT when just switching tabs with existing data
+  // 3. OR when we're loading token accounts (even if isLoading is false)
   const shouldShowSkeleton = selectedTab === 'Positions' && 
     account && // Wallet is connected
     positions.length === 0 && // No cached data
