@@ -297,8 +297,8 @@ export const WithdrawSheet: React.FC<WithdrawSheetProps> = ({ vault, onClose, on
   // Format minimum redemption
   const formatMinRedemption = (): string => {
     if (!vault.minRedemption || vault.minRedemption === '0') return 'None';
-    // Temporarily using base asset instead of vault token - need to verify with team
-    return formatTokenAmount(vault.minRedemption, vault.baseAsset, {
+    // Use vault token for minimum redemption
+    return formatTokenAmount(vault.minRedemption, vault.mintPubkey || vault.baseAsset, {
       showSymbol: true,
       minimumFractionDigits: 0,
       maximumFractionDigits: 6,
@@ -307,10 +307,7 @@ export const WithdrawSheet: React.FC<WithdrawSheetProps> = ({ vault, onClose, on
   };
   
   // Check if amount is below minimum
-  // TEMPORARILY DISABLED - need to verify with team if min redemption is in base asset or vault token
   const isBelowMinimum = useMemo(() => {
-    return false; // Temporarily disabled
-    /*
     if (!amount || !vault.minRedemption || vault.minRedemption === '0' || !vault.mintPubkey) return false;
     const numAmount = parseFloat(amount);
     if (isNaN(numAmount)) return false;
@@ -320,14 +317,10 @@ export const WithdrawSheet: React.FC<WithdrawSheetProps> = ({ vault, onClose, on
     const minRedemptionInUiAmount = minRedemptionInSmallestUnit / Math.pow(10, decimals);
     
     return numAmount < minRedemptionInUiAmount && numAmount > 0;
-    */
   }, [amount, vault.minRedemption, vault.mintPubkey]);
   
   // Check if wallet balance is insufficient for minimum redemption
-  // TEMPORARILY DISABLED - need to verify with team if min redemption is in base asset or vault token
   const hasInsufficientBalance = useMemo(() => {
-    return false; // Temporarily disabled
-    /*
     if (!vault.minRedemption || vault.minRedemption === '0' || !vault.mintPubkey) return false;
     if (!tokenBalance) return true;
     
@@ -336,13 +329,9 @@ export const WithdrawSheet: React.FC<WithdrawSheetProps> = ({ vault, onClose, on
     const minRedemptionInUiAmount = minRedemptionInSmallestUnit / Math.pow(10, decimals);
     
     return tokenBalance.uiAmount < minRedemptionInUiAmount;
-    */
   }, [vault.minRedemption, vault.mintPubkey, tokenBalance]);
   
   const handleMinRedemptionClick = () => {
-    // TEMPORARILY DISABLED - need to verify with team if min redemption is in base asset or vault token
-    return; // Temporarily disabled
-    /*
     if (!vault.minRedemption || vault.minRedemption === '0' || !vault.mintPubkey) return;
     if (!tokenBalance || hasInsufficientBalance) return;
     
@@ -352,7 +341,6 @@ export const WithdrawSheet: React.FC<WithdrawSheetProps> = ({ vault, onClose, on
     
     // Format with appropriate decimal places
     setAmount(minRedemptionInUiAmount.toFixed(6).replace(/\.?0+$/, ''));
-    */
   };
   
   // Validation function
@@ -366,15 +354,12 @@ export const WithdrawSheet: React.FC<WithdrawSheetProps> = ({ vault, onClose, on
     if (numAmount > userBalance) return false; // Exceeds balance
     
     // Check minimum redemption requirement
-    // TEMPORARILY DISABLED - need to verify with team if min redemption is in base asset or vault token
-    /*
     if (vault.minRedemption && vault.minRedemption !== '0' && vault.mintPubkey) {
       const decimals = getTokenDecimals(vault.mintPubkey, 'mainnet') || 9;
       const minRedemptionInSmallestUnit = parseFloat(vault.minRedemption);
       const minRedemptionInUiAmount = minRedemptionInSmallestUnit / Math.pow(10, decimals);
       if (numAmount < minRedemptionInUiAmount) return false;
     }
-    */
     
     return true;
   };
@@ -400,14 +385,6 @@ export const WithdrawSheet: React.FC<WithdrawSheetProps> = ({ vault, onClose, on
           <Text mono variant="regular" style={[styles.label, { color: colors.text.tertiary }]}>
             Min Withdrawal
           </Text>
-          {/* TEMPORARILY DISABLED CLICKABILITY - need to verify with team */}
-          <Text variant="regular" style={[
-            styles.value, 
-            { color: colors.text.primary } // Temporarily removed red color for below minimum
-          ]}>
-            {formatMinRedemption()}
-          </Text>
-          {/* 
           <TouchableOpacity 
             onPress={handleMinRedemptionClick}
             activeOpacity={0.7}
@@ -420,7 +397,6 @@ export const WithdrawSheet: React.FC<WithdrawSheetProps> = ({ vault, onClose, on
               {formatMinRedemption()}
             </Text>
           </TouchableOpacity>
-          */}
         </View>
         
         {/* Row 3: Balance */}

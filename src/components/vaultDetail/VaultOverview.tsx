@@ -95,7 +95,7 @@ export const VaultOverview = React.memo<VaultOverviewProps>(({
   const redemptionTerms = [
     {
       label: 'Minimum Withdrawal',
-      value: formatAmount(vault.minRedemption, false) // false = use base asset (temporary - need to verify with team)
+      value: formatAmount(vault.minRedemption, true) // true = use vault token
     },
     { 
       label: 'Notice Period', 
