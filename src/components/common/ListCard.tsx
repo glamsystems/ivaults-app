@@ -14,7 +14,7 @@ interface ListCardProps {
   onPress?: () => void;
 }
 
-export const ListCard: React.FC<ListCardProps> = ({
+export const ListCard = React.memo<ListCardProps>(({
   leftIcon,
   title,
   rightText,
@@ -56,7 +56,7 @@ export const ListCard: React.FC<ListCardProps> = ({
   }
 
   return <View style={styles.container}>{content}</View>;
-};
+});
 
 const styles = StyleSheet.create({
   container: {

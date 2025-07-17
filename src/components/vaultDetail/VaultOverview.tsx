@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, ScrollView, StyleSheet } from 'react-native';
 import { Text } from '../common';
 import { FontSizes } from '../../constants/fonts';
@@ -18,6 +18,12 @@ export const VaultOverview = React.memo<VaultOverviewProps>(({
 }) => {
   const { colors } = useTheme();
   const vaults = useVaultStore((state) => state.vaults);
+  
+  // Memoize dynamic styles
+  const dynamicStyles = useMemo(() => ({
+    primaryText: { color: colors.text.primary },
+    subtleText: { color: colors.text.subtle }
+  }), [colors.text.primary, colors.text.subtle]);
   
   // Convert periods to human-readable format
   const formatPeriod = (period: number, type: string): string => {
@@ -51,13 +57,13 @@ export const VaultOverview = React.memo<VaultOverviewProps>(({
     
     return (
       <View style={styles.noticeValue}>
-        <Text variant="regular" style={{ color: colors.text.primary }}>
+        <Text variant="regular" style={dynamicStyles.primaryText}>
           {typeLabel}
         </Text>
-        <Text variant="regular" style={[styles.separator, { color: colors.text.subtle }]}>
+        <Text variant="regular" style={[styles.separator, dynamicStyles.subtleText]}>
           {' | '}
         </Text>
-        <Text variant="regular" style={{ color: colors.text.primary }}>
+        <Text variant="regular" style={dynamicStyles.primaryText}>
           {periodText}
         </Text>
       </View>

@@ -318,14 +318,14 @@ export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ child
         const uniqueMints = Array.from(tokenMintsToUpdate);
         console.log(`[DataInitializer] Updating ${uniqueMints.length} token balances`);
         
-        // Use setTimeout to make this non-blocking
-        setTimeout(async () => {
+        // Use queueMicrotask for better scheduling
+        queueMicrotask(async () => {
           try {
             await updateAllTokenBalances(connection, uniqueMints);
           } catch (error) {
             console.error('[DataInitializer] Error updating token balances:', error);
           }
-        }, 0);
+        });
       }
     }
   }, [account, connection, vaults, updateAllTokenBalances, fetchAllTokenAccounts]);

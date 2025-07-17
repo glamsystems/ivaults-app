@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -97,11 +97,11 @@ export const SuccessModal: React.FC<SuccessModalProps> = ({
     });
   };
 
-  const handleCopy = (value: string, index: number) => {
+  const handleCopy = useCallback((value: string, index: number) => {
     Clipboard.setString(value);
     setCopiedIndex(index);
     setTimeout(() => setCopiedIndex(null), 2000);
-  };
+  }, []);
 
   const truncateValue = (value: string, maxLength: number = 20) => {
     if (value.length <= maxLength) return value;

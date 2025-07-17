@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useMemo } from 'react';
 import { Animated, InteractionManager } from 'react-native';
 import { PositionCard } from './PositionCard';
 import { Position } from '../../store/portfolioStore';
@@ -9,8 +9,10 @@ interface AnimatedPositionCardProps {
   index: number;
 }
 
-export const AnimatedPositionCard: React.FC<AnimatedPositionCardProps> = ({ position, onPress, index }) => {
+export const AnimatedPositionCard = React.memo<AnimatedPositionCardProps>(({ position, onPress, index }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  
+  const animatedStyle = useMemo(() => ({ opacity: fadeAnim }), [fadeAnim]);
 
   useEffect(() => {
     // Use InteractionManager for better performance
@@ -35,8 +37,8 @@ export const AnimatedPositionCard: React.FC<AnimatedPositionCardProps> = ({ posi
   }, [fadeAnim, index]);
 
   return (
-    <Animated.View style={{ opacity: fadeAnim }}>
+    <Animated.View style={animatedStyle}>
       <PositionCard position={position} onPress={onPress} />
     </Animated.View>
   );
-};
+});

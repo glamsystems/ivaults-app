@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -18,13 +18,13 @@ interface FilterTabsProps {
   scrollEnabled?: boolean;
 }
 
-export const FilterTabs: React.FC<FilterTabsProps> = ({ scrollEnabled = true }) => {
+export const FilterTabs = React.memo<FilterTabsProps>(({ scrollEnabled = true }) => {
   const { selectedFilter, setSelectedFilter } = useVaultStore();
   const { colors } = useTheme();
 
-  const handleFilterPress = (filter: FilterOption) => {
+  const handleFilterPress = useCallback((filter: FilterOption) => {
     setSelectedFilter(filter);
-  };
+  }, [setSelectedFilter]);
 
   return (
     <ScrollView
@@ -58,7 +58,7 @@ export const FilterTabs: React.FC<FilterTabsProps> = ({ scrollEnabled = true }) 
       })}
     </ScrollView>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {

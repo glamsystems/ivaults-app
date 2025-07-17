@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useMemo } from 'react';
 import { Animated, InteractionManager } from 'react-native';
 import { VaultCard } from './VaultCard';
 import { Vault } from '../../store/vaultStore';
@@ -9,8 +9,10 @@ interface AnimatedVaultCardProps {
   index: number;
 }
 
-export const AnimatedVaultCard: React.FC<AnimatedVaultCardProps> = ({ vault, onPress, index }) => {
+export const AnimatedVaultCard = React.memo<AnimatedVaultCardProps>(({ vault, onPress, index }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  
+  const animatedStyle = useMemo(() => ({ opacity: fadeAnim }), [fadeAnim]);
 
   useEffect(() => {
     // Use InteractionManager for better performance
@@ -35,8 +37,8 @@ export const AnimatedVaultCard: React.FC<AnimatedVaultCardProps> = ({ vault, onP
   }, [fadeAnim, index]);
 
   return (
-    <Animated.View style={{ opacity: fadeAnim }}>
+    <Animated.View style={animatedStyle}>
       <VaultCard vault={vault} onPress={onPress} />
     </Animated.View>
   );
-};
+});

@@ -8,7 +8,7 @@ interface TextProps extends RNTextProps {
   mono?: boolean;
 }
 
-export const Text: React.FC<TextProps> = ({ 
+export const Text = React.memo<TextProps>(({ 
   style, 
   variant = 'regular', 
   italic = false,
@@ -40,7 +40,7 @@ export const Text: React.FC<TextProps> = ({
       {...props} 
     />
   );
-};
+});
 
 const styles = StyleSheet.create({
   defaultText: {
