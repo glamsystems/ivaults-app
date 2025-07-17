@@ -21,16 +21,13 @@ import { useVaultStore } from '../store/vaultStore';
 import { useWalletStore } from '../store/walletStore';
 import { useRedemptionStore, RedemptionRequest } from '../store/redemptionStore';
 import { RedemptionFetcherService } from '../services/redemptionFetcherService';
-import { GlamClaimService } from '../services/glamClaimService';
 import { useConnection } from '../solana/providers/ConnectionProvider';
 import { useAuthorization } from '../solana/providers/AuthorizationProvider';
-import { PublicKey } from '@solana/web3.js';
-import { showStyledAlert, getTransactionErrorInfo } from '../utils/walletErrorHandler';
 import { ActivityModal } from '../components/ActivityModal';
 import { GenericNotificationModal } from '../components/GenericNotificationModal';
-import { getTokenSymbol } from '../constants/tokens';
-import { NETWORK, DEBUG } from '@env';
+import { DEBUG } from '@env';
 import { usePolling } from '../hooks/usePolling';
+import { useClaimRedemption } from '../hooks/useClaimRedemption';
 import { Spacing } from '../constants';
 
 // Calculate item height for getItemLayout
@@ -56,10 +53,8 @@ export const PortfolioScreen: React.FC = () => {
   const fetchAllTokenAccounts = useWalletStore((state) => state.fetchAllTokenAccounts);
   const isLoadingTokenAccounts = useWalletStore((state) => state.isLoadingTokenAccounts);
   const redemptionRequests = useRedemptionStore((state) => state.redemptionRequests);
-  const updateRequestStatus = useRedemptionStore((state) => state.updateRequestStatus);
   
-  // State for claim handling
-  const [claimingRequestId, setClaimingRequestId] = useState<string | null>(null);
+  // State for modals
   const [activityModal, setActivityModal] = useState({
     visible: false,
     amount: '',
@@ -69,6 +64,18 @@ export const PortfolioScreen: React.FC = () => {
   const [errorModal, setErrorModal] = useState({
     visible: false,
     message: '',
+  });
+  
+  // Use claim hook
+  const { claim, isLoading: claimingRequestId } = useClaimRedemption({
+    account,
+    connection,
+    vaults,
+    authorizeSession,
+    refreshVaults,
+    updateTokenBalance,
+    fetchAllTokenAccounts,
+    selectedTab,
   });
   
   // Track if we've shown the initial animation for positions
@@ -146,117 +153,24 @@ export const PortfolioScreen: React.FC = () => {
   }, [account, selectedTab]);
 
   const handleClaim = useCallback(async (request: RedemptionRequest) => {
-    if (!account || !connection || !request.outgoing) {
-      console.error('[PortfolioScreen] Missing required data for claim');
-      return;
-    }
+    const { result, error } = await claim(request);
     
-    const vault = vaults.find(v => v.id === request.vaultId);
-    if (!vault || !vault.glam_state) {
-      console.error('[PortfolioScreen] Vault not found or missing glam_state');
-      return;
-    }
-    
-    setClaimingRequestId(request.id);
-    
-    try {
-      // Always create a new claim service for each vault to ensure correct state
-      const service = new GlamClaimService();
-      const network = NETWORK === 'devnet' ? 'devnet' : 'mainnet';
-      
-      await service.initializeClient(
-        connection,
-        account.publicKey,
-        new PublicKey(vault.glam_state),
-        authorizeSession,
-        network
-      );
-      
-      console.log('[PortfolioScreen] GLAM claim service initialized for vault:', vault.name);
-      
-      // Execute claim
-      const claimResult = await service.claimRedemption(request);
-      
-      console.log('[PortfolioScreen] Transaction signed, submitting to network...');
-      
-      // Submit and wait for confirmation
-      const signature = await claimResult.submitAndConfirm();
-      
-      console.log('[PortfolioScreen] Claim confirmed:', signature);
-      
-      // Update request status to claimed locally first
-      updateRequestStatus(request.id, 'claimed');
-      
-      // Refresh vaults to get latest ledger data from blockchain
-      await refreshVaults();
-      
+    if (result) {
       // Show success modal
       setActivityModal({
         visible: true,
-        amount: request.amount.toString(),
-        symbol: request.vaultSymbol,
-        assetSymbol: getTokenSymbol(request.outgoing!.pubkey, 'mainnet') || 'tokens'
+        amount: result.amount,
+        symbol: result.symbol,
+        assetSymbol: result.assetSymbol
       });
-      
-      // Check if this was the last active request and switch tabs immediately
-      const { redemptionRequests: latestRequests } = useRedemptionStore.getState();
-      const activeRequests = latestRequests.filter(req => 
-        req.status === 'pending' || req.status === 'claimable'
-      );
-      
-      if (activeRequests.length === 0 && selectedTab === 'Requests') {
-        // Switch to Positions tab immediately since no more active requests
-        const { setSelectedTab } = usePortfolioStore.getState();
-        setSelectedTab('Positions');
-      }
-      
-      // Update balances in background
-      setTimeout(async () => {
-        try {
-          if (request.outgoing) {
-            await updateTokenBalance(connection, request.outgoing.pubkey);
-          }
-          await fetchAllTokenAccounts(connection);
-        } catch (refreshError) {
-          console.error('[PortfolioScreen] Error refreshing balances:', refreshError);
-        }
-      }, 1000);
-      
-    } catch (error) {
-      console.error('[PortfolioScreen] Claim error:', error);
-      
-      // Handle errors
-      const errorMessage = error?.message || error?.toString() || '';
-      const isTimeout = errorMessage.toLowerCase().includes('timeout');
-      const isNetworkError = errorMessage.toLowerCase().includes('network');
-      
-      if (isTimeout || isNetworkError) {
-        setErrorModal({
-          visible: true,
-          message: 'Network issue detected. Your transaction may still go through. We\'ll check your balance in the background.',
-        });
-        
-        // Check balances in background
-        setTimeout(async () => {
-          try {
-            if (request.outgoing) {
-              await updateTokenBalance(connection, request.outgoing.pubkey);
-            }
-            await fetchAllTokenAccounts(connection);
-          } catch (e) {
-            console.error('[PortfolioScreen] Error checking balances:', e);
-          }
-        }, 3000);
-      } else {
-        const errorInfo = getTransactionErrorInfo(error);
-        if (errorInfo.shouldShow) {
-          showStyledAlert(errorInfo);
-        }
-      }
-    } finally {
-      setClaimingRequestId(null);
+    } else if (error?.isNetworkError) {
+      // Show network error modal
+      setErrorModal({
+        visible: true,
+        message: error.message,
+      });
     }
-  }, [account, connection, vaults, authorizeSession, updateRequestStatus, updateTokenBalance, fetchAllTokenAccounts]);
+  }, [claim]);
 
   const handlePositionPress = (vaultId: string) => {
     // Only navigate if it's a vault position (not a regular token)

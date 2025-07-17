@@ -11,21 +11,7 @@ import { useConnection } from '../solana/providers/ConnectionProvider';
 import { useRedemptionStore } from '../store/redemptionStore';
 import { RedemptionFetcherService } from '../services/redemptionFetcherService';
 import { usePolling } from '../hooks/usePolling';
-
-// Generate gradient colors based on index
-const generateGradientColors = (index: number): string[] => {
-  const gradients = [
-    ['#FF6B6B', '#4ECDC4'],
-    ['#F093FB', '#F5576C'],
-    ['#4FACFE', '#00F2FE'],
-    ['#43E97B', '#38F9D7'],
-    ['#FA709A', '#FEE140'],
-    ['#30CCED', '#4C6EF5'],
-    ['#A8EDEA', '#FED6E3'],
-    ['#FFF6B7', '#F6416C'],
-  ];
-  return gradients[index % gradients.length];
-};
+import { usePortfolioPositions } from '../hooks/usePortfolioPositions';
 
 export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { setVaults, setIsLoading, setDroppedVaults, vaults } = useVaultStore();
@@ -404,7 +390,10 @@ export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ child
     });
   }, [account, vaults]);
 
-  // Build positions from token accounts
+  // Use custom hook to build positions
+  const { positions, totalValue } = usePortfolioPositions(allTokenAccounts, vaults);
+
+  // Update portfolio store when positions change
   useEffect(() => {
     if (!account || vaults.length === 0) return;
 
@@ -413,61 +402,12 @@ export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ child
       setPortfolioLoading(true);
     }
 
-    const showDebug = DEBUG === 'true';
-    
-    const positions: Position[] = [];
-    let totalValue = 0;
-
-    // Create a map of vault mints for quick lookup
-    const vaultsByMint = new Map(vaults.map(v => [v.mintPubkey, v]));
-    
-
-    allTokenAccounts.forEach((tokenAccount, index) => {
-      const vault = vaultsByMint.get(tokenAccount.mint);
-      
-      
-      // In production mode, only show vault positions
-      if (!showDebug && !vault) return;
-
-      // Skip tokens with 0 balance unless in debug mode
-      if (!showDebug && tokenAccount.uiAmount === 0) return;
-
-      if (vault) {
-        // This is a vault position
-        positions.push({
-          id: `vault-${vault.id}`,
-          vaultId: vault.id,
-          name: vault.name,
-          symbol: vault.symbol,
-          category: vault.category === 'glam' ? 'SuperVault' : 'xStocks',
-          balance: tokenAccount.uiAmount,
-          performance24h: vault.performance24h,
-          gradientColors: vault.gradientColors || ['#4ECDC4', '#44A08D']
-        });
-        totalValue += tokenAccount.uiAmount;
-      } else if (showDebug) {
-        // Non-vault token in debug mode
-        const colors = generateGradientColors(index);
-        positions.push({
-          id: `token-${tokenAccount.mint}`,
-          vaultId: '', // No vault ID for non-vault tokens
-          name: tokenAccount.mint,
-          symbol: tokenAccount.mint.slice(0, 4) + '...' + tokenAccount.mint.slice(-4),
-          category: 'xStocks', // Default category
-          balance: tokenAccount.uiAmount,
-          performance24h: 0,
-          gradientColors: colors
-        });
-        totalValue += tokenAccount.uiAmount;
-      }
-    });
-
     // Use requestAnimationFrame to avoid blocking the render
     requestAnimationFrame(() => {
       setPositions(positions);
       setTotalValue(totalValue);
     });
-  }, [account, allTokenAccounts, vaults, setPositions, setTotalValue, DEBUG]);
+  }, [account, positions, totalValue, vaults.length, allTokenAccounts.length, setPositions, setTotalValue, setPortfolioLoading]);
 
   return <>{children}</>;
 };

@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   View,
   StyleSheet,
@@ -11,6 +11,7 @@ import { Ionicons as Icon } from '@expo/vector-icons';
 import { useVaultStore } from '../../store/vaultStore';
 import { useActivityStore } from '../../store/activityStore';
 import { useTheme } from '../../theme';
+import { useDebounce } from '../../hooks/useDebounce';
 
 interface SearchBarProps {
   isExpanded: boolean;
@@ -33,6 +34,22 @@ export const SearchBar: React.FC<SearchBarProps> = ({
   
   const { searchQuery, setSearchQuery } = type === 'vault' ? vaultStore : activityStore;
   const inputRef = useRef<TextInput>(null);
+  
+  // Local state for immediate input feedback
+  const [localSearchValue, setLocalSearchValue] = useState(searchQuery);
+  
+  // Debounce the search value with 300ms delay
+  const debouncedSearchValue = useDebounce(localSearchValue, 300);
+  
+  // Update store when debounced value changes
+  useEffect(() => {
+    setSearchQuery(debouncedSearchValue);
+  }, [debouncedSearchValue, setSearchQuery]);
+  
+  // Sync local state when store value changes (e.g., when clearing)
+  useEffect(() => {
+    setLocalSearchValue(searchQuery);
+  }, [searchQuery]);
 
   React.useEffect(() => {
     if (isExpanded) {
@@ -45,6 +62,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
 
   const handleClose = () => {
     inputRef.current?.blur();
+    setLocalSearchValue('');
     setSearchQuery('');
     onToggle();
   };
@@ -66,8 +84,8 @@ export const SearchBar: React.FC<SearchBarProps> = ({
             style={[styles.input, { color: colors.text.primary }]}
             placeholder={type === 'vault' ? "Search vaults..." : "Search activity..."}
             placeholderTextColor={colors.text.tertiary}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
+            value={localSearchValue}
+            onChangeText={setLocalSearchValue}
             autoCapitalize="none"
             autoCorrect={false}
           />
