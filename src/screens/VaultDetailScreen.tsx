@@ -225,7 +225,7 @@ export const VaultDetailScreen: React.FC = () => {
       
       {/* Withdraw Sheet */}
       <BasicBottomSheet ref={withdrawSheetRef} snapPoints={['60%', '73%']}>
-        <WithdrawSheet vault={vault} />
+        <WithdrawSheet vault={vault} onClose={() => withdrawSheetRef.current?.dismiss()} />
       </BasicBottomSheet>
       
       {/* Notification Modal for info messages */}
