@@ -12,6 +12,7 @@ import { useRedemptionStore } from '../store/redemptionStore';
 import { RedemptionFetcherService } from '../services/redemptionFetcherService';
 import { usePolling } from '../hooks/usePolling';
 import { usePortfolioPositions } from '../hooks/usePortfolioPositions';
+import { SparkleImageCache } from '../services/sparkleImageCache';
 
 export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { setVaults, setIsLoading, setDroppedVaults, vaults } = useVaultStore();
@@ -57,6 +58,18 @@ export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ child
         setVaults(vaults);
         setDroppedVaults(droppedVaults);
         console.log('[DataInitializer] Vaults loaded:', vaults.length);
+        
+        // Preload sparkle images for all vaults
+        const mintPubkeys = vaults
+          .map(v => v.mintPubkey)
+          .filter(key => key && typeof key === 'string');
+        
+        if (mintPubkeys.length > 0) {
+          console.log('[DataInitializer] Preloading sparkle images for', mintPubkeys.length, 'vaults');
+          SparkleImageCache.preloadImages(mintPubkeys).catch(error => {
+            console.log('[DataInitializer] Error preloading sparkle images:', error);
+          });
+        }
         if (droppedVaults && droppedVaults.length > 0) {
           console.log('[DataInitializer] Dropped vaults:', droppedVaults);
         }

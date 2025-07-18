@@ -9,6 +9,7 @@ export interface Position {
   balance: number;
   performance24h: number;
   gradientColors: string[];
+  mint: string; // Token mint address
 }
 
 export type PortfolioTab = 'Positions' | 'Requests';

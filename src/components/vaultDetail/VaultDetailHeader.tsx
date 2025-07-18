@@ -1,7 +1,6 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Text, DisplayPubkey } from '../common';
+import { Text, DisplayPubkey, SparkleImage } from '../common';
 import { Vault } from '../../store/vaultStore';
 import { FontSizes, Spacing } from '../../constants';
 import { useTheme } from '../../theme';
@@ -15,11 +14,11 @@ export const VaultDetailHeader = React.memo<VaultDetailHeaderProps>(({ vault }) 
   
   return (
     <View style={styles.container}>
-      <LinearGradient
-        colors={vault.gradientColors || colors.gradient.default}
-        style={styles.icon}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+      <SparkleImage
+        mintPubkey={vault.mintPubkey}
+        size={Spacing.icon.large}
+        borderRadius={16}
+        fallbackColors={vault.gradientColors}
       />
       <View style={styles.textContainer}>
         <Text 
@@ -60,20 +59,14 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 20,
   },
-  icon: {
-    width: Spacing.icon.large,
-    height: Spacing.icon.large,
-    borderRadius: 16,
-    marginRight: Spacing.icon.margin + 4,
-  },
   textContainer: {
     flex: 1,
-    paddingTop: 4, // Add padding to lower the text
+    paddingTop: 0, // Add padding to lower the text
   },
   name: {
     fontSize: FontSizes.xLarge,
     marginTop: 4,
-    marginBottom: 10,
+    marginBottom: 6,
   },
   row: {
     flexDirection: 'row',

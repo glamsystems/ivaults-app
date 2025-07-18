@@ -4,3 +4,4 @@ export * from './ListCard';
 export * from './GenericFilterTabs';
 export { DisplayPubkey } from './DisplayPubkey';
 export { PulsatingText } from './PulsatingText';
+export { SparkleImage } from './SparkleImage';

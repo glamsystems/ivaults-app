@@ -1,8 +1,7 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { ListCard } from '../common/ListCard';
-import { Text } from '../common';
+import { Text, SparkleImage } from '../common';
 import { Position } from '../../store/portfolioStore';
 import { FontSizes, Spacing } from '../../constants';
 import { useTheme } from '../../theme';
@@ -15,11 +14,11 @@ interface PositionCardProps {
 export const PositionCard = React.memo<PositionCardProps>(({ position, onPress }) => {
   const { colors } = useTheme();
   const icon = (
-    <LinearGradient
-      colors={position.gradientColors || colors.gradient.default}
-      style={styles.iconPlaceholder}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
+    <SparkleImage
+      mintPubkey={position.mint}
+      size={Spacing.icon.standard}
+      borderRadius={8}
+      fallbackColors={position.gradientColors}
     />
   );
 
@@ -58,12 +57,6 @@ export const PositionCard = React.memo<PositionCardProps>(({ position, onPress }
 });
 
 const styles = StyleSheet.create({
-  iconPlaceholder: {
-    width: Spacing.icon.standard,
-    height: Spacing.icon.standard,
-    borderRadius: 8,
-    marginRight: Spacing.icon.margin,
-  },
   value: {
     fontSize: FontSizes.medium,
   },

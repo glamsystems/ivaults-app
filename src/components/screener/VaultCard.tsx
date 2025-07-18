@@ -1,8 +1,7 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { ListCard } from '../common/ListCard';
-import { Text } from '../common';
+import { Text, SparkleImage } from '../common';
 import { Vault } from '../../store/vaultStore';
 import { FontSizes, Spacing } from '../../constants';
 import { useTheme } from '../../theme';
@@ -19,11 +18,11 @@ export const VaultCard = React.memo<VaultCardProps>(({ vault, onPress }) => {
   const performanceSign = vault.performance24h >= 0 ? '+' : '';
   
   const icon = (
-    <LinearGradient
-      colors={vault.gradientColors || colors.gradient.default}
-      style={styles.iconPlaceholder}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
+    <SparkleImage
+      mintPubkey={vault.mintPubkey}
+      size={Spacing.icon.standard}
+      borderRadius={8}
+      fallbackColors={vault.gradientColors}
     />
   );
 
@@ -62,12 +61,6 @@ export const VaultCard = React.memo<VaultCardProps>(({ vault, onPress }) => {
 });
 
 const styles = StyleSheet.create({
-  iconPlaceholder: {
-    width: Spacing.icon.standard,
-    height: Spacing.icon.standard,
-    borderRadius: 8,
-    marginRight: Spacing.icon.margin,
-  },
   priceSection: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -60,7 +60,8 @@ export function usePortfolioPositions(
           category: vault.category === 'glam' ? 'SuperVault' : 'xStocks',
           balance: tokenAccount.uiAmount,
           performance24h: vault.performance24h,
-          gradientColors: vault.gradientColors || ['#4ECDC4', '#44A08D']
+          gradientColors: vault.gradientColors || ['#4ECDC4', '#44A08D'],
+          mint: tokenAccount.mint
         });
         totalValue += tokenAccount.uiAmount;
       } else if (showDebug) {
@@ -74,7 +75,8 @@ export function usePortfolioPositions(
           category: 'xStocks', // Default category
           balance: tokenAccount.uiAmount,
           performance24h: 0,
-          gradientColors: colors
+          gradientColors: colors,
+          mint: tokenAccount.mint
         });
         totalValue += tokenAccount.uiAmount;
       }
