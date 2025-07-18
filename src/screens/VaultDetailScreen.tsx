@@ -173,6 +173,49 @@ export const VaultDetailScreen: React.FC = () => {
   };
 
   const handleDeposit = () => {
+    if (!account) {
+      console.log('Deposit blocked: no wallet connected');
+      return;
+    }
+    
+    // Check for pending or claimable redemption requests for this vault
+    const userAddress = account.publicKey.toBase58();
+    const activeRequests = redemptionRequests.filter(req => 
+      req.vaultId === vault.id && 
+      req.walletAddress === userAddress &&
+      (req.status === 'pending' || req.status === 'claimable')
+    );
+    
+    if (activeRequests.length > 0) {
+      console.log('Deposit blocked: pending or claimable redemption requests exist');
+      
+      // Determine message based on request types
+      const hasPending = activeRequests.some(req => req.status === 'pending');
+      const hasClaimable = activeRequests.some(req => req.status === 'claimable');
+      
+      let title = 'Active Request';
+      let message = '';
+      
+      if (hasPending && hasClaimable) {
+        message = 'Withdrawal in progress. Check your portfolio.';
+      } else if (hasPending) {
+        title = 'Pending Request';
+        message = 'Withdrawal in progress. Check your portfolio.';
+      } else {
+        title = 'Claimable Request';
+        message = 'Withdrawal in progress. Check your portfolio.';
+      }
+      
+      // Show info notification
+      setNotificationModal({
+        visible: true,
+        type: 'info',
+        title,
+        message,
+      });
+      return;
+    }
+    
     console.log('Deposit pressed');
     depositSheetRef.current?.present();
     // Ensure it snaps to index 0
