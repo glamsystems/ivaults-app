@@ -23,6 +23,7 @@ import { useWalletStore } from '../store/walletStore';
 import { useVaultStore } from '../store/vaultStore';
 import { useConnection } from '../solana/providers/ConnectionProvider';
 import { useRedemptionStore } from '../store/redemptionStore';
+import { useNavigationStore } from '../store/navigationStore';
 import { GenericNotificationModal } from '../components/GenericNotificationModal';
 import { ActivityModal } from '../components/ActivityModal';
 import { usePolling } from '../hooks/usePolling';
@@ -52,6 +53,7 @@ export const VaultDetailScreen: React.FC = () => {
   const tokenBalance = useWalletStore((state) => state.getTokenBalance(vault.mintPubkey || ''));
   const { connection } = useConnection();
   const redemptionRequests = useRedemptionStore((state) => state.redemptionRequests);
+  const setPendingVaultReturn = useNavigationStore((state) => state.setPendingVaultReturn);
   
   // State for notification modal
   const [notificationModal, setNotificationModal] = useState({
@@ -175,6 +177,8 @@ export const VaultDetailScreen: React.FC = () => {
   const handleDeposit = () => {
     if (!account) {
       console.log('Deposit blocked: no wallet connected, navigating to Portfolio');
+      // Store vault to return to after wallet connection
+      setPendingVaultReturn(vault);
       // Navigate to Portfolio tab to connect wallet
       navigation.navigate('MainTabs', { screen: 'Portfolio' });
       return;

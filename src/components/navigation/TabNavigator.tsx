@@ -4,6 +4,9 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons as Icon } from '@expo/vector-icons';
 import { DEBUG } from '@env';
 import { useTheme } from '../../theme';
+import { useNavigation, CommonActions } from '@react-navigation/native';
+import { useWalletStore } from '../../store/walletStore';
+import { useNavigationStore } from '../../store/navigationStore';
 import {
   ScreenerScreen,
   PortfolioScreen,
@@ -18,6 +21,10 @@ const Tab = createBottomTabNavigator();
 export const TabNavigator: React.FC = () => {
   const { colors } = useTheme();
   const showDebugTab = DEBUG === 'true';
+  const navigation = useNavigation<any>();
+  const account = useWalletStore((state) => state.account);
+  const pendingVaultReturn = useNavigationStore((state) => state.pendingVaultReturn);
+  const clearPendingVaultReturn = useNavigationStore((state) => state.clearPendingVaultReturn);
 
   return (
     <View style={styles.container}>
@@ -81,7 +88,36 @@ export const TabNavigator: React.FC = () => {
         },
       })}
     >
-      <Tab.Screen name="Screener" component={ScreenerScreen} />
+      <Tab.Screen 
+        name="Screener" 
+        component={ScreenerScreen}
+        listeners={{
+          tabPress: (e) => {
+            // Check if we have a pending vault return and wallet is connected
+            if (pendingVaultReturn && account) {
+              // Prevent default navigation to Screener
+              e.preventDefault();
+              
+              console.log('[TabNavigator] Navigating to pending vault:', pendingVaultReturn.name);
+              
+              // Clear the pending state
+              clearPendingVaultReturn();
+              
+              // Reset navigation to have Screener in the stack, then VaultDetail
+              navigation.dispatch(
+                CommonActions.reset({
+                  index: 1,
+                  routes: [
+                    { name: 'MainTabs', params: { screen: 'Screener' } },
+                    { name: 'VaultDetail', params: { vault: pendingVaultReturn } }
+                  ],
+                })
+              );
+            }
+            // Otherwise, let normal navigation happen
+          },
+        }}
+      />
       <Tab.Screen name="Portfolio" component={PortfolioScreen} />
       <Tab.Screen name="Settings" component={SettingsScreen} />
       {showDebugTab && <Tab.Screen name="Debug" component={DebugScreen} />}

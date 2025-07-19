@@ -23,6 +23,7 @@ import { useRedemptionStore, RedemptionRequest } from '../store/redemptionStore'
 import { RedemptionFetcherService } from '../services/redemptionFetcherService';
 import { useConnection } from '../solana/providers/ConnectionProvider';
 import { useAuthorization } from '../solana/providers/AuthorizationProvider';
+import { useNavigationStore } from '../store/navigationStore';
 import { ActivityModal } from '../components/ActivityModal';
 import { GenericNotificationModal } from '../components/GenericNotificationModal';
 import { DEBUG } from '@env';
