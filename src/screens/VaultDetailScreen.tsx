@@ -174,7 +174,9 @@ export const VaultDetailScreen: React.FC = () => {
 
   const handleDeposit = () => {
     if (!account) {
-      console.log('Deposit blocked: no wallet connected');
+      console.log('Deposit blocked: no wallet connected, navigating to Portfolio');
+      // Navigate to Portfolio tab to connect wallet
+      navigation.navigate('MainTabs', { screen: 'Portfolio' });
       return;
     }
     
