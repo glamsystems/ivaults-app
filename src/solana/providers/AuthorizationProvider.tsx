@@ -47,7 +47,7 @@ export const getPublicKeyFromAddress = (address: Base64EncodedAddress): PublicKe
 };
 
 export const APP_IDENTITY = {
-  name: 'iVaults Debug',
+  name: 'iVaults',
   uri: 'https://ivaults.app',
   icon: 'favicon.ico',
 };
