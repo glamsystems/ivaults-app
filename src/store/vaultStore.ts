@@ -4,8 +4,9 @@ import { VaultDataService } from '../services/vaultDataService';
 import { NetworkType } from '../solana/providers/ConnectionProvider';
 import { NETWORK, DEVNET_RPC, SOLANA_RPC } from '@env';
 import { QueuedConnection } from '../services/rpcQueue';
+import { VaultCategory, VaultFilterService } from '../services/vaultFilterService';
 
-export type VaultCategory = 'SuperVault' | 'xStocks' | 'Mindshare';
+export type { VaultCategory };
 
 export interface Vault {
   id: string;
@@ -61,12 +62,12 @@ export interface Vault {
 interface VaultStore {
   vaults: Vault[];
   searchQuery: string;
-  selectedFilter: 'All' | VaultCategory;
+  selectedFilter: 'All' | string;
   isLoading: boolean;
   droppedVaults?: Array<{ name: string; glamStatePubkey: string; reason: string }>;
   setVaults: (vaults: Vault[]) => void;
   setSearchQuery: (query: string) => void;
-  setSelectedFilter: (filter: 'All' | VaultCategory) => void;
+  setSelectedFilter: (filter: 'All' | string) => void;
   setIsLoading: (loading: boolean) => void;
   setDroppedVaults: (dropped: Array<{ name: string; glamStatePubkey: string; reason: string }> | undefined) => void;
   getFilteredVaults: () => Vault[];
@@ -93,7 +94,17 @@ export const useVaultStore = create<VaultStore>((set, get) => ({
     
     // Filter by category
     if (selectedFilter !== 'All') {
-      filtered = filtered.filter(vault => vault.category === selectedFilter);
+      console.log('[VaultStore] Filtering by category:', selectedFilter);
+      // Convert plural filter name to singular for comparison
+      const singularCategory = VaultFilterService.getSingularFromPlural(selectedFilter);
+      console.log('[VaultStore] Converted plural filter to singular:', singularCategory);
+      
+      filtered = filtered.filter(vault => {
+        const matches = vault.category === singularCategory;
+        console.log(`[VaultStore] Vault "${vault.name}" category="${vault.category}" matches="${singularCategory}":`, matches);
+        return matches;
+      });
+      console.log('[VaultStore] Category filter result:', filtered.length, 'vaults');
     }
     
     // Filter by search query

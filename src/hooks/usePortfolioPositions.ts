@@ -57,7 +57,7 @@ export function usePortfolioPositions(
           vaultId: vault.id,
           name: vault.name,
           symbol: vault.symbol,
-          category: vault.category === 'glam' ? 'SuperVault' : 'xStocks',
+          category: vault.category,
           balance: tokenAccount.uiAmount,
           performance24h: vault.performance24h,
           gradientColors: vault.gradientColors || ['#4ECDC4', '#44A08D'],
@@ -72,7 +72,7 @@ export function usePortfolioPositions(
           vaultId: '', // No vault ID for non-vault tokens
           name: tokenAccount.mint,
           symbol: tokenAccount.mint.slice(0, 4) + '...' + tokenAccount.mint.slice(-4),
-          category: 'xStocks', // Default category
+          category: 'iVault', // Default category
           balance: tokenAccount.uiAmount,
           performance24h: 0,
           gradientColors: colors,

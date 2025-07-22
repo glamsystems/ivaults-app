@@ -73,7 +73,7 @@ export class MockVaultService {
       id: data.id || '',
       name: data.name || '',
       symbol: data.symbol || '',
-      category: (data.category || 'SuperVault') as VaultCategory,
+      category: (data.category || 'iVault') as VaultCategory,
       nav: parseFloat(data.nav) || 100,
       performance24h: parsePerformance(data.performance24h),
       glam_state: data.glam_state || data.mintPubkey || '',
@@ -138,6 +138,50 @@ export class MockVaultService {
     return realVaults.filter(vault => 
       filterVaultStates.includes(vault.glam_state || '')
     );
+  }
+
+  // Get all mock vaults with priority ordering applied
+  getAllMockVaultsWithOrder(): Vault[] {
+    const allVaults = [...this.parsedVaults];
+    
+    // Define the vaults that should appear first (in order)
+    const priorityVaultNames = [
+      'Drift JLP SuperVault',
+      'xStocks Magnificent Seven',
+      'Kaito Mindshare 10',
+      'Kamino SOL SuperVault',
+      'xStocks Energy Index',
+      'xStocks Financial Index'
+    ];
+    
+    // Separate vaults into priority and remaining
+    const priorityVaults: Vault[] = [];
+    const remainingVaults: Vault[] = [];
+    
+    // First, extract priority vaults in the specified order
+    priorityVaultNames.forEach(name => {
+      const vault = allVaults.find(v => v.name === name);
+      if (vault) {
+        priorityVaults.push(vault);
+      }
+    });
+    
+    // Then, collect remaining vaults
+    allVaults.forEach(vault => {
+      if (!priorityVaultNames.includes(vault.name)) {
+        remainingVaults.push(vault);
+      }
+    });
+    
+    // Shuffle the remaining vaults
+    const shuffledRemaining = [...remainingVaults];
+    for (let i = shuffledRemaining.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffledRemaining[i], shuffledRemaining[j]] = [shuffledRemaining[j], shuffledRemaining[i]];
+    }
+    
+    // Combine priority vaults with shuffled remaining vaults
+    return [...priorityVaults, ...shuffledRemaining];
   }
 
   // Combine mock and filtered real vaults

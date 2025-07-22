@@ -14,6 +14,7 @@ import { usePolling } from '../hooks/usePolling';
 import { usePortfolioPositions } from '../hooks/usePortfolioPositions';
 import { SparkleImageCache } from '../services/sparkleImageCache';
 import { MockVaultService } from '../services/mockVaultService';
+import { VaultFilterService } from '../services/vaultFilterService';
 
 export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { setVaults, setIsLoading, setDroppedVaults, vaults } = useVaultStore();
@@ -57,21 +58,28 @@ export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ child
         
         // Check if demo mode is enabled
         let finalVaults = realVaults;
+        // Apply production vault filtering
+        finalVaults = VaultFilterService.processVaults(realVaults);
+        console.log('[DataInitializer] Production filter applied:', finalVaults.length, 'vaults from', realVaults.length, 'total');
+        
+        // Apply demo mode if enabled
         if (DEMO === 'true') {
           console.log('[DataInitializer] Demo mode enabled, applying mock vault configuration');
           
-          // Parse environment variables for demo configuration
-          const mockVaultStates = DEMO_MOCK_VAULT_STATES ? DEMO_MOCK_VAULT_STATES.split(',').map(s => s.trim()) : [];
-          const filterVaultStates = DEMO_FILTER_VAULT_STATES ? DEMO_FILTER_VAULT_STATES.split(',').map(s => s.trim()) : [];
-          
-          // Create mock vault service and get demo vaults
+          // Create mock vault service and get all mock vaults with ordering
           const mockVaultService = new MockVaultService();
-          finalVaults = mockVaultService.getDemoVaults(realVaults, {
-            mockVaultStates,
-            filterVaultStates
-          });
+          const mockVaults = mockVaultService.getAllMockVaultsWithOrder();
           
-          console.log('[DataInitializer] Demo vaults configured:', finalVaults.length, 'vaults');
+          // Split mock vaults into priority (first 6) and remaining
+          const priorityMockVaults = mockVaults.slice(0, 6);
+          const remainingMockVaults = mockVaults.slice(6);
+          
+          // Combine in desired order: priority mocks, real vaults, remaining mocks
+          finalVaults = [...priorityMockVaults, ...finalVaults, ...remainingMockVaults];
+          console.log('[DataInitializer] Demo vaults configured:', finalVaults.length, 'vaults (', 
+            priorityMockVaults.length, 'priority mocks +', 
+            finalVaults.length - mockVaults.length, 'real +', 
+            remainingMockVaults.length, 'remaining mocks)');
         }
         
         // Set the vaults and dropped vaults

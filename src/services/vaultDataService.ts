@@ -52,10 +52,9 @@ function mapGlamVaultToVault(glamVault: GlamVault, index: number): Vault & { led
   const random3 = seededRandom(seed + '3');
   const random4 = seededRandom(seed + '4');
   
-  // Determine category based on product type or random
-  const category: VaultCategory = glamVault.productType === 'Fund' 
-    ? (random > 0.5 ? 'SuperVault' : 'xStocks')
-    : 'SuperVault';
+  // Category will be assigned by VaultFilterService based on glam_state
+  // Using a temporary default that will be overridden
+  const category: VaultCategory = 'iVault';
   
   // Generate consistent mock data
   const nav = 100 + random * 5000; // 100 to 5100
@@ -169,7 +168,7 @@ function createErrorVault(): Vault {
     id: 'error',
     name: 'Something went wrong...',
     symbol: 'OOPS',
-    category: 'SuperVault', // Required field, but won't be displayed
+    category: 'iVault', // Required field, but won't be displayed
     nav: 0,
     performance24h: 0,
     gradientColors: ['#FF4757', '#FF6348'], // Red to orange gradient

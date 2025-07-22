@@ -8,7 +8,7 @@ export const Spacing = {
   },
   
   card: {
-    vertical: 30,        // Card vertical padding
+    vertical: 23,        // Card vertical padding
     horizontal: 0,       // Card horizontal padding (full width)
   },
   

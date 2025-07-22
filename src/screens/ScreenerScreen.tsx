@@ -5,6 +5,7 @@ import { useTheme } from '../theme';
 import { ScreenLayout } from '../components/layout';
 import { AnimatedVaultCard, SkeletonVaultCard, FilterTabs } from '../components/screener';
 import { useVaultStore } from '../store/vaultStore';
+import { VaultFilterService } from '../services/vaultFilterService';
 import { 
   DEMO, 
   DEMO_SCROLL_DURATION, 
@@ -51,7 +52,11 @@ export const ScreenerScreen: React.FC = () => {
     
     // Filter by category
     if (selectedFilter !== 'All') {
-      filtered = filtered.filter(vault => vault.category === selectedFilter);
+      // Convert plural filter name to singular for comparison
+      const singularCategory = VaultFilterService.getSingularFromPlural(selectedFilter);
+      if (singularCategory) {
+        filtered = filtered.filter(vault => vault.category === singularCategory);
+      }
     }
     
     // Filter by search query

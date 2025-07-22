@@ -5,6 +5,7 @@ import { Text, SparkleImage } from '../common';
 import { Position } from '../../store/portfolioStore';
 import { FontSizes, Spacing } from '../../constants';
 import { useTheme } from '../../theme';
+import { VaultFilterService } from '../../services/vaultFilterService';
 
 interface PositionCardProps {
   position: Position;
@@ -33,7 +34,7 @@ export const PositionCard = React.memo<PositionCardProps>(({ position, onPress }
 
   const leftBottomContent = (
     <Text variant="regular" style={[styles.category, { color: colors.text.secondary }]}>
-      {position.category === 'SuperVault' ? 'SuperVault' : 'xStocks'}
+      {position.category}
     </Text>
   );
 

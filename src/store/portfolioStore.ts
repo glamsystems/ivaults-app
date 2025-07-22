@@ -1,11 +1,12 @@
 import { create } from 'zustand';
+import { VaultCategory } from '../services/vaultFilterService';
 
 export interface Position {
   id: string;
   vaultId: string;
   name: string;
   symbol: string;
-  category: 'SuperVault' | 'xStocks';
+  category: VaultCategory;
   balance: number;
   performance24h: number;
   gradientColors: string[];
