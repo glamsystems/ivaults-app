@@ -49,7 +49,7 @@ export const getPublicKeyFromAddress = (address: Base64EncodedAddress): PublicKe
 export const APP_IDENTITY = {
   name: 'iVaults by GLAM *.+',
   uri: 'https://glam.systems/ivaults',
-  icon: 'https://raw.githubusercontent.com/glamsystems/brand_assets/refs/heads/main/app/splash-icon-2.png',
+  icon: 'icon',
 };
 
 type AuthorizationProviderContext = {
