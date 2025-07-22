@@ -13,6 +13,7 @@ import { useFonts } from './src/hooks/useFonts';
 import { DataInitializer } from './src/components/DataInitializer';
 import { ConnectionProvider, NETWORK_ENDPOINTS } from './src/solana/providers/ConnectionProvider';
 import { AuthorizationProvider } from './src/solana/providers/AuthorizationProvider';
+import { SessionRestoreHandler } from './src/components/SessionRestoreHandler';
 
 // Android font rendering fix
 if (Platform.OS === 'android' && RNText.defaultProps == null) {
@@ -48,12 +49,14 @@ export default function App() {
               config={{ commitment: 'confirmed' }}
             >
               <AuthorizationProvider network="mainnet">
-                <DataInitializer>
-                  <BottomSheetModalProvider>
-                    <StatusBar style="auto" />
-                    <RootNavigator />
-                  </BottomSheetModalProvider>
-                </DataInitializer>
+                <SessionRestoreHandler>
+                  <DataInitializer>
+                    <BottomSheetModalProvider>
+                      <StatusBar style="auto" />
+                      <RootNavigator />
+                    </BottomSheetModalProvider>
+                  </DataInitializer>
+                </SessionRestoreHandler>
               </AuthorizationProvider>
             </ConnectionProvider>
           </ThemeProvider>

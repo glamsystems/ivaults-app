@@ -54,6 +54,8 @@ export interface Vault {
     totalPending: number; // Total value pending redemption
     activeRequests: number; // Number of active redemption requests
   };
+  // Demo mode flag
+  isMock?: boolean; // True if this is a mock vault for demo mode
 }
 
 interface VaultStore {

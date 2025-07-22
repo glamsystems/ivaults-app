@@ -20,6 +20,7 @@ import { toUint8Array } from 'js-base64';
 import { RPC_ENDPOINT, NetworkType } from './ConnectionProvider';
 import { useWalletStore } from '../../store/walletStore';
 import { usePortfolioStore } from '../../store/portfolioStore';
+import { SessionStorage } from '../../services/sessionStorage';
 
 export type Account = Readonly<{
   address: Base64EncodedAddress;
@@ -40,7 +41,7 @@ const getAccountFromAuthorizedAccount = (
   publicKey: getPublicKeyFromAddress(account.address),
 });
 
-const getPublicKeyFromAddress = (address: Base64EncodedAddress): PublicKey => {
+export const getPublicKeyFromAddress = (address: Base64EncodedAddress): PublicKey => {
   const publicKeyByteArray = toUint8Array(address);
   return new PublicKey(publicKeyByteArray);
 };
@@ -59,6 +60,7 @@ type AuthorizationProviderContext = {
   deauthorizeSession: (wallet: DeauthorizeAPI) => Promise<void>;
   disconnectLocally: () => void;
   onChangeAccount: (nextSelectedAccount: Account) => void;
+  restoreAuthorization: (authToken: AuthToken, accounts: Account[], selectedAccount: Account) => void;
 };
 
 const AuthorizationContext = createContext<AuthorizationProviderContext>({
@@ -75,6 +77,9 @@ const AuthorizationContext = createContext<AuthorizationProviderContext>({
     throw new Error('AuthorizationProvider not initialized');
   },
   onChangeAccount: (_nextSelectedAccount: Account) => {
+    throw new Error('AuthorizationProvider not initialized');
+  },
+  restoreAuthorization: (_authToken: AuthToken, _accounts: Account[], _selectedAccount: Account) => {
     throw new Error('AuthorizationProvider not initialized');
   },
 });
@@ -110,6 +115,17 @@ export function AuthorizationProvider({ children, network = 'devnet' }: { childr
       // Update wallet store
       setAccount(nextAuthorization.selectedAccount);
       setNetwork(network);
+      
+      // Save session for persistence
+      SessionStorage.saveSession(
+        nextAuthorization.authToken,
+        nextAuthorization.accounts,
+        nextAuthorization.selectedAccount,
+        network as 'mainnet' | 'devnet'
+      ).catch(error => {
+        console.error('[AuthorizationProvider] Failed to save session:', error);
+      });
+      
       return nextAuthorization;
     },
     [authorization, setAccount, setNetwork, network],
@@ -153,6 +169,8 @@ export function AuthorizationProvider({ children, network = 'devnet' }: { childr
         // Clear portfolio data
         setPositions([]);
         setTotalValue(0);
+        // Clear stored session
+        await SessionStorage.clearSession();
       }
     },
     [authorization, clearWallet, setPositions, setTotalValue],
@@ -165,6 +183,10 @@ export function AuthorizationProvider({ children, network = 'devnet' }: { childr
     // Clear portfolio data
     setPositions([]);
     setTotalValue(0);
+    // Clear stored session
+    SessionStorage.clearSession().catch(error => {
+      console.error('[AuthorizationProvider] Failed to clear session:', error);
+    });
   }, [clearWallet, setPositions, setTotalValue]);
 
   const onChangeAccount = useCallback(
@@ -188,6 +210,26 @@ export function AuthorizationProvider({ children, network = 'devnet' }: { childr
     [authorization],
   );
 
+  // Restore authorization from stored session without calling wallet
+  const restoreAuthorization = useCallback(
+    (authToken: AuthToken, accounts: Account[], selectedAccount: Account) => {
+      console.log('[AuthorizationProvider] Restoring authorization from storage');
+      const restoredAuthorization: Authorization = {
+        accounts,
+        authToken,
+        selectedAccount,
+      };
+      setAuthorization(restoredAuthorization);
+      
+      // Update wallet store
+      setAccount(selectedAccount);
+      setNetwork(network as 'mainnet' | 'devnet');
+      
+      console.log('[AuthorizationProvider] Authorization restored successfully');
+    },
+    [setAccount, setNetwork, network],
+  );
+
   const value = useMemo(
     () => ({
       accounts: authorization?.accounts ?? [],
@@ -197,8 +239,9 @@ export function AuthorizationProvider({ children, network = 'devnet' }: { childr
       deauthorizeSession,
       disconnectLocally,
       onChangeAccount,
+      restoreAuthorization,
     }),
-    [authorization, authorizeSession, deauthorizeSession, disconnectLocally, onChangeAccount],
+    [authorization, authorizeSession, deauthorizeSession, disconnectLocally, onChangeAccount, restoreAuthorization],
   );
 
   return (

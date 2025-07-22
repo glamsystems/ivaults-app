@@ -324,16 +324,16 @@ export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ child
       // Collect unique token mints from vaults that we actually own
       const tokenMintsToUpdate = new Set<string>();
       
-      // Add base assets if we own them
+      // Add base assets if we own them (skip mock vaults)
       vaults.forEach(vault => {
-        if (vault.baseAsset && ownedMints.includes(vault.baseAsset)) {
+        if (vault.baseAsset && ownedMints.includes(vault.baseAsset) && !vault.isMock) {
           tokenMintsToUpdate.add(vault.baseAsset);
         }
       });
       
-      // Add vault tokens if we own them
+      // Add vault tokens if we own them (skip mock vaults)
       vaults.forEach(vault => {
-        if (vault.mintPubkey && ownedMints.includes(vault.mintPubkey)) {
+        if (vault.mintPubkey && ownedMints.includes(vault.mintPubkey) && !vault.isMock) {
           tokenMintsToUpdate.add(vault.mintPubkey);
         }
       });
@@ -341,7 +341,8 @@ export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ child
       // Also add all vault tokens to check if we have any balance
       // This ensures withdraw buttons are properly enabled
       vaults.forEach(vault => {
-        if (vault.mintPubkey) {
+        // Skip mock vaults in demo mode to prevent RPC errors
+        if (vault.mintPubkey && !vault.isMock) {
           tokenMintsToUpdate.add(vault.mintPubkey);
         }
       });

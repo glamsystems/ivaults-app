@@ -101,6 +101,7 @@ export class MockVaultService {
       redemptionSettlementPeriod: parseFloat(data.redemptionSettlementPeriod) * 86400 || 0, // Convert days to seconds
       minSubscription: data.minSubscription || '0',
       minRedemption: data.minRedemption || '0',
+      isMock: true, // Mark as mock vault
     };
   }
 
