@@ -5,7 +5,7 @@ import { useActivityStore } from '../store/activityStore';
 import { usePortfolioStore, Position } from '../store/portfolioStore';
 import { VaultDataService } from '../services/vaultDataService';
 import { NetworkType } from '../solana/providers/ConnectionProvider';
-import { DEBUG, DEBUGLOAD, NETWORK, DEVNET_RPC, SOLANA_RPC } from '@env';
+import { DEBUG, DEBUGLOAD, NETWORK, DEVNET_RPC, SOLANA_RPC, DEMO, DEMO_MOCK_VAULT_STATES, DEMO_FILTER_VAULT_STATES } from '@env';
 import { useWalletStore } from '../store/walletStore';
 import { useConnection } from '../solana/providers/ConnectionProvider';
 import { useRedemptionStore } from '../store/redemptionStore';
@@ -13,6 +13,7 @@ import { RedemptionFetcherService } from '../services/redemptionFetcherService';
 import { usePolling } from '../hooks/usePolling';
 import { usePortfolioPositions } from '../hooks/usePortfolioPositions';
 import { SparkleImageCache } from '../services/sparkleImageCache';
+import { MockVaultService } from '../services/mockVaultService';
 
 export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { setVaults, setIsLoading, setDroppedVaults, vaults } = useVaultStore();
@@ -52,15 +53,34 @@ export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ child
         
         // Fetch real vault data
         const vaultService = new VaultDataService(connection, network);
-        const { vaults, droppedVaults } = await vaultService.fetchVaults();
+        const { vaults: realVaults, droppedVaults } = await vaultService.fetchVaults();
+        
+        // Check if demo mode is enabled
+        let finalVaults = realVaults;
+        if (DEMO === 'true') {
+          console.log('[DataInitializer] Demo mode enabled, applying mock vault configuration');
+          
+          // Parse environment variables for demo configuration
+          const mockVaultStates = DEMO_MOCK_VAULT_STATES ? DEMO_MOCK_VAULT_STATES.split(',').map(s => s.trim()) : [];
+          const filterVaultStates = DEMO_FILTER_VAULT_STATES ? DEMO_FILTER_VAULT_STATES.split(',').map(s => s.trim()) : [];
+          
+          // Create mock vault service and get demo vaults
+          const mockVaultService = new MockVaultService();
+          finalVaults = mockVaultService.getDemoVaults(realVaults, {
+            mockVaultStates,
+            filterVaultStates
+          });
+          
+          console.log('[DataInitializer] Demo vaults configured:', finalVaults.length, 'vaults');
+        }
         
         // Set the vaults and dropped vaults
-        setVaults(vaults);
+        setVaults(finalVaults);
         setDroppedVaults(droppedVaults);
-        console.log('[DataInitializer] Vaults loaded:', vaults.length);
+        console.log('[DataInitializer] Vaults loaded:', finalVaults.length);
         
         // Preload sparkle images for all vaults
-        const mintPubkeys = vaults
+        const mintPubkeys = finalVaults
           .map(v => v.mintPubkey)
           .filter(key => key && typeof key === 'string');
         
@@ -79,7 +99,7 @@ export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ child
         const allRedemptionRequests = [];
         
         // Check each vault for ledger entries
-        for (const vault of vaults) {
+        for (const vault of finalVaults) {
           const ledgerEntries = (vault as any).ledgerEntries;
           
           if (ledgerEntries && ledgerEntries.length > 0) {

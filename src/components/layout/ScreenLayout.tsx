@@ -20,6 +20,7 @@ interface ScreenLayoutProps {
   showTopGradient?: boolean;
   bottomGradientHeight?: number;
   noWrapper?: boolean;
+  listRef?: React.RefObject<FlatList>;
 }
 
 export const ScreenLayout: React.FC<ScreenLayoutProps> = ({
@@ -32,6 +33,7 @@ export const ScreenLayout: React.FC<ScreenLayoutProps> = ({
   showTopGradient = false,
   bottomGradientHeight,
   noWrapper = false,
+  listRef,
 }) => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const searchWidth = useRef(new Animated.Value(40)).current;
@@ -106,6 +108,7 @@ export const ScreenLayout: React.FC<ScreenLayoutProps> = ({
         
         <View style={styles.listContainer}>
           <FlatList
+            ref={listRef}
             data={data}
             keyExtractor={keyExtractor}
             renderItem={renderItem}

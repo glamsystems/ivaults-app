@@ -12,7 +12,7 @@ import { useTheme } from '../../theme';
 
 type FilterOption = 'All' | VaultCategory;
 
-const FILTER_OPTIONS: FilterOption[] = ['All', 'SuperVault', 'xStocks'];
+const FILTER_OPTIONS: FilterOption[] = ['All', 'SuperVault', 'xStocks', 'Mindshare'];
 
 interface FilterTabsProps {
   scrollEnabled?: boolean;

@@ -5,7 +5,7 @@ import { NetworkType } from '../solana/providers/ConnectionProvider';
 import { NETWORK, DEVNET_RPC, SOLANA_RPC } from '@env';
 import { QueuedConnection } from '../services/rpcQueue';
 
-export type VaultCategory = 'SuperVault' | 'xStocks';
+export type VaultCategory = 'SuperVault' | 'xStocks' | 'Mindshare';
 
 export interface Vault {
   id: string;
