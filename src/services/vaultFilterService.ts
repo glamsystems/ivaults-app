@@ -31,16 +31,7 @@ const VAULT_CATEGORIES = [
     pubkeys: [
       // Add Mindshare state pubkeys here
     ],
-  },
-  {
-      singular: 'Core',
-      plural: 'Core',
-      pubkeys: [
-        // GLAM USD and other SuperVaults
-        'A7pkWMJTxQhRvqMqRHumQmAE3dTicioNcwdpsfQVdTKa', // GLAM USD
-        // Add more SuperVault state pubkeys here
-      ],
-    }
+  }
   // Add new categories here as needed
 ] as const;
 

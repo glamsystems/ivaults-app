@@ -58,28 +58,43 @@ export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ child
         
         // Check if demo mode is enabled
         let finalVaults = realVaults;
-        // Apply production vault filtering
-        finalVaults = VaultFilterService.processVaults(realVaults);
-        console.log('[DataInitializer] Production filter applied:', finalVaults.length, 'vaults from', realVaults.length, 'total');
         
-        // Apply demo mode if enabled
-        if (DEMO === 'true') {
-          console.log('[DataInitializer] Demo mode enabled, applying mock vault configuration');
+        // Check if we should show only mock vaults (demo mode with no configured pubkeys)
+        const isDemoMode = DEMO === 'true';
+        const hasConfiguredVaults = VaultFilterService.isFilteringActive();
+        
+        if (isDemoMode && !hasConfiguredVaults) {
+          // Demo mode with no configured vaults - show only mock vaults
+          console.log('[DataInitializer] Demo mode with no configured vaults - showing only mock vaults');
           
-          // Create mock vault service and get all mock vaults with ordering
           const mockVaultService = new MockVaultService();
-          const mockVaults = mockVaultService.getAllMockVaultsWithOrder();
+          finalVaults = mockVaultService.getAllMockVaultsWithOrder();
+          console.log('[DataInitializer] Loaded', finalVaults.length, 'mock vaults');
+        } else {
+          // Normal mode or demo mode with configured vaults
+          // Apply production vault filtering
+          finalVaults = VaultFilterService.processVaults(realVaults);
+          console.log('[DataInitializer] Production filter applied:', finalVaults.length, 'vaults from', realVaults.length, 'total');
           
-          // Split mock vaults into priority (first 6) and remaining
-          const priorityMockVaults = mockVaults.slice(0, 6);
-          const remainingMockVaults = mockVaults.slice(6);
-          
-          // Combine in desired order: priority mocks, real vaults, remaining mocks
-          finalVaults = [...priorityMockVaults, ...finalVaults, ...remainingMockVaults];
-          console.log('[DataInitializer] Demo vaults configured:', finalVaults.length, 'vaults (', 
-            priorityMockVaults.length, 'priority mocks +', 
-            finalVaults.length - mockVaults.length, 'real +', 
-            remainingMockVaults.length, 'remaining mocks)');
+          // Apply demo mode if enabled (adds mock vaults to real vaults)
+          if (isDemoMode) {
+            console.log('[DataInitializer] Demo mode enabled, adding mock vaults to real vaults');
+            
+            // Create mock vault service and get all mock vaults with ordering
+            const mockVaultService = new MockVaultService();
+            const mockVaults = mockVaultService.getAllMockVaultsWithOrder();
+            
+            // Split mock vaults into priority (first 6) and remaining
+            const priorityMockVaults = mockVaults.slice(0, 6);
+            const remainingMockVaults = mockVaults.slice(6);
+            
+            // Combine in desired order: priority mocks, real vaults, remaining mocks
+            finalVaults = [...priorityMockVaults, ...finalVaults, ...remainingMockVaults];
+            console.log('[DataInitializer] Demo vaults configured:', finalVaults.length, 'vaults (', 
+              priorityMockVaults.length, 'priority mocks +', 
+              finalVaults.length - mockVaults.length, 'real +', 
+              remainingMockVaults.length, 'remaining mocks)');
+          }
         }
         
         // Set the vaults and dropped vaults
