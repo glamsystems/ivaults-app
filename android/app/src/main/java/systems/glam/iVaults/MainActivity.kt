@@ -1,4 +1,4 @@
-package com.fabioglam.iVaults
+package systems.glam.iVaults
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build

@@ -57,7 +57,7 @@
 **If you get "INSTALL_FAILED_UPDATE_INCOMPATIBLE":**
 ```bash
 # Uninstall the existing app first
-adb uninstall com.fabioglam.iVaults
+adb uninstall systems.glam.iVaults
 # Then reinstall
 adb install android/app/build/outputs/apk/release/app-release.apk
 ```
@@ -70,41 +70,6 @@ adb devices
 **To see installation logs:**
 ```bash
 adb logcat | grep -i install
-```
-
-## iOS Production Build
-
-### Prerequisites
-- Xcode installed
-- Apple Developer account (for device installation)
-- CocoaPods dependencies installed
-
-### Build Steps
-
-1. **Install dependencies**:
-   ```bash
-   cd ios
-   pod install
-   cd ..
-   ```
-
-2. **Open in Xcode**:
-   ```bash
-   open ios/iVaults.xcworkspace
-   ```
-
-3. **Build for device**:
-   - Select your device or simulator in Xcode
-   - Choose "Product" → "Archive" (for device) or "Build" (for simulator)
-   - Follow the prompts to export and install
-
-### Alternative: Command Line Build
-```bash
-# For simulator
-npx react-native run-ios --configuration Release
-
-# For device (requires proper signing)
-npx react-native run-ios --configuration Release --device "Your Device Name"
 ```
 
 ## Environment Variables

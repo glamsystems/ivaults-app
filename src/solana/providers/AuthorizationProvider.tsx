@@ -95,7 +95,6 @@ export function AuthorizationProvider({ children, network = 'devnet' }: { childr
     ): Promise<Authorization> => {
       console.log('[AuthorizationProvider] Handling authorization result...');
       console.log('[AuthorizationProvider] Accounts received:', authorizationResult.accounts);
-      console.log('[AuthorizationProvider] Auth token:', authorizationResult.auth_token);
       
       const accounts = authorizationResult.accounts.map(
         getAccountFromAuthorizedAccount,

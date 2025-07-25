@@ -1,12 +1,12 @@
 # iVaults by GLAM
 
-A React Native mobile app for discovering and managing investment vaults on Solana through the GLAM protocol.
+A React Native Android app for discovering and managing investment vaults on Solana through the GLAM protocol.
 
 ## Features
 
 - **Vault Discovery**: Browse and search investment vaults with real-time data from Solana
 - **Portfolio Management**: Track positions and manage redemption requests
-- **Wallet Integration**: Connect via Solana Mobile Wallet Adapter for secure transactions
+- **Mobile Wallet Integration**: Connect via Solana Mobile Wallet Adapter (MWA) for secure on-device transactions
 - **Transaction Support**: Deposit, withdraw, and claim redemptions directly from the app
 - **Activity Tracking**: Monitor transaction history and vault performance
 
@@ -15,6 +15,7 @@ A React Native mobile app for discovering and managing investment vaults on Sola
 - **React Native** + **Expo** (SDK 53)
 - **TypeScript** for type safety
 - **Solana Web3.js** + **@glamsystems/glam-sdk**
+- **Solana Mobile Wallet Adapter** for Android wallet integration
 - **Zustand** for state management
 - **TanStack Query** for data fetching
 - **React Native Reanimated** for animations
@@ -23,15 +24,15 @@ A React Native mobile app for discovering and managing investment vaults on Sola
 
 - Node.js v18+
 - Expo CLI
-- Android Emulator
-- Solana wallet app (Phantom, Solflare, etc.)
+- Android Studio with Android Emulator
+- Android device or emulator with a Solana wallet app (Phantom, Solflare, Backpack, etc.)
 
 ## Setup
 
 1. Clone and install:
    ```bash
-   git clone https://github.com/glamsystems/ivaults-app.git
-   cd ivaults-app
+   git clone https://github.com/glamsystems/glam.git
+   cd glam
    npm install
    ```
 
@@ -51,8 +52,7 @@ A React Native mobile app for discovering and managing investment vaults on Sola
 
 ```bash
 npm start          # Start Expo dev server
-npm run android    # Android emulator
-npm run web        # Web browser
+npm run android    # Run on Android emulator/device
 ```
 
 ## Project Structure
@@ -74,6 +74,15 @@ src/
 - **portfolioStore**: User positions and redemptions
 - **activityStore**: Transaction history
 
+## Mobile Wallet Adapter (MWA)
+
+iVaults uses the Solana Mobile Wallet Adapter protocol for secure wallet interactions on Android devices. This provides:
+
+- **Secure Transaction Signing**: All transactions are signed within your wallet app
+- **Session Persistence**: Wallet authorization persists between app launches
+- **Deep Linking**: Automatic return to iVaults after wallet interactions
+- **Multi-Wallet Support**: Works with any MWA-compatible wallet (Phantom, Solflare, Backpack, etc.)
+
 ## Notes
 
 - Mainnet configuration by default
@@ -81,6 +90,15 @@ src/
 - Wallet sessions persist between app launches
 - Supports deep linking for wallet returns
 
+## TODO
+
+- [ ] **Web Support**: Add browser extension wallet support for web platform
+- [ ] **iOS Support**: Implement iOS wallet integration
+- [ ] **Cross-Platform Wallet Adapter**: Unified wallet connection across all platforms
+- [ ] **WalletConnect Integration**: Alternative wallet connection method
+
 ## License
 
-Private repository - All rights reserved
+This project is licensed under the Business Source License 1.1 - see the [LICENSE](LICENSE) file for details.
+
+The license converts to MIT License on 2029-07-25.

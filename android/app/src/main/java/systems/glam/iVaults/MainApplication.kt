@@ -1,4 +1,4 @@
-package com.fabioglam.iVaults
+package systems.glam.iVaults
 
 import android.app.Application
 import android.content.res.Configuration

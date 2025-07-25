@@ -122,20 +122,20 @@ export const SettingsScreen: React.FC = () => {
       <View style={styles.container}>
         {/* Top Section - Links */}
         <View style={styles.topSection}>
-          <TouchableOpacity onPress={() => handleLinkPress('https://example.com/terms')}>
+          <TouchableOpacity onPress={() => handleLinkPress('https://www.glam.systems/terms-and-conditions')}>
             <Text variant="regular" style={[styles.link, { color: colors.text.secondary }]}>
               Terms & Conditions
             </Text>
           </TouchableOpacity>
           
-          <TouchableOpacity onPress={() => handleLinkPress('https://example.com/privacy')}>
+          <TouchableOpacity onPress={() => handleLinkPress('https://www.glam.systems/privacy-policy')}>
             <Text variant="regular" style={[styles.link, { color: colors.text.secondary }]}>
               Privacy Policy
             </Text>
           </TouchableOpacity>
           
           <Text mono variant="regular" style={[styles.version, { color: colors.text.tertiary }]}>
-            v0.0.16
+            v0.0.17
           </Text>
         </View>
 
@@ -144,7 +144,7 @@ export const SettingsScreen: React.FC = () => {
           <IconButton
             icon="help-circle-outline"
             label="Contact Support"
-            onPress={() => handleLinkPress('mailto:support@ivaults.com')}
+            onPress={() => handleLinkPress('mailto:help@glam.systems')}
           />
           
           <IconButton
