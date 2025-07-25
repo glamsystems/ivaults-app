@@ -59,10 +59,16 @@ npm run android    # Run on Android emulator/device
 ```
 src/
 ├── components/     # UI components
+├── constants/      # App constants (fonts, spacing, tokens)
+├── contexts/       # React contexts
+├── data/           # Static data files
+├── hooks/          # Custom React hooks
 ├── screens/        # App screens
-├── store/          # Zustand stores
 ├── services/       # GLAM/Solana services
 ├── solana/         # Wallet & RPC providers
+├── store/          # Zustand stores
+├── theme/          # Theme system (colors, fonts, context)
+├── types/          # TypeScript type definitions
 └── utils/          # Helpers & formatters
 ```
 
