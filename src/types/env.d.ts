@@ -1,11 +1,6 @@
 declare module '@env' {
   export const DEBUG: string;
   export const DEBUGLOAD: string;
-  export const DEMO: string;
-  export const DEMO_SCROLL_DURATION: string;
-  export const DEMO_SCROLL_DELAY: string;
-  export const DEMO_PAUSE_AT_BOTTOM: string;
-  export const DEMO_SCROLL_EASING: string;
   export const NETWORK: string;
   export const DEVNET_RPC: string;
   export const SOLANA_RPC: string;
@@ -16,6 +11,4 @@ declare module '@env' {
   export const GLAM_PROGRAM_DEVNET: string;
   export const GLAM_CONFIG: string;
   export const GLAM_POLICIES: string;
-  export const DEMO_MOCK_VAULT_STATES: string;
-  export const DEMO_FILTER_VAULT_STATES: string;
 }

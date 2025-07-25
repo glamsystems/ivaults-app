@@ -36,7 +36,7 @@ const VAULT_CATEGORIES = [
     singular: 'Core',
     plural: 'Core',
     pubkeys: [
-        'A7pkWMJTxQhRvqMqRHumQmAE3dTicioNcwdpsfQVdTKa'
+        //'A7pkWMJTxQhRvqMqRHumQmAE3dTicioNcwdpsfQVdTKa'
     ]
   }
 
@@ -96,6 +96,8 @@ export class VaultFilterService {
    * Check if filtering is active (any categories configured)
    */
   static isFilteringActive(): boolean {
+    // Filtering is active if ANY category has configured pubkeys
+    // If all categories are empty, filtering is disabled and all vaults are shown
     return VAULT_CATEGORIES.some(category => category.pubkeys.length > 0);
   }
 

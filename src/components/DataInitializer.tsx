@@ -5,7 +5,7 @@ import { useActivityStore } from '../store/activityStore';
 import { usePortfolioStore, Position } from '../store/portfolioStore';
 import { VaultDataService } from '../services/vaultDataService';
 import { NetworkType } from '../solana/providers/ConnectionProvider';
-import { DEBUG, DEBUGLOAD, NETWORK, DEVNET_RPC, SOLANA_RPC, DEMO, DEMO_MOCK_VAULT_STATES, DEMO_FILTER_VAULT_STATES } from '@env';
+import { DEBUG, DEBUGLOAD, NETWORK, DEVNET_RPC, SOLANA_RPC } from '@env';
 import { useWalletStore } from '../store/walletStore';
 import { useConnection } from '../solana/providers/ConnectionProvider';
 import { useRedemptionStore } from '../store/redemptionStore';
@@ -13,7 +13,6 @@ import { RedemptionFetcherService } from '../services/redemptionFetcherService';
 import { usePolling } from '../hooks/usePolling';
 import { usePortfolioPositions } from '../hooks/usePortfolioPositions';
 import { SparkleImageCache } from '../services/sparkleImageCache';
-import { MockVaultService } from '../services/mockVaultService';
 import { VaultFilterService } from '../services/vaultFilterService';
 
 export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -56,46 +55,9 @@ export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ child
         const vaultService = new VaultDataService(connection, network);
         const { vaults: realVaults, droppedVaults } = await vaultService.fetchVaults();
         
-        // Check if demo mode is enabled
-        let finalVaults = realVaults;
-        
-        // Check if we should show only mock vaults (demo mode with no configured pubkeys)
-        const isDemoMode = DEMO === 'true';
-        const hasConfiguredVaults = VaultFilterService.isFilteringActive();
-        
-        if (isDemoMode && !hasConfiguredVaults) {
-          // Demo mode with no configured vaults - show only mock vaults
-          console.log('[DataInitializer] Demo mode with no configured vaults - showing only mock vaults');
-          
-          const mockVaultService = new MockVaultService();
-          finalVaults = mockVaultService.getAllMockVaultsWithOrder();
-          console.log('[DataInitializer] Loaded', finalVaults.length, 'mock vaults');
-        } else {
-          // Normal mode or demo mode with configured vaults
-          // Apply production vault filtering
-          finalVaults = VaultFilterService.processVaults(realVaults);
-          console.log('[DataInitializer] Production filter applied:', finalVaults.length, 'vaults from', realVaults.length, 'total');
-          
-          // Apply demo mode if enabled (adds mock vaults to real vaults)
-          if (isDemoMode) {
-            console.log('[DataInitializer] Demo mode enabled, adding mock vaults to real vaults');
-            
-            // Create mock vault service and get all mock vaults with ordering
-            const mockVaultService = new MockVaultService();
-            const mockVaults = mockVaultService.getAllMockVaultsWithOrder();
-            
-            // Split mock vaults into priority (first 6) and remaining
-            const priorityMockVaults = mockVaults.slice(0, 6);
-            const remainingMockVaults = mockVaults.slice(6);
-            
-            // Combine in desired order: priority mocks, real vaults, remaining mocks
-            finalVaults = [...priorityMockVaults, ...finalVaults, ...remainingMockVaults];
-            console.log('[DataInitializer] Demo vaults configured:', finalVaults.length, 'vaults (', 
-              priorityMockVaults.length, 'priority mocks +', 
-              finalVaults.length - mockVaults.length, 'real +', 
-              remainingMockVaults.length, 'remaining mocks)');
-          }
-        }
+        // Apply production vault filtering
+        const finalVaults = VaultFilterService.processVaults(realVaults);
+        console.log('[DataInitializer] Production filter applied:', finalVaults.length, 'vaults from', realVaults.length, 'total');
         
         // Set the vaults and dropped vaults
         setVaults(finalVaults);
@@ -347,16 +309,16 @@ export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ child
       // Collect unique token mints from vaults that we actually own
       const tokenMintsToUpdate = new Set<string>();
       
-      // Add base assets if we own them (skip mock vaults)
+      // Add base assets if we own them
       vaults.forEach(vault => {
-        if (vault.baseAsset && ownedMints.includes(vault.baseAsset) && !vault.isMock) {
+        if (vault.baseAsset && ownedMints.includes(vault.baseAsset)) {
           tokenMintsToUpdate.add(vault.baseAsset);
         }
       });
       
-      // Add vault tokens if we own them (skip mock vaults)
+      // Add vault tokens if we own them
       vaults.forEach(vault => {
-        if (vault.mintPubkey && ownedMints.includes(vault.mintPubkey) && !vault.isMock) {
+        if (vault.mintPubkey && ownedMints.includes(vault.mintPubkey)) {
           tokenMintsToUpdate.add(vault.mintPubkey);
         }
       });
@@ -364,8 +326,7 @@ export const DataInitializer: React.FC<{ children: React.ReactNode }> = ({ child
       // Also add all vault tokens to check if we have any balance
       // This ensures withdraw buttons are properly enabled
       vaults.forEach(vault => {
-        // Skip mock vaults in demo mode to prevent RPC errors
-        if (vault.mintPubkey && !vault.isMock) {
+        if (vault.mintPubkey) {
           tokenMintsToUpdate.add(vault.mintPubkey);
         }
       });

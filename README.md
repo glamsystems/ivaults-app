@@ -1,130 +1,85 @@
-# iVaults App
+# iVaults by GLAM
 
-A React Native application built with Expo and TypeScript for managing digital vaults.
+A React Native mobile app for discovering and managing investment vaults on Solana through the GLAM protocol.
+
+## Features
+
+- **Vault Discovery**: Browse and search investment vaults with real-time data from Solana
+- **Portfolio Management**: Track positions and manage redemption requests
+- **Wallet Integration**: Connect via Solana Mobile Wallet Adapter for secure transactions
+- **Transaction Support**: Deposit, withdraw, and claim redemptions directly from the app
+- **Activity Tracking**: Monitor transaction history and vault performance
+
+## Tech Stack
+
+- **React Native** + **Expo** (SDK 53)
+- **TypeScript** for type safety
+- **Solana Web3.js** + **@glamsystems/glam-sdk**
+- **Zustand** for state management
+- **TanStack Query** for data fetching
+- **React Native Reanimated** for animations
 
 ## Prerequisites
 
-- Node.js (v18 or higher)
-- npm or yarn
+- Node.js v18+
 - Expo CLI
-- iOS Simulator (for Mac) or Android Emulator
+- Android Emulator
+- Solana wallet app (Phantom, Solflare, etc.)
 
-## Environment Setup
+## Setup
 
-This project uses environment variables for configuration. Follow these steps:
+1. Clone and install:
+   ```bash
+   git clone https://github.com/glamsystems/ivaults-app.git
+   cd ivaults-app
+   npm install
+   ```
 
-1. Copy the example environment file:
+2. Configure environment:
    ```bash
    cp .env.example .env.local
    ```
 
-2. The `.env.local` file is git-ignored to keep your local settings private.
-
-3. Available environment variables:
-   - `DEBUG` - Set to `true` to enable the debug tab in the app (default: `false`)
-
-**Note:** The app is configured to read from `.env.local` instead of `.env` for better security practices.
-
-## Installation
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/glamsystems/ivaults-app.git
-   cd ivaults-app
+3. Edit `.env.local` with your RPC endpoints:
    ```
-
-2. Install dependencies:
-   ```bash
-   npm install
+   NETWORK=mainnet
+   SOLANA_RPC=https://your-mainnet-rpc
+   MAINNET_TX_RPC=https://your-tx-rpc
    ```
-
-3. Set up your environment variables (see Environment Setup above)
 
 ## Development
 
-Start the development server:
 ```bash
-npm start
+npm start          # Start Expo dev server
+npm run android    # Android emulator
+npm run web        # Web browser
 ```
-
-Run on specific platforms:
-- iOS: `npm run ios`
-- Android: `npm run android`
-- Web: `npm run web`
-
-## Technology Stack
-
-- **React Native** - Cross-platform mobile framework
-- **Expo** (SDK 53) - Development platform
-- **TypeScript** - Type-safe JavaScript
-- **React Navigation** - Navigation library
-- **Zustand** - State management
-- **TanStack Query** - Data fetching and caching
-- **React Native Reanimated** - Animation library
-- **@gorhom/bottom-sheet** - Modal bottom sheets
-- **@expo/vector-icons** - Icon library (Ionicons)
-- **expo-linear-gradient** - Gradient backgrounds
-- **expo-blur** - Blur effects
-- **react-native-dotenv** - Environment variables
-- **react-native-redash** - Animation utilities
-- **react-native-svg** - SVG support
 
 ## Project Structure
 
 ```
 src/
-├── components/
-│   ├── common/         # Shared components (Text, PageWrapper, etc.)
-│   ├── headers/        # Header components
-│   ├── navigation/     # Navigation components
-│   ├── sheets/         # Bottom sheet components
-│   ├── activity/       # Activity tracking components
-│   ├── layout/         # Layout components
-│   ├── portfolio/      # Portfolio management
-│   ├── screener/       # Vault screening/filtering
-│   └── vaultDetail/    # Vault detail views
-├── screens/            # Screen components
-├── theme/              # Theme configuration and colors
-├── hooks/              # Custom React hooks
-├── store/              # Zustand state management
-├── constants/          # App constants (fonts, spacing)
-├── utils/              # Utility functions
-└── types/              # TypeScript type definitions
+├── components/     # UI components
+├── screens/        # App screens
+├── store/          # Zustand stores
+├── services/       # GLAM/Solana services
+├── solana/         # Wallet & RPC providers
+└── utils/          # Helpers & formatters
 ```
 
-## Features
+## Key Stores
 
-- **Portfolio Management**: Track vault positions and withdrawal requests
-- **Vault Screening**: Browse and filter vaults by category with search
-- **Activity History**: Track deposits, withdrawals, and claims
-- **Vault Details**: View performance metrics and strategy descriptions
-- **Transaction Sheets**: Deposit and withdraw using custom numpads
-- **Theme Support**: Light/dark mode with system preference detection
-- **Cross-Platform**: iOS, Android, and Web support
-- **Custom Components**: Bottom sheets, gradient backgrounds, custom fonts
-- **Mock Data**: DataInitializer component provides sample data
+- **vaultStore**: Vault data, search, and filtering
+- **walletStore**: Wallet connection and balances
+- **portfolioStore**: User positions and redemptions
+- **activityStore**: Transaction history
 
-## Data Architecture
+## Notes
 
-The app uses Zustand for state management with three main stores:
-- **vaultStore**: Manages vault data, filtering, and search
-- **portfolioStore**: Manages user positions and withdrawal requests
-- **activityStore**: Manages transaction history and activity filtering
-
-Data is initialized through the `DataInitializer` component which wraps the app and provides mock data for development.
-
-## Scripts
-
-- `npm start` - Start Expo development server
-- `npm run ios` - Run on iOS simulator
-- `npm run android` - Run on Android emulator
-- `npm run web` - Run in web browser
-
-## Known Issues/Notes
-
-- Web navigation icons use a custom overlay component for compatibility
-- Theme preference doesn't persist between sessions (temporary limitation)
-- All data is mock data initialized at app startup
+- Mainnet configuration by default
+- Performance metrics are simulated for display
+- Wallet sessions persist between app launches
+- Supports deep linking for wallet returns
 
 ## License
 
