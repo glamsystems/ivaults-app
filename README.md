@@ -6,7 +6,7 @@ A React Native Android app for discovering and managing investment vaults on Sol
 
 - **Vault Discovery**: Browse and search investment vaults with real-time data from Solana
 - **Portfolio Management**: Track positions and manage redemption requests
-- **Mobile Wallet Integration**: Connect via Solana Mobile Wallet Adapter (MWA) for secure on-device transactions
+- **Mobile Wallet Integration**: Connect via Solana Mobile Wallet Adapter (MWA) for signing transactions
 - **Transaction Support**: Deposit, withdraw, and claim redemptions directly from the app
 - **Activity Tracking**: Monitor transaction history and vault performance
 
