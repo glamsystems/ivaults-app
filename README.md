@@ -1,6 +1,6 @@
 # iVaults by GLAM *.+
 
-A React Native Android app for discovering and managing investment vaults on Solana through the GLAM protocol.
+A React Native Android app for discovering and managing GLAM vaults on Solana.
 
 ## Features
 
