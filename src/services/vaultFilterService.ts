@@ -31,7 +31,15 @@ const VAULT_CATEGORIES = [
     pubkeys: [
       // Add Mindshare state pubkeys here
     ],
+  },
+  {
+    singular: 'Core',
+    plural: 'Core',
+    pubkeys: [
+        'A7pkWMJTxQhRvqMqRHumQmAE3dTicioNcwdpsfQVdTKa'
+    ]
   }
+
   // Add new categories here as needed
 ] as const;
 
