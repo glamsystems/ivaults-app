@@ -8,7 +8,6 @@ A React Native Android app for discovering and managing GLAM vaults on Solana.
 - **Portfolio Management**: Track positions and manage redemption requests
 - **Mobile Wallet Integration**: Connect via Solana Mobile Wallet Adapter (MWA) for signing transactions
 - **Transaction Support**: Deposit, withdraw, and claim redemptions directly from the app
-- **Activity Tracking**: Monitor transaction history and vault performance
 
 ## Tech Stack
 
@@ -96,6 +95,7 @@ iVaults uses the Solana Mobile Wallet Adapter protocol for secure wallet interac
 - [ ] **iOS Support**: Implement iOS wallet integration
 - [ ] **Cross-Platform Wallet Adapter**: Unified wallet connection across all platforms
 - [ ] **WalletConnect Integration**: Alternative wallet connection method
+- [ ] **Activity Tracking**: Monitor transaction history and vault performance
 
 ## License
 
