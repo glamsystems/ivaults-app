@@ -2,6 +2,8 @@
 
 A React Native Android app for discovering and managing GLAM vaults on Solana.
 
+[![IVAULTS](https://img.youtube.com/vi/WxZdtd_LpxY/0.jpg)](https://www.youtube.com/watch?v=WxZdtd_LpxY)
+
 ## Features
 
 - **Vault Discovery**: Browse and search investment vaults with real-time data from Solana
